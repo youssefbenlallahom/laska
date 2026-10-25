@@ -59,7 +59,7 @@ const WOLF = 'M399 432 399 2 694 295 373 610 667 894 667 1017 765 1105 822 1105 
 const CROSS = 'M757 499h75v108h107v75H832v107h-75V682H650v-75h107Z';
 const TRACE = 'M434 470V40L652 295 336 611 640 906V1028L760 1137H827L947 1028V906L1251 611 935 295 1153 40V470';
 const wolfMark = (cls = 'logo-mark', trace = '') => `<svg class="${cls}" viewBox="290 -6 1008 1182" aria-hidden="true">${trace ? `<mask id="${trace}" maskUnits="userSpaceOnUse" x="200" y="-80" width="1200" height="1340"><path class="wolf-trace" d="${TRACE}" pathLength="1" fill="none" stroke="#fff" stroke-width="140" stroke-linejoin="miter" stroke-miterlimit="8"/></mask>` : ''}<path class="wolf" fill="currentColor" fill-rule="evenodd" d="${WOLF}"/><path class="wolf-cross" fill="currentColor" d="${CROSS}"/></svg>`;
-const logo = (place = 'head') => `<a class="logo" href="#/" aria-label="Laska Corporate, Médical : accueil">${wolfMark('logo-mark', place === 'head' ? 'wolf-trace' : '')}<img class="logo-text" src="assets/logo-texte.png" alt="" width="794" height="214"></a>`;
+const logo = (place = 'head') => `<a class="logo" href="#/" aria-label="Laska Corporate, Médical : accueil">${wolfMark('logo-mark', place === 'head' ? 'wolf-trace' : '')}<img class="logo-text" src="assets/logo-texte.png" alt="" width="378" height="102"></a>`;
 const btn = (label, href, kind = 'primary', symbol = 'arrow', attrs = '') => `<a class="btn btn-${kind}" href="${href}" ${attrs}>${label}${symbol ? icon(symbol) : ''}</a>`;
 const checkList = list => `<ul class="check-list">${list.map(t => `<li>${icon('check')}<span>${t}</span></li>`).join('')}</ul>`;
 const PHONE = '01 84 80 36 96', TEL = 'tel:+33184803696';
@@ -290,9 +290,9 @@ function footer() {
     <div class="footer-route" aria-hidden="true"><span></span></div>
     <div class="footer-grid">
       <div class="footer-col"><h3>${icon('doctor')}Praticiens</h3><a href="#/offres">Trouver une offre</a><a href="#/postuler">Créer mon dossier</a><a href="#/eligibilite">Suis-je éligible ?</a><a href="#/avis">Avis des praticiens</a><a href="#/espace">Espace candidat</a><a href="#/praticiens?faq=1">Questions fréquentes</a></div>
-      <div class="footer-col"><h3>${icon('hospital')}Établissements</h3><a href="#/besoin">Décrire mon besoin</a><a href="#/etablissements">Recruter avec Laska Corporate</a><a href="mailto:${MAIL_ETAB}">${MAIL_ETAB}</a><a href="#/etablissements?faq=1">Questions fréquentes</a></div>
+      <div class="footer-col"><h3>${icon('hospital')}Établissements</h3><a href="#/besoin">Décrire mon besoin</a><a href="#/etablissements">Recruter avec Laska Corporate</a><a href="mailto:${MAIL_ETAB}">${MAIL_ETAB.replace('@', '<wbr>@')}</a><a href="#/etablissements?faq=1">Questions fréquentes</a></div>
       <div class="footer-col"><h3>Laska Corporate</h3><a href="#/engagement">Notre engagement</a><a href="#/contact">Nous contacter</a></div>
-      <div class="footer-col footer-contact"><h3>On se parle ?</h3><a class="footer-tel" href="${TEL}">${PHONE}</a><a href="mailto:${MAIL}">${MAIL}</a><address>6 rue d’Armaillé, 75017 Paris</address></div>
+      <div class="footer-col footer-contact"><h3>On se parle ?</h3><a class="footer-tel" href="${TEL}">${PHONE}</a><a href="mailto:${MAIL}">${MAIL.replace('@', '<wbr>@')}</a><address>6 rue d’Armaillé, 75017 Paris</address></div>
     </div>
     <div class="footer-bottom">${logo('foot')}<span>© 2026 Laska Corporate</span><div><a href="#/mentions-legales">Mentions légales</a><a href="#/mentions-legales?section=confidentialite">Confidentialité</a></div></div>
   </div></footer>`;
@@ -456,7 +456,7 @@ function steps(list) {
   return `<ol class="steps">${list.map(([ic,t,d],i) => `<li><span class="step-n" data-n="${i + 1}" aria-hidden="true">${i + 1}</span><h3>${t}</h3><p>${d}</p></li>`).join('')}</ol>`;
 }
 function cta({title, text, label, href, alt = true}) {
-  return `<section class="cta-band"><div class="container cta-inner"><div><h2>${dot(title)}</h2><p>${text}</p></div><div class="actions">${btn(label, href, 'coral')}${alt ? `<a class="tel-link" href="${TEL}">${icon('phone')}<span><small>Plutôt par téléphone ?</small>${PHONE}</span></a>` : ''}</div></div></section>`;
+  return `<section class="cta-band"><div class="container"><div class="cta-inner"><div><h2>${dot(title)}</h2><p>${text}</p></div><div class="actions">${btn(label, href, 'coral')}${alt ? `<a class="tel-link" href="${TEL}">${icon('phone')}<span><small>Plutôt par téléphone ?</small>${PHONE}</span></a>` : ''}</div></div></div></section>`;
 }
 const promise = items => `<ul class="promise">${items.map(([ic,t]) => `<li>${icon(ic)}${t}</li>`).join('')}</ul>`;
 
@@ -467,12 +467,12 @@ function doorPro() {
   return `<article class="door door-pro door-half">
     <div class="door-body">
       <h2 class="door-title">Votre prochain poste <em>en France</em><span class="dot">.</span></h2>
+      <img class="door-avatar" src="assets/medecin-avatar.jpg" alt="" width="240" height="240">
       <p class="lead"><strong>Médecins et professionnels de santé</strong>&nbsp;: trouvez une offre et avancez avec un conseiller, du diplôme à la prise de poste.</p>
       <form class="hero-search" id="home-search" role="search" aria-label="Trouver une offre">${searchFields('home')}<button class="btn btn-primary" type="submit"><span id="home-count">Voir les ${total} offres</span>${icon('arrow')}</button></form>
       ${promise([['check','Gratuit pour les praticiens'],['clock','Réponse sous 48 h'],['globe','Depuis la France ou l’étranger']])}
       <a class="elig-teaser" href="#/eligibilite">${icon('diploma')}<span><strong>Puis-je exercer en France ?</strong>Faites le point en 3 questions</span>${icon('arrow')}</a>
     </div>
-    <img class="door-avatar" src="assets/medecin.jpg" alt="" width="1100" height="733">
   </article>`;
 }
 /* Porte établissement : un seul bouton. La pré-demande (spécialités, contrat) est sur la page Établissements. */
@@ -480,12 +480,12 @@ function doorEtab() {
   return `<article class="door door-etab door-half">
     <div class="door-body">
       <h2 class="door-title">Du renfort pour <em>vos équipes</em><span class="dot">.</span></h2>
+      <img class="door-avatar" src="assets/equipe-avatar.jpg" alt="" width="240" height="240">
       <p class="lead"><strong>Hôpitaux, cliniques, EHPAD, centres de santé</strong>&nbsp;: des professionnels aux profils vérifiés, en intérim, en vacation, en CDD ou en CDI.</p>
       <div class="door-actions"><a class="btn btn-coral" href="#/besoin">Décrire mon besoin${icon('arrow')}</a><a class="text-link" href="#/etablissements">Comment ça marche${icon('arrow')}</a></div>
       ${promise([['shield','Profils vérifiés'],['people','Un interlocuteur dédié'],['bolt','Remplacements urgents']])}
-      <p class="urgent">${icon('bolt')}Besoin urgent ? <a href="${TEL}"><strong>${PHONE}</strong></a><span aria-hidden="true">·</span><button type="button" data-callback>Être rappelé</button></p>
+      <p class="urgent">${icon('bolt')}<span>Besoin urgent ?</span><a href="${TEL}"><strong>${PHONE}</strong></a><span aria-hidden="true">·</span><button type="button" data-callback>Être rappelé</button></p>
     </div>
-    <img class="door-avatar" src="assets/equipe.jpg" alt="" width="1100" height="1650">
   </article>`;
 }
 function homeHero() {
@@ -499,6 +499,13 @@ function specialtyIndex() {
   const items = specialties.map((s, i) => ({s, i, list: offers.filter(o => o.sp === i)})).filter(x => x.list.length).sort((a, b) => b.list.length - a.list.length || a.i - b.i);
   return `<ul class="sp-index">${items.map(({s, i, list}) => `<li><a href="#/offres?specialite=${i}" data-sp="${i}" data-depts="${[...new Set(list.map(o => o.num))].join(' ')}"><span class="sp-name">${s}</span><span class="sp-n" aria-hidden="true">${list.length}</span><span class="sr-only"> : ${offerCount(list.length)}</span></a></li>`).join('')}</ul>`;
 }
+/* Carte de l’accueil : dessinée seulement là où elle s’affiche. Sur téléphone, ses 1 400 points ne serviraient à rien
+   (la liste des spécialités la remplace) ; si l’écran s’élargit, elle est ajoutée sur place. */
+const MAP_MQ = matchMedia('(min-width: 861px)');
+MAP_MQ.addEventListener('change', () => {
+  const slot = $('.missions-map'); if (!MAP_MQ.matches || !slot || slot.firstElementChild) return;
+  slot.innerHTML = franceMap(); const section = slot.closest('.missions'); bindMap(section); bindIndex(section);
+});
 function bindIndex(root = document) {
   const index = $('.sp-index', root), fig = $('.missions-map .france-map', root); if (!index || !fig) return;
   const links = $$('[data-sp]', index);
@@ -514,7 +521,7 @@ function missionsSection() {
     <div class="missions-copy"><h2 aria-label="${offers.length} offres, ${depts} départements."><span class="count" data-count-to="${offers.length}">${offers.length}</span> offres, <span class="count" data-count-to="${depts}">${depts}</span> départements<span class="dot">.</span></h2><p class="section-lead">Choisissez une spécialité ou un département pour voir ses offres.</p>
       ${specialtyIndex()}
       ${btn('Toutes les offres', '#/offres', 'outline')}<a class="text-link missions-depts" href="#/offres?filtres=1">${icon('pin')}Voir les offres par département</a></div>
-    <div class="missions-map">${franceMap()}</div>
+    <div class="missions-map">${MAP_MQ.matches ? franceMap() : ''}</div>
   </div></section>`;
 }
 function belief() {
@@ -541,7 +548,7 @@ function subHero({crumb, title, lead, actions, photo, alt, note, side = ''}) {
   return `<section class="sub-hero"><div class="container">${breadcrumb([[crumb]])}<div class="sub-grid"><div class="sub-copy"><h1>${title}</h1><p class="lead">${lead}</p>${actions}${note || ''}</div>${side || `<figure class="sub-photo"><img src="assets/${photo}" alt="${alt}" width="1100" height="733" fetchpriority="high"></figure>`}</div></div></section>`;
 }
 function practitioners() {
-  return subHero({crumb:'Praticiens', title:`Exercez en France, <em>accompagné</em><span class="dot">.</span>`, lead:'Diplôme, autorisations, mission : un conseiller vous aide à chaque étape. Gratuitement.', actions:`<div class="actions">${btn('Créer mon dossier','#/postuler','coral')}${btn('Suis-je éligible ?','#/eligibilite','outline','')}</div><a class="text-link elig-link" href="#/offres">Voir les offres${icon('arrow')}</a>`, note:promise([['check','Gratuit'],['clock','Réponse sous 48 h'],['globe','Depuis la France ou l’étranger']]), photo:'praticienne.jpg', alt:'Praticienne souriante en blouse blanche'})
+  return subHero({crumb:'Praticiens', title:`Exercez en France, <em>accompagné</em><span class="dot">.</span>`, lead:'Diplôme, autorisations, mission : un conseiller vous aide à chaque étape. Gratuitement.', actions:`<div class="actions">${btn('Créer mon dossier','#/postuler','coral')}${btn('Suis-je éligible ?','#/eligibilite','outline','')}</div><a class="text-link elig-link" href="#/offres">Voir les offres${icon('arrow')}</a>`, note:promise([['check','Gratuit'],['clock','Réponse sous 48 h'],['globe','Depuis la France ou l’étranger']]), photo:'medecin.jpg', alt:'Médecin en blouse blanche, bras croisés'})
   + `<section class="section section-paper"><div class="container"><div class="section-head"><h2>${dot('Un parcours clair, à votre rythme.')}</h2></div>${journey()}
     <details class="journey-details"><summary>Voir les démarches en détail ${icon('plus')}</summary><div class="details-body">${checkList(['Étude de votre diplôme et de votre parcours','Orientation vers la procédure de reconnaissance adaptée','Mise en relation avec des offres compatibles','Suivi de l’autorisation d’exercice','Accompagnement à la prise de poste'])}</div></details></div></section>
   ${avisSection()}
@@ -721,7 +728,7 @@ function offerDetail() {
     <details class="journey-details"><summary>Une question sur cette offre ? ${icon('plus')}</summary><div class="details-body"><p>Nous vous répondons en précisant l’offre concernée.</p><a class="text-link" href="#/contact?offre=${o.id}">Poser ma question${icon('arrow')}</a></div></details>
     <p class="detail-ref">${icon('file')}<span>Référence de l’offre : <strong>${o.ref}</strong></span>${o.soon ? '' : `<button type="button" class="reset-link" data-copy="${o.ref}">${icon('link')}Copier</button>`}</p>
   </div>
-  <aside class="apply-card"><p class="apply-kicker">${o.soon ? 'Cette offre vous intéresse ?' : 'Votre prochain pas'}</p><h2>${dot(o.soon ? 'Soyez informé en premier.' : 'Un premier contact suffit.')}</h2><p>Vos coordonnées et votre spécialité. Votre conseiller s’occupe de la suite.</p>${o.slots.length ? `<p class="apply-picks" id="apply-picks" aria-live="polite">${pickText((state.picks[o.id] || []).length)}</p>` : ''}${btn(apply, `#/postuler/${o.id}`, 'coral')}${promise([['check','Gratuit'],['clock','Réponse sous 48 h']])}<div class="apply-help"><span>Besoin d’aide ?</span><a class="text-link" href="${TEL}">${icon('phone')}${PHONE}</a><button type="button" class="text-link" data-callback>Être rappelé</button></div></aside></div>
+  <aside class="apply-card"><h2>${dot(o.soon ? 'Soyez informé en premier.' : 'Un premier contact suffit.')}</h2><p>Vos coordonnées et votre spécialité. Votre conseiller s’occupe de la suite.</p>${o.slots.length ? `<p class="apply-picks" id="apply-picks" aria-live="polite">${pickText((state.picks[o.id] || []).length)}</p>` : ''}${btn(apply, `#/postuler/${o.id}`, 'coral')}${promise([['check','Gratuit'],['clock','Réponse sous 48 h']])}<div class="apply-help"><span>Besoin d’aide ?</span><a class="text-link" href="${TEL}">${icon('phone')}${PHONE}</a><button type="button" class="text-link" data-callback>Être rappelé</button></div></aside></div>
   ${similar.length ? `<section class="section section-paper"><div class="container"><div class="section-head"><h2>${dot('Offres proches.')}</h2><a class="text-link" href="#/offres">Toutes les offres${icon('arrow')}</a></div><div class="offer-grid">${similar.map(offerCard).join('')}</div></div></section>` : ''}
   <div class="mobile-apply"><span>${o.specialty}<small>${o.city} · Gratuit</small></span>${btn(apply, `#/postuler/${o.id}`, 'coral')}</div>`;
 }
@@ -736,7 +743,7 @@ function field(name, label, {type = 'text', required = true, cond = false, requi
     ? `<select id="${name}" name="${name}"${req} ${attrs}><option value="">Choisissez</option>${options.map(o => `<option value="${esc(o)}" ${String(value) === String(o) ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`
     : type === 'textarea'
     ? `<textarea id="${name}" name="${name}"${req} maxlength="${name === 'message' ? 1000 : 500}" placeholder="${placeholder}" ${attrs}>${esc(value)}</textarea>`
-    : `<input id="${name}" name="${name}" type="${type}"${req} value="${esc(value)}" placeholder="${placeholder}" ${autocomplete ? `autocomplete="${autocomplete}"` : ''} ${type === 'tel' ? 'inputmode="tel"' : ''} ${attrs}>`;
+    : `<input id="${name}" name="${name}" type="${type}"${req} value="${esc(value)}" placeholder="${placeholder}" ${autocomplete ? `autocomplete="${autocomplete}"` : ''} ${type === 'email' ? 'spellcheck="false" autocapitalize="off"' : ''} ${attrs}>`;
   return `<div class="field ${full ? 'full' : ''}"><label for="${name}">${label}${required || cond || requiredWhen ? ' <span class="req" aria-hidden="true">*</span>' : ''}</label>${input}${help ? `<small id="${name}-help">${help}</small>` : ''}</div>`;
 }
 /* ───────────── Champ date Laska Corporate ─────────────
@@ -1509,7 +1516,7 @@ function phoneField(name, label, {id = name, required = true, help = '', value =
   code ||= '33';
   return `<div class="field phone-field ${full ? 'full' : ''}"><label for="${id}">${label}${required ? ' <span class="req" aria-hidden="true">*</span>' : ''}</label>
     <div class="phone-row"><select id="${id}-code" name="${name}Code" data-phone-code aria-label="Indicatif du pays" autocomplete="tel-country-code">${DIAL_CODES.map(([n, c]) => `<option value="${c}" ${c === code ? 'selected' : ''}>${esc(n)} +${c}</option>`).join('')}<option value="autre" ${code === 'autre' ? 'selected' : ''}>Autre indicatif</option></select>
-    <input id="${id}" name="${name}" type="tel" inputmode="tel" autocomplete="tel-national" value="${esc(value)}" placeholder="${phonePlaceholder(code)}" ${required ? 'required' : ''}></div>${help ? `<small id="${id}-help">${help}</small>` : ''}</div>`;
+    <input id="${id}" name="${name}" type="tel" inputmode="tel" autocomplete="tel-national" spellcheck="false" value="${esc(value)}" placeholder="${phonePlaceholder(code)}" ${required ? 'required' : ''}></div>${help ? `<small id="${id}-help">${help}</small>` : ''}</div>`;
 }
 const phoneCodeOf = input => input.closest('.phone-field')?.querySelector('[data-phone-code]')?.value || '33';
 /* Indicatif tapé au début du numéro (+216, 00216) : le plus long qui correspond à la liste. */
@@ -1643,7 +1650,13 @@ document.addEventListener('click', e => {
   const keep = e.target.closest('[data-draft-keep]');
   if (keep) { restored[keep.dataset.draftKeep] = false; keep.closest('.draft-note').remove(); return; }
   const clear = e.target.closest('[data-draft-clear]');
-  if (clear) { const kind = clear.dataset.draftClear; restored[kind] = false; state[kind] = {values: {}, success: false}; saveDraft(); if (kind === 'contact') render(false); else goStep(kind, 1, {replace: true}); return; }
+  if (clear) {
+    /* Effacer est réversible pendant 10 s : « Annuler » remet la saisie telle qu’elle était. */
+    const kind = clear.dataset.draftClear, before = JSON.parse(JSON.stringify(state[kind])), show = () => kind === 'contact' ? render(false) : goStep(kind, 1, {replace: true});
+    restored[kind] = false; state[kind] = {values: {}, success: false}; saveDraft(); show();
+    toast('Saisie effacée.', {icon: 'close', action: {label: 'Annuler', run: () => { state[kind] = before; saveDraft(); show(); }}});
+    return;
+  }
   const send = e.target.closest('[data-send]');
   if (send) { const s = state[send.dataset.send]; s.success = true; s.ref = newRef(); saveDraft(); transition(() => { render(false); focusCard('.success-state h2'); }, {kind: 'form'}); }
 });
@@ -1729,6 +1742,21 @@ document.addEventListener('keydown', e => {
   if ($('#navigation')?.classList.contains('open')) { $('#menu-button').click(); $('#menu-button').focus(); }
 });
 window.addEventListener('hashchange', navigate);
+/* Typographie française : espace insécable avant ? ! ; : et », après «, et entre un nombre et son unité (9 h, 10 Mo).
+   Un « ? » ne se retrouve plus seul en début de ligne. Appliquée à tout texte ajouté à la page, jamais aux champs de saisie. */
+const FR_SPACES = [[/ ([?!;:»])/g, ' $1'], [/« /g, '« '], [/(\d) (h|min|Mo|Ko|km|ans?|mois|jours?|semaines?)(?=[\s.,;:!?)]|$)/g, '$1 $2']];
+function frenchSpaces(node) {
+  const fix = t => {
+    if (!t.data.includes(' ') || t.parentElement?.closest('input, textarea, script, style, code, pre')) return;
+    let d = t.data; for (const [re, to] of FR_SPACES) d = d.replace(re, to);
+    if (d !== t.data) t.data = d;
+  };
+  if (node.nodeType === 3) return fix(node);
+  if (node.nodeType !== 1) return;
+  const w = document.createTreeWalker(node, NodeFilter.SHOW_TEXT); while (w.nextNode()) fix(w.currentNode);
+}
+new MutationObserver(list => { for (const m of list) m.type === 'characterData' ? frenchSpaces(m.target) : m.addedNodes.forEach(frenchSpaces); })
+  .observe(document.body, {childList: true, subtree: true, characterData: true});
 loadDraft();
 document.querySelector('.skip-link').addEventListener('click', e => { e.preventDefault(); $('#main').focus(); $('#main').scrollIntoView(); });
 render();

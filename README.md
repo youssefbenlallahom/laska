@@ -1,6 +1,78 @@
-# Laska Corporate — maquette HTML (v8)
+# Laska Corporate — maquette HTML (v8.1)
 
-Maquette navigable du futur site Laska Corporate, à porter ensuite en React / Next.js. Copies des versions précédentes : `_sauvegarde-v3/`, `_sauvegarde-v5/`, `_sauvegarde-v7/` (état v7.2, avant la v8).
+Maquette navigable du futur site Laska Corporate, à porter ensuite en React / Next.js. Copies des versions précédentes : `_sauvegarde-v3/`, `_sauvegarde-v5/`, `_sauvegarde-v7/` (état v7.2, avant la v8), `_sauvegarde-v8/` (état v8, avant la passe de finition).
+
+## Passe de finition v8.1 : même identité, mêmes parcours
+
+Le 25 octobre 2026, une passe de finition visuelle. L’identité ne change pas (palette, polices, deux portes, pastille corail), les parcours non plus, et le mouvement reste au service de la lecture.
+
+### Ce qui change à l’écran
+
+- **Typographie** :
+  - échelle resserrée à 11 tailles : 13 · 14 · 15 · 16 · 17 · 20 · 24 · 34 · 46 · 60 · 72 px ;
+  - titres de carte en 34, de section en 46, de page en 60, d’affichage en 72 ; plus de demi-pixels ;
+  - de 9 à 12 tailles par page au lieu de 13 à 15.
+- **Texte courant presque noir** (#3b4442, contraste 9:1 au lieu de 6:1). Le gris reste aux notes, aides et métadonnées. Les paragraphes évitent les mots seuls en fin de bloc.
+- **Espaces insécables à la française**, posées automatiquement :
+  - avant ? ! ; : et », après « ;
+  - entre un nombre et son unité (24 h, 48 h, 3 Mo…).
+  - Plus de « ? » seul en début de ligne.
+- **Surfaces plus calmes** :
+  - plus de filets ni de contours d’un pixel (barre de filtres, faits de l’offre, référence, bouton Menu) ;
+  - bandeau « Faisons le premier pas » plat, sans dégradé ;
+  - libellés de contrat (« Intérim · Vacation », « CDI · CDD ») en lettres pleines au lieu de lettres détourées ;
+  - ombre plus douce pour le bouton « Aide ».
+- **Jauges** des étapes et des justificatifs : la partie qui reste à faire se voit.
+- **Fiche d’offre** :
+  - les valeurs des faits sont alignées en haut ;
+  - la référence tient dans une pastille à sa taille ;
+  - « Besoin d’aide ? » passe sur deux lignes : le téléphone à gauche, *Être rappelé* à droite.
+- **Accueil sur téléphone et tablette** (860 px et moins) :
+  - le portrait de chaque porte se loge dans le texte d’accroche au lieu de chevaucher le titre ;
+  - le titre ne dépasse plus du bloc (il pouvait être coupé à 320 px) ;
+  - « Besoin urgent ? » passe à la ligne sans laisser de point seul.
+- **Pied de page sur téléphone** :
+  - deux colonnes de liens, puis Laska Corporate et le contact en pleine largeur ;
+  - les liens sur deux lignes restent bien séparés ;
+  - les adresses email se coupent avant l’arobase.
+- **Défilement** :
+  - les ancres (questions fréquentes, mentions, explications) ne sont plus cachées sous l’en-tête collant ;
+  - quand on fait défiler un menu ou un panneau, la page derrière ne bouge pas, et Android ne recharge plus la page par glissement.
+- **Petits gestes** :
+  - *Tout effacer* propose *Annuler* pendant quelques secondes ;
+  - pas de correcteur sur les champs email et téléphone, ni de majuscule automatique sur l’email ;
+  - la barre du navigateur prend la couleur du fond du site au lieu du turquoise.
+
+### Poids et vitesse
+
+- **Images recompressées** :
+  - logo texte : de 60 à 6 Ko ;
+  - photos : de 155 à 88 Ko, de 193 à 70 Ko, de 108 à 61 Ko, de 81 à 53 Ko ;
+  - portraits des portes en 240 × 240 px (11 et 13 Ko) au lieu des photos entières.
+- **Carte de France** : elle n’est plus construite sur téléphone, où elle n’est pas affichée. Elle se construit si l’écran s’élargit.
+
+### Mesures
+
+Conditions : téléphone simulé, 4G lente, processeur ralenti 4 fois, serveur local sans compression.
+
+| Mesure | Avant (v8) | Après (v8.1) |
+|---|---|---|
+| Accueil : premier affichage / plus grand élément / temps de blocage | 4,0 s / 4,56 s / 934 ms | 3,69 s / 4,35 s / 697 ms |
+| Praticiens : premier affichage / plus grand élément / temps de blocage | 3,67 s / 5,9 s / 706 ms | 3,59 s / 5,0 s / 563 ms |
+| Tailles de texte par page (accueil, praticiens, établissements) | 15, 13, 15 | 12, 9, 11 |
+
+Le reste des vérifications est inchangé ou meilleur :
+- aucun texte sous 13 px ;
+- aucun contraste sous 4,5:1 sur téléphone ;
+- 100 % des zones tactiles à 44 px ou plus sur téléphone ;
+- zéro erreur JavaScript et zéro débordement sur les 68 pages balayées.
+
+Le détecteur de défauts visuels (impeccable) ne relève plus que le fond crème. Il est gardé : c’est la couleur de la marque.
+
+### Pas fait, à prévoir en production
+
+- **Polices en WOFF2 et compression gzip ou brotli chez l’hébergeur.** C’est le plus gros gain de vitesse restant : chaque graisse de Manrope pèse environ 95 Ko en TTF.
+- **Propositions de parcours du nouvel audit** (plus bas) : elles ont été écartées de cette passe, qui ne touche qu’au visuel.
 
 ## Version 8 : un site facile pour tous
 

@@ -1,4 +1,4 @@
-# Laska Corporate — système visuel (v4, finitions v6.1, lisibilité v8)
+# Laska Corporate — système visuel (v4, finitions v6.1, lisibilité v8, finitions v8.1)
 
 ## Concept : deux portes
 Un site, deux publics. L’espace **praticien** est clair (papier blanc, surlignage menthe). L’espace **établissement** est profond (turquoise foncé, accents menthe). Les deux se côtoient toujours sur l’accueil (v8 : plus de profil de visite, plus de porte réduite ni de bandeau « Vous recrutez ? »).
@@ -10,23 +10,25 @@ Logo officiel Laska Corporate | Médical : tête de loup géométrique et croix 
 
 ## Palette (imposée, inchangée)
 Turquoise #177e7a · turquoise foncé #0f5c59 · menthe #9dded6 · sable #cbb894 · corail #e8734a · encre #20242a · fond #f7f5f0.
-Dérivées : turquoise très foncé #0b4442 (pied de page), menthe claire #e2f2ee, sable clair #efe8da, texte secondaire #56625f.
+Dérivées : turquoise très foncé #0b4442 (pied de page), menthe claire #e2f2ee, sable clair #efe8da, texte courant #3b4442 (`--text`, v8.1), texte secondaire #56625f (notes, aides, métadonnées).
 Règles : texte encre sur corail, blanc sur turquoise foncé. Menthe et sable réservés aux surfaces et accents.
 
 ## Typographie
 Manrope 800 pour les titres, serrée (−0,04 à −0,06 em), en grands corps : c’est la signature. DM Sans pour la lecture et les contrôles, corps 17 px (16 px sur mobile). Libellés en petites capitales espacées. Chiffres tabulaires pour les références et téléphones.
+Échelle (v8.1), 11 tailles : 13 · 14 · 15 · 16 · 17 · 20 · 24 · 34 · 46 · 60 · 72 px. Titres de carte 34, de section 46, de page et des portes 60, d’affichage 72 (fluides, avec `clamp`). Pas de demi-pixel. Espaces insécables françaises posées automatiquement (avant ? ! ; : », après «, entre nombre et unité).
 
 ## Motifs propres au sujet
-- **Numéros de département** en chiffres détourés (cartes, lignes d’offres, fiche d’offre).
+- **Numéros de département** en chiffres détourés (cartes, lignes d’offres, fiche d’offre). Le détouré est réservé à ce décor : les libellés de contrat, qui portent une information, sont en lettres pleines (v8.1).
 - **Carte de France en points**, générée à partir d’un contour simplifié ; pastilles aux préfectures des départements où une mission est ouverte.
 - **Parcours pointillé** du diplôme à la prise de poste, terminé par la pastille corail.
 - **Photos en arche** (grand rayon sur un angle), reprise de la v2.
 
 ## Composants
-Menu unique et bouton principal selon la page (v8) · bouton « Aide » (en-tête sur téléphone, flottant et blanc sur ordinateur) · portes d’accueil · formulaires en étapes : « Étape 2 sur 5 », barre d’avancement, Retour et Continuer collés en bas de l’écran · « C’est quoi ? » : explication d’une ligne ouverte au toucher · mini-brief en puces · index des spécialités en tableau des départs (nom, pointillé, nombre) · cartes et lignes d’offres · carte interactive avec infobulle · étapes établissement en grands chiffres détourés reliés par le pointillé · FAQ en rangées pleines · principes en lignes de grande taille · formulaires avec boutons radio en pilules et anneau de progression · bandeau d’appel à l’action · route du pied de page terminée par la pastille.
+Menu unique et bouton principal selon la page (v8) · bouton « Aide » (en-tête sur téléphone, flottant et blanc sur ordinateur) · portes d’accueil (sous 860 px, le portrait se loge dans le texte d’accroche) · formulaires en étapes : « Étape 2 sur 5 », barre d’avancement, Retour et Continuer collés en bas de l’écran · « C’est quoi ? » : explication d’une ligne ouverte au toucher · mini-brief en puces · index des spécialités en tableau des départs (nom, pointillé, nombre) · cartes et lignes d’offres · carte interactive avec infobulle · étapes établissement en grands chiffres détourés reliés par le pointillé · FAQ en rangées pleines · principes en lignes de grande taille · formulaires avec boutons radio en pilules et anneau de progression · bandeau d’appel à l’action plat (turquoise foncé, cercle menthe plein, sans dégradé) · route du pied de page terminée par la pastille.
 
 ## Retenue (v4)
 Plus d’étiquettes en petites capitales au-dessus des titres : le fil d’Ariane situe les pages, le public d’une porte est dit dans sa première phrase. Plus de filets ni de contours d’un pixel : les surfaces se distinguent par un pas de ton. Ombres réservées à ce qui flotte (menus, barre de filtres collante, carte de candidature, en-tête quand la page défile).
+v8.1 : les derniers filets sont partis (barre de filtres, faits de l’offre, référence, bouton Menu, liens du menu mobile). Le bouton « Aide » a une seule ombre douce. Le bandeau d’appel n’a plus de dégradé. Les pastilles s’ajustent à leur contenu.
 
 ## Mouvement (v4) : la route jusqu’à la destination
 Tout ce qui bouge prolonge deux motifs de la marque : le **pointillé du parcours** et la **pastille corail**. Code dans `motion.js` / `motion.css`.
@@ -45,10 +47,10 @@ Courbes : `--ease-out` (arrivées), `--ease-in-out` (déplacements), `--ease-dra
 Listes déroulantes natives au style du site via `appearance: base-select` : surface blanche, rayon 14 px, ligne choisie en menthe avec coche turquoise, comme les listes à choix multiple. Cases à cocher dessinées : rayon 7 px, coche blanche sur turquoise. Témoignages : premier en grand sur turquoise, guillemet corail ou menthe.
 
 ## Accessibilité
-Mesuré en v8 sur 20 pages, ordinateur et téléphone : aucun texte sous 13 px (espace candidat : 14 px au moins, 15 px pour les lignes de texte), contrastes ≥ 4,5:1, cibles ≥ 44 px (99 à 100 %). Focus visible partout, lien d’évitement, `aria-pressed` sur les interrupteurs et filtres, résumé d’erreurs focalisé, champs radio natifs, menu fermé par Échap.
+Mesuré en v8 sur 20 pages, ordinateur et téléphone : aucun texte sous 13 px (espace candidat : 14 px au moins, 15 px pour les lignes de texte), contrastes ≥ 4,5:1, cibles ≥ 44 px (99 à 100 %). Ancres décalées sous l’en-tête collant (`scroll-margin-top`) ; menus et panneaux qui défilent sans entraîner la page (`overscroll-behavior: contain`). Focus visible partout, lien d’évitement, `aria-pressed` sur les interrupteurs et filtres, résumé d’erreurs focalisé, champs radio natifs, menu fermé par Échap.
 
 ## Formats vérifiés
-En-tête vérifié à 17 largeurs, de 320 à 1920 px ; pages à 1440 et 390 px : aucun débordement horizontal, aucune erreur console.
+En-tête vérifié à 17 largeurs, de 320 à 1920 px ; portes de l’accueil à 18 largeurs, de 320 à 1440 px (au moins 9 px entre portrait et titre) ; pages à 1440 et 390 px : aucun débordement horizontal, aucune erreur console.
 
 ## Références
 - https://laskasite.vercel.app/ — contenu et offres.

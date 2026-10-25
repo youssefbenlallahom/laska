@@ -75,7 +75,7 @@
 .motion-ok .france-map[data-map].is-in .pin-inner{animation:pin-drop .75s var(--ease-out) var(--pd, 300ms) backwards}
 @keyframes pin-drop{0%{opacity:0;transform:translateY(-34px) scale(.7)}60%{opacity:1;transform:translateY(2px) scale(1.05,.95)}100%{opacity:1;transform:none}}
 .motion-ok .france-map[data-map].is-in .badge-in:not(.is-zero){animation:badge-pop .5s var(--ease-out) calc(var(--pd, 300ms) + .35s) backwards}
-@keyframes badge-pop{from{opacity:0;transform:scale(.3)}}
+@keyframes badge-pop{from{opacity:0;transform:scale(.6)}}
 
 /* Pied de page : la route se trace jusqu’à la pastille corail. */
 .motion-ok [data-draw]:not(.is-in){clip-path:inset(-12px 100% -12px 0)}
