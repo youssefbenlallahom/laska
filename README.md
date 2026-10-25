@@ -1,4 +1,4 @@
-# Laska Corporate — maquette HTML (v8.1)
+# Laska Corporate — maquette HTML (v8.2)
 
 Maquette navigable du futur site Laska Corporate, à porter ensuite en React / Next.js. Copies des versions précédentes : `_sauvegarde-v3/`, `_sauvegarde-v5/`, `_sauvegarde-v7/` (état v7.2, avant la v8), `_sauvegarde-v8/` (état v8, avant la passe de finition).
 
@@ -73,6 +73,28 @@ Le détecteur de défauts visuels (impeccable) ne relève plus que le fond crèm
 
 - **Polices en WOFF2 et compression gzip ou brotli chez l’hébergeur.** C’est le plus gros gain de vitesse restant : chaque graisse de Manrope pèse environ 95 Ko en TTF.
 - **Propositions de parcours du nouvel audit** (plus bas) : elles ont été écartées de cette passe, qui ne touche qu’au visuel.
+
+## Passe v8.2 : formulaires plus compacts
+
+Les formulaires défilaient trop, même sur ordinateur. Le texte des formulaires descend d’un cran et les champs perdent l’interligne du corps de page. Seuls les formulaires changent (la carte `.form-card` et le titre `.form-intro`) : la recherche de l’accueil et le reste du site ne bougent pas. Les règles sont à la fin de `styles.css`, section « v8.2 ».
+
+- **Titres** : titre de page 60 → 48 px sur ordinateur, 32 → 30 px sur téléphone ; titre d’étape 34 → 30 px ; phrase d’accroche 20 → 17 px.
+- **Choix** (spécialités, contrats, pays) : 15 → 14 px, 44 px de haut. Sur téléphone, deux ou trois par ligne au lieu d’une. **Créneaux** : 74 → 64 px de haut.
+- **Champs** : 54 → 50 px de haut. Le texte reste à 16 px, parce qu’iOS zoome sur un champ plus petit. Libellés à 15 px.
+- **Boutons** : 17 → 16 px, 52 px de haut au lieu de 56 à 58.
+- **Espaces** : 12 px entre les lignes de champs (18 avant), 6 px entre un libellé et son champ.
+
+Hauteur de la page, du haut au bas, avant → après (pixels) :
+
+| Page | Ordinateur 1440 px | Téléphone 390 px |
+|---|---|---|
+| Dossier praticien, étape 1 | 1987 → 1885 | 2531 → 2418 |
+| Dossier praticien, étape 2 | 1905 → 1837 | 2401 → 2261 |
+| Dossier praticien, étape 5 | 2028 → 1955 | 2887 → 2663 |
+| Demande d’un établissement, étape 1 | 1955 → 1887 | 2673 → 2563 |
+| Contact | 2214 → 2204 | 3225 → 3136 |
+
+Sur les étapes du dossier et de la demande, le gain est de 2 à 8 % ; le contact gagne peu. La longueur tient surtout au nombre de questions et aux créneaux. Pour aller plus loin, il faudrait changer la mise en page (créneaux en deux colonnes sur téléphone, étapes plus courtes).
 
 ## Version 8 : un site facile pour tous
 

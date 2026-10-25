@@ -15,7 +15,7 @@ Règles : texte encre sur corail, blanc sur turquoise foncé. Menthe et sable r�
 
 ## Typographie
 Manrope 800 pour les titres, serrée (−0,04 à −0,06 em), en grands corps : c’est la signature. DM Sans pour la lecture et les contrôles, corps 17 px (16 px sur mobile). Libellés en petites capitales espacées. Chiffres tabulaires pour les références et téléphones.
-Échelle (v8.1), 11 tailles : 13 · 14 · 15 · 16 · 17 · 20 · 24 · 34 · 46 · 60 · 72 px. Titres de carte 34, de section 46, de page et des portes 60, d’affichage 72 (fluides, avec `clamp`). Pas de demi-pixel. Espaces insécables françaises posées automatiquement (avant ? ! ; : », après «, entre nombre et unité).
+Échelle (v8.1), 11 tailles : 13 · 14 · 15 · 16 · 17 · 20 · 24 · 34 · 46 · 60 · 72 px. Titres de carte 34, de section 46, de page et des portes 60, d’affichage 72 (fluides, avec `clamp`). Pas de demi-pixel. Espaces insécables françaises posées automatiquement (avant ? ! ; : », après «, entre nombre et unité). Formulaires (v8.2) : titre de page 48 px, titre d’étape 30 px, phrase d’accroche 17 px, choix 14 px, libellés 15 px, champs 16 px de texte sur 50 px de haut, boutons 16 px.
 
 ## Motifs propres au sujet
 - **Numéros de département** en chiffres détourés (cartes, lignes d’offres, fiche d’offre). Le détouré est réservé à ce décor : les libellés de contrat, qui portent une information, sont en lettres pleines (v8.1).
