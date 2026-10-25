@@ -1,0 +1,57 @@
+# Laska Corporate — système visuel (v4, finitions v6.1)
+
+## Concept : deux portes
+Un site, deux publics. L’espace **praticien** est clair (papier blanc, surlignage menthe). L’espace **établissement** est profond (turquoise foncé, accents menthe). Les deux se côtoient sur l’accueil puis l’un prend la place de l’autre quand le profil est connu.
+
+La **pastille corail** du logo marque toujours la destination : le point final des titres, la fin du parcours (« France »), le nombre de missions sur la carte, le département sélectionné.
+
+## Logo
+Logo officiel Laska Corporate | Médical : tête de loup géométrique et croix médicale, couleur #058689. La tête est en SVG (`wolfMark`), le texte d’origine en image. En-tête : tête + texte côte à côte ; pied de page : version blanche et grande tête en filigrane (6 % de menthe). À la première visite, le contour se dessine puis la croix apparaît.
+
+## Palette (imposée, inchangée)
+Turquoise #177e7a · turquoise foncé #0f5c59 · menthe #9dded6 · sable #cbb894 · corail #e8734a · encre #20242a · fond #f7f5f0.
+Dérivées : turquoise très foncé #0b4442 (pied de page), menthe claire #e2f2ee, sable clair #efe8da, texte secondaire #56625f.
+Règles : texte encre sur corail, blanc sur turquoise foncé. Menthe et sable réservés aux surfaces et accents.
+
+## Typographie
+Manrope 800 pour les titres, serrée (−0,04 à −0,06 em), en grands corps : c’est la signature. DM Sans pour la lecture et les contrôles, corps 17 px (16 px sur mobile). Libellés en petites capitales espacées. Chiffres tabulaires pour les références et téléphones.
+
+## Motifs propres au sujet
+- **Numéros de département** en chiffres détourés (cartes, lignes d’offres, fiche d’offre).
+- **Carte de France en points**, générée à partir d’un contour simplifié ; pastilles aux préfectures des départements où une mission est ouverte.
+- **Parcours pointillé** du diplôme à la prise de poste, terminé par la pastille corail.
+- **Photos en arche** (grand rayon sur un angle), reprise de la v2.
+
+## Composants
+Interrupteur de profil à pastille glissante · bouton « Commencer » avec menu · portes d’accueil (ouverte, demi, réduite) · mini-brief en puces · index des spécialités en tableau des départs (nom, pointillé, nombre) · cartes et lignes d’offres · carte interactive avec infobulle · étapes établissement en grands chiffres détourés reliés par le pointillé · FAQ en rangées pleines · principes en lignes de grande taille · formulaires avec boutons radio en pilules et anneau de progression · bandeau d’appel à l’action · route du pied de page terminée par la pastille.
+
+## Retenue (v4)
+Plus d’étiquettes en petites capitales au-dessus des titres : le fil d’Ariane situe les pages, le public d’une porte est dit dans sa première phrase. Plus de filets ni de contours d’un pixel : les surfaces se distinguent par un pas de ton. Ombres réservées à ce qui flotte (menus, barre de filtres collante, carte de candidature, en-tête quand la page défile).
+
+## Mouvement (v4) : la route jusqu’à la destination
+Tout ce qui bouge prolonge deux motifs de la marque : le **pointillé du parcours** et la **pastille corail**. Code dans `motion.js` / `motion.css`.
+- **Portes qui s’ouvrent** (première visite) : les deux portes se révèlent depuis la jointure centrale, puis les titres montent.
+- **Titres** : les mots montent derrière leur ligne de base, puis la pastille corail « atterrit » sur le point final (léger écrasement). Le surlignage menthe se pose sous « en France ».
+- **Carte** : les points apparaissent en vague depuis la Méditerranée ; chaque pastille se pose quand la vague l’atteint, puis son nombre de missions.
+- **Index des spécialités ↔ carte** : survoler une spécialité redessine la carte (missions de cette spécialité par département) ; survoler un département atténue les spécialités absentes. Même lien entre les lignes d’offres et la carte de la page Offres.
+- **Parcours tracé au défilement** : la ligne se remplit, chaque étape s’allume quand elle l’atteint, la pastille « France » s’illumine à l’arrivée.
+- **Conviction** : les mots prennent l’encre au rythme de la lecture.
+- **Transitions de vue** : changement de profil révélé en cercle depuis le bouton (les portes et la pastille de l’interrupteur glissent à leur place) ; changement de page avec en-tête fixe et pastille de navigation qui glisse ; le numéro de département et le titre d’une offre passent de la ligne à la fiche (et reviennent) ; formulaire envoyé : la carte change de hauteur sans saut.
+- **Retours** : appui (échelle 0,97), filtre à pastille glissante, compteurs qui roulent, lignes filtrées qui glissent (FLIP), coche sur un champ obligatoire bien rempli, erreurs effacées dès la correction, dépôt du CV par glisser-déposer, accordéons à leur vraie hauteur.
+Rythme (v6.1) : transitions de page 0,3 s ; titres 0,6 s, cascade plafonnée à 0,42 s ; aucune chorégraphie sur les pages de tâche (formulaires, offres, contact, avis, éligibilité, mentions). Les fenêtres s’ouvrent depuis leur bouton ; pas de faux survol sur écran tactile.
+Courbes : `--ease-out` (arrivées), `--ease-in-out` (déplacements), `--ease-drawer` (interrupteurs). Survols réservés aux souris. « Réduire les animations » : plus aucun déplacement, les changements d’état restent en fondu.
+
+## Listes et cases (v6.1)
+Listes déroulantes natives au style du site via `appearance: base-select` : surface blanche, rayon 14 px, ligne choisie en menthe avec coche turquoise, comme les listes à choix multiple. Cases à cocher dessinées : rayon 7 px, coche blanche sur turquoise. Témoignages : premier en grand sur turquoise, guillemet corail ou menthe.
+
+## Accessibilité
+Contrastes AA, focus visible partout, cibles ≥ 44 px, lien d’évitement, `aria-pressed` sur les interrupteurs et filtres, résumé d’erreurs focalisé, champs radio natifs, menu fermé par Échap.
+
+## Formats vérifiés
+1440, 768 et 390 px : aucun débordement horizontal, aucune erreur console.
+
+## Références
+- https://laskasite.vercel.app/ — contenu et offres.
+- https://www.pulsejobs.com/ — séparation des publics.
+- Photos Unsplash : photo-1612349317150-e413f6a5b16d, photo-1559839734-2b71ea197ec2, photo-1582750433449-648ed127bb54, photo-1576091160399-112ba8d25d1d.
+- Polices : Manrope et DM Sans (Google Fonts, fichiers locaux et licences dans assets/).

@@ -1,0 +1,197 @@
+@charset "UTF-8";
+/* Laska — mouvement (v4)
+   La route jusqu’à la destination : tout ce qui bouge ici prolonge le pointillé du parcours et la pastille corail.
+   Les états cachés n’existent que sous .motion-ok (posée par motion.js quand le mouvement est permis) :
+   sans script, ou avec « réduire les animations », la page est complète et immobile. */
+:root{
+  --ease-out:cubic-bezier(.22,1,.36,1);      /* arrivées, apparitions */
+  --ease-in-out:cubic-bezier(.76,0,.24,1);   /* ce qui voyage à l’écran */
+  --ease-soft:cubic-bezier(.33,1,.68,1);     /* longues révélations, photos */
+  --ease-drawer:cubic-bezier(.32,.72,0,1);   /* interrupteurs, barres */
+  --t-press:140ms; --t-hover:180ms; --t-ui:240ms;
+  interpolate-size:allow-keywords;
+}
+
+/* ───────────── 1. Titres : les mots montent, la pastille atterrit ───────────── */
+.w{display:inline-block;clip-path:inset(-.35em -.3em -.24em -.3em)}
+.w>span{display:inline-block}
+.motion-ok [data-split]:not(.is-in) .w>span{transform:translateY(135%)}
+.motion-ok [data-split].is-in .w>span{transition:transform .6s var(--ease-out) min(calc(var(--i) * 30ms + var(--d0, 0ms)), 420ms)}
+.motion-ok [data-split] .dot,.motion-ok [data-ink].is-live .dot{display:inline-block;transform-origin:50% 90%}
+/* La pastille « atterrit » seulement sur les grands titres ; ailleurs elle apparaît avec le dernier mot. */
+.motion-ok [data-split]:not(.is-in) .dot,.motion-ok [data-ink].is-live:not(.is-done) .dot{opacity:0}
+.motion-ok :is(h1,.footer-claim)[data-split]:not(.is-in) .dot{transform:translateY(-.9em) scale(.4)}
+.motion-ok [data-split].is-in .dot{transition:opacity .25s ease calc(min(var(--words, 4) * 30ms + var(--d0, 0ms), 420ms) + .15s)}
+.motion-ok :is(h1,.footer-claim)[data-split].is-in .dot{animation:dot-land .6s var(--ease-out) calc(min(var(--words, 4) * 30ms + var(--d0, 0ms), 420ms) + .18s) both}
+.motion-ok [data-ink].is-live.is-done .dot{animation:dot-land .85s var(--ease-out) both}
+@keyframes dot-land{0%{opacity:0;transform:translateY(-.9em) scale(.4)}48%{opacity:1;transform:translateY(.03em) scale(1.22,.76)}70%{transform:translateY(-.1em) scale(.94,1.07)}100%{opacity:1;transform:none}}
+/* Le surlignage menthe se pose sous « en France » après les mots. */
+.motion-ok [data-split]:not(.is-in) em::after{transform:scaleX(0)}
+.motion-ok [data-split].is-in em::after{transition:transform .6s var(--ease-in-out) calc(min(var(--words, 4) * 30ms + var(--d0, 0ms), 420ms) + .05s)}
+/* La conviction prend l’encre au rythme du défilement. */
+.motion-ok [data-ink].is-live .w{color:color-mix(in srgb, currentColor 20%, transparent);transition:color .5s ease}
+.motion-ok [data-ink].is-live .w.is-ink{color:inherit}
+
+/* ───────────── 2. Apparitions (une fois, dans l’ordre de lecture) ───────────── */
+.motion-ok [data-reveal]:not(.is-in){opacity:0;translate:0 12px}
+.motion-ok [data-reveal].is-in{transition:opacity .45s var(--ease-out) var(--d, 0ms),translate .5s var(--ease-out) var(--d, 0ms)}
+/* Photos : elles s’ouvrent depuis le bas en se posant ; la bannière « Ouvrir les portes » s’ouvre depuis le centre. */
+.motion-ok [data-shutter]:not(.is-in){clip-path:inset(100% 0 0 0)}
+.motion-ok [data-shutter="doors"]:not(.is-in){clip-path:inset(0 50% 0 50%)}
+.motion-ok [data-shutter]:not(.is-in) img{scale:1.08}
+.motion-ok [data-shutter].is-in{clip-path:inset(0);transition:clip-path .9s var(--ease-in-out) var(--d, 0ms)}
+.motion-ok [data-shutter].is-in img{scale:1;transition:scale 1.2s var(--ease-soft) var(--d, 0ms)}
+.motion-ok [data-shutter]:not(.is-in) figcaption{opacity:0;translate:0 14px}
+.motion-ok [data-shutter].is-in figcaption{transition:opacity .45s var(--ease-out) calc(var(--d, 0ms) + .55s),translate .5s var(--ease-out) calc(var(--d, 0ms) + .55s)}
+/* Vérifications : chaque coche se trace, l’une après l’autre. */
+.motion-ok .check-list li[data-reveal]:not(.is-in) .icon path{stroke-dasharray:22;stroke-dashoffset:22}
+.motion-ok .check-list li[data-reveal].is-in .icon path{stroke-dasharray:22;stroke-dashoffset:0;transition:stroke-dashoffset .55s var(--ease-out) calc(var(--d, 0ms) + .3s)}
+/* Étapes établissement : le chiffre se remplit comme un niveau qui monte. */
+.motion-ok .steps li[data-reveal]:not(.is-in) .step-n::after{clip-path:inset(100% 0 0 0)}
+.motion-ok .steps li[data-reveal].is-in .step-n::after{clip-path:inset(0);transition:clip-path .8s var(--ease-in-out) calc(var(--d, 0ms) + .2s)}
+
+/* ───────────── 3. Accueil : les deux portes s’ouvrent depuis le centre ───────────── */
+.motion-ok .split-hero.is-opening .door{animation:door-rise .95s var(--ease-out) both}
+.motion-ok .split-hero.is-opening .door+.door{animation-delay:.14s}
+@media (min-width:1101px){
+  .motion-ok .split-hero.is-open.is-opening .door-pro{animation:door-open-l 1.15s var(--ease-in-out) both}
+  .motion-ok .split-hero.is-open.is-opening .door-etab{animation:door-open-r 1.15s var(--ease-in-out) .05s both}
+  .motion-ok .split-hero.is-open.is-opening .door-pro .door-body{animation:door-body-l 1.4s var(--ease-out) both}
+  .motion-ok .split-hero.is-open.is-opening .door-etab .door-body{animation:door-body-r 1.4s var(--ease-out) .05s both}
+}
+@keyframes door-rise{from{opacity:0;translate:0 32px}}
+@keyframes door-open-l{from{clip-path:inset(0 0 0 100% round var(--r-xl))}to{clip-path:inset(0 round var(--r-xl))}}
+@keyframes door-open-r{from{clip-path:inset(0 100% 0 0 round var(--r-xl))}to{clip-path:inset(0 round var(--r-xl))}}
+@keyframes door-body-l{from{translate:70px 0}}
+@keyframes door-body-r{from{translate:-70px 0}}
+.motion-ok .split-hero.is-opening .door-avatar{animation:avatar-in .9s var(--ease-out) .75s both}
+@keyframes avatar-in{from{opacity:0;scale:.6;outline-offset:18px}}
+.motion-ok .split-hero.is-opening .door-etab::before{animation:ring-in 1.8s var(--ease-out) .25s both}
+@keyframes ring-in{from{opacity:0;scale:.6}}
+.motion-ok .split-hero.is-opening .chip,.motion-ok .split-hero.is-opening .pick,.motion-ok .split-hero.is-opening .pick-toggle{animation:chip-in .5s var(--ease-out) both;animation-delay:calc(.8s + var(--c, 0) * 35ms)}
+@keyframes chip-in{from{opacity:0;translate:0 10px}}
+.motion-ok .split-hero.is-opening .hero-search{animation:chip-in .7s var(--ease-out) .8s both}
+
+/* ───────────── 4. Carte : une vague depuis la Méditerranée, puis les pastilles se posent ───────────── */
+.motion-ok .france-map[data-map]:not(.is-in) .dot-band,.motion-ok .france-map[data-map]:not(.is-in) .pin-inner{opacity:0}
+.motion-ok .france-map[data-map].is-in .dot-band{animation:band-in .9s var(--ease-out) calc(var(--b) * 60ms) backwards}
+@keyframes band-in{0%{opacity:0;fill:var(--teal);translate:0 8px}35%{opacity:1;fill:var(--mint)}100%{opacity:1;fill:var(--dots);translate:none}}
+.motion-ok .france-map[data-map].is-in .pin-inner{animation:pin-drop .75s var(--ease-out) var(--pd, 300ms) backwards}
+@keyframes pin-drop{0%{opacity:0;transform:translateY(-34px) scale(.7)}60%{opacity:1;transform:translateY(2px) scale(1.05,.95)}100%{opacity:1;transform:none}}
+.motion-ok .france-map[data-map].is-in .badge-in:not(.is-zero){animation:badge-pop .5s var(--ease-out) calc(var(--pd, 300ms) + .35s) backwards}
+@keyframes badge-pop{from{opacity:0;transform:scale(.3)}}
+
+/* Pied de page : la route se trace jusqu’à la pastille corail. */
+.motion-ok [data-draw]:not(.is-in){clip-path:inset(-12px 100% -12px 0)}
+.motion-ok [data-draw].is-in{clip-path:inset(-12px 0 -12px 0);transition:clip-path 1.6s var(--ease-in-out)}
+.motion-ok [data-draw].is-in span{animation:logo-dot .9s var(--ease-out) 1.35s backwards}
+
+/* ───────────── 5. Parcours tracé au défilement ───────────── */
+.motion-ok .journey-wrap.is-live .journey-step:not(.is-reached) .journey-marker{background:var(--paper);color:var(--muted);border-color:var(--line-strong)}
+.motion-ok .journey-wrap.is-live .journey-step:not(.is-reached)>div{opacity:.38}
+.motion-ok .journey-wrap.is-live .journey-step.is-reached .journey-marker{animation:marker-pop .55s var(--ease-out)}
+@keyframes marker-pop{45%{scale:1.2}}
+.motion-ok .journey-wrap.is-live .journey-end:not(.is-reached) span{background:var(--paper)}
+.motion-ok .journey-wrap.is-live .journey-end:not(.is-reached){color:var(--muted)}
+.motion-ok .journey-wrap.is-live .journey-end.is-reached span{animation:arrive 1.3s var(--ease-out)}
+@keyframes arrive{0%{scale:.7;box-shadow:0 0 0 0 rgba(232,115,74,.55)}40%{scale:1.08}100%{scale:1;box-shadow:0 0 0 30px rgba(232,115,74,0)}}
+.motion-ok .journey-wrap.is-live .journey-step:not(.is-done)::after{clip-path:inset(0 0 100% 0)}
+
+/* ───────────── 6. En-tête ───────────── */
+/* Logo : le contour du loup se dessine, puis la croix médicale apparaît, puis le nom. */
+.motion-ok .site-header .logo.is-intro .wolf{mask:url(#wolf-trace)}
+.motion-ok .logo.is-intro .wolf-trace{stroke-dasharray:1;animation:wolf-trace 1.5s var(--ease-in-out) .15s backwards}
+.motion-ok .logo.is-intro .wolf-cross{animation:cross-in .7s var(--ease-out) 1.35s backwards}
+.motion-ok .logo.is-intro .logo-text{animation:logo-l .8s var(--ease-out) .7s backwards}
+@keyframes wolf-trace{from{stroke-dashoffset:1}}
+@keyframes cross-in{0%{opacity:0;transform:scale(.2) rotate(-90deg)}65%{opacity:1;transform:scale(1.18) rotate(8deg)}100%{transform:none}}
+@keyframes logo-l{from{opacity:0;transform:translateY(8px)}}
+@keyframes logo-bar{from{transform:scaleY(0)}}
+@keyframes logo-dot{0%{opacity:0;transform:translateY(-14px) scale(.5)}50%{opacity:1;transform:translateY(1px) scale(1.2,.8)}75%{transform:translateY(-2px) scale(.95,1.05)}100%{transform:none}}
+.motion-ok .nav.open>*{animation:nav-in .45s var(--ease-out) both;animation-delay:calc(var(--n, 0) * 35ms + 40ms)}
+@keyframes nav-in{from{opacity:0;translate:0 12px}}
+.start-menu a{animation:nav-in .32s var(--ease-out) both}
+.start-menu a:nth-of-type(2){animation-delay:.05s}
+
+/* ───────────── 7. Retours sous la main ───────────── */
+.btn:active{scale:.97}
+.chip:active,.pill:active span,.filter-chip:active,.aud-track button:active,.view-toggle button:active,.reset-link:active,.menu-button:active,.text-link:active{scale:.96}
+.offer-card:active,.offer-row:active{scale:.99}
+.chip[aria-pressed="true"]::before,.pill input:checked+span::before{animation:tick-in .28s var(--ease-out)}
+@keyframes tick-in{from{opacity:0;transform:rotate(-45deg) scale(.3)}}
+/* Champ obligatoire bien rempli : une coche discrète le confirme. */
+.field input[required]:user-valid{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23177e7a' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 4 4L19 6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 16px center;background-size:18px;padding-right:46px}
+.motion-ok .field input[required]:user-valid{animation:valid-in .35s var(--ease-out)}
+@keyframes valid-in{from{background-size:0}}
+.error-text,.error-summary{animation:err-in .28s var(--ease-out)}
+@keyframes err-in{from{opacity:0;translate:0 -5px}}
+.progress.is-done svg{animation:ring-done .55s var(--ease-out)}
+@keyframes ring-done{45%{scale:1.14}}
+.empty-state{animation:err-in .4s var(--ease-out)}
+/* Confirmation : la ligne du parcours se trace, chaque étape s’allume, la dernière en corail. */
+.motion-ok .success-state .mini-steps::before{animation:line-down 1s var(--ease-in-out) .45s backwards}
+@keyframes line-down{from{clip-path:inset(0 0 100% 0)}}
+.motion-ok .success-state .mini-steps li::before{animation:badge-pop .45s var(--ease-out) backwards;animation-delay:calc(.55s + var(--k, 0) * .28s)}
+.motion-ok .success-state .notice{animation:chip-in .6s var(--ease-out) 1.3s backwards}
+/* Fiche d’offre */
+.motion-ok .detail-num.is-rising{animation:num-rise 1.5s var(--ease-out) backwards}
+@keyframes num-rise{from{opacity:0;scale:.82}}
+.motion-ok .mobile-apply{animation:bar-up .6s var(--ease-drawer) .5s backwards}
+@keyframes bar-up{from{translate:0 110%}}
+
+/* Accordéons : ils s’ouvrent à leur vraie hauteur. */
+@supports selector(::details-content){
+  .faq-list details::details-content,.journey-details::details-content,.optional-details::details-content{block-size:0;overflow-y:clip;transition:block-size .4s var(--ease-out),content-visibility .4s allow-discrete}
+  .faq-list details[open]::details-content,.journey-details[open]::details-content,.optional-details[open]::details-content{block-size:auto}
+}
+
+/* ───────────── 8. Transitions de vue ───────────── */
+::view-transition-group(*){animation-duration:.4s;animation-timing-function:var(--ease-in-out)}
+/* Changement de page : l’en-tête reste, la page monte, la pastille de navigation glisse vers la nouvelle rubrique. */
+html[data-vt="route"] .site-header{view-transition-name:site-header}
+html[data-vt="route"]::view-transition-old(root){animation:vt-out .14s ease-out both}
+html[data-vt="route"]::view-transition-new(root){animation:vt-in .3s var(--ease-out) .03s both}
+@keyframes vt-out{to{opacity:0}}
+@keyframes vt-in{from{opacity:0;transform:translateY(18px)}}
+::view-transition-group(site-header){animation:none}
+::view-transition-group(nav-dot){animation-duration:.5s}
+/* Offre : le numéro du département et le titre passent de la carte à la fiche. */
+::view-transition-group(offer-num),::view-transition-group(offer-title){animation-duration:.65s}
+::view-transition-old(offer-num),::view-transition-new(offer-num),::view-transition-old(offer-title),::view-transition-new(offer-title){height:100%;object-fit:contain}
+/* Changement de profil : la nouvelle page se propage en cercle depuis le bouton ; les portes glissent à leur place. */
+html[data-vt="audience"] .door-pro{view-transition-name:door-pro}
+html[data-vt="audience"] .door-etab{view-transition-name:door-etab}
+html[data-vt="audience"] .header-inner>.aud-switch .aud-thumb{view-transition-name:aud-thumb}
+html[data-vt="audience"]::view-transition-old(root),html[data-vt="audience"]::view-transition-new(root){animation:none}
+::view-transition-group(door-pro),::view-transition-group(door-etab){animation-duration:.75s}
+::view-transition-image-pair(door-pro),::view-transition-image-pair(door-etab){overflow:clip;border-radius:var(--r-xl)}
+::view-transition-old(door-pro),::view-transition-old(door-etab){height:100%;object-fit:cover;animation:vt-blur-out .4s ease both}
+::view-transition-new(door-pro),::view-transition-new(door-etab){height:100%;object-fit:cover;animation:vt-blur-in .55s ease .12s both}
+@keyframes vt-blur-out{to{opacity:0;filter:blur(6px)}}
+@keyframes vt-blur-in{from{opacity:0;filter:blur(6px)}}
+::view-transition-group(aud-thumb){animation-duration:.5s;animation-timing-function:var(--ease-drawer)}
+/* Formulaire envoyé : la carte change de hauteur sans saut, son contenu se remplace en fondu. */
+html[data-vt="form"] .form-card{view-transition-name:form-card}
+html[data-vt="form"]::view-transition-old(root),html[data-vt="form"]::view-transition-new(root){animation:none}
+::view-transition-group(form-card){animation-duration:.5s}
+::view-transition-image-pair(form-card){overflow:clip;border-radius:var(--r-xl)}
+::view-transition-old(form-card),::view-transition-new(form-card){height:100%;object-fit:none;object-position:top}
+
+/* ───────────── 9. Survol : seulement avec une souris ───────────── */
+@media (hover:hover) and (pointer:fine){
+  .logo:hover .wolf-cross{transform:scale(1.15)}
+}
+
+/* ───────────── 10. Réduire les animations : plus de déplacement, les états restent lisibles ───────────── */
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation-name:rm-fade!important;animation-duration:.2s!important;animation-delay:0s!important;animation-iteration-count:1!important}
+  .btn:active,.chip:active,.pill:active span,.filter-chip:active,.aud-track button:active,.view-toggle button:active,.reset-link:active,.menu-button:active,.text-link:active,.offer-card:active,.offer-row:active{scale:none}
+  .offer-card:hover,.offer-card:focus-within,.offer-row:hover,.offer-row:focus-within,.btn:hover .icon,.text-link:hover .icon{transform:none!important}
+  .faq-list details::details-content,.journey-details::details-content,.optional-details::details-content{transition:none!important}
+}
+@keyframes rm-fade{from{opacity:0}}
+@media print{
+  [data-reveal],[data-shutter]{opacity:1!important;translate:none!important;clip-path:none!important}
+  .w>span,.dot{transform:none!important;opacity:1!important}
+}
