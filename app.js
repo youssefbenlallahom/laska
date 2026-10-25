@@ -1,8 +1,8 @@
-/* Laska Corporate — maquette v4.
-   Un seul site pour deux publics : praticiens et établissements.
-   Le profil choisi (ou déduit de la page visitée) adapte l’en-tête, l’accueil et les appels à l’action.
+/* Laska Corporate — maquette v8.
+   Un seul site pour deux publics : praticiens et établissements. Un seul menu, le même pour tous :
+   aucun profil à choisir, rien ne change tout seul (v8). Le bouton principal dépend seulement de la page.
    Chaque fonction de rendu correspond à un futur composant React / Next.js.
-   v4 : couche de mouvement dans motion.js / motion.css ; ici, les transitions de vue (pages, profils, formulaires). */
+   v4 : couche de mouvement dans motion.js / motion.css ; ici, les transitions de vue (pages, formulaires). */
 
 /* ───────────── Utilitaires ───────────── */
 const $ = (s, root = document) => root.querySelector(s);
@@ -48,6 +48,7 @@ const icons = {
   bell:'<path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4Z"/><path d="M10 21h4"/>',
   briefcase:'<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18"/>',
   receipt:'<path d="M6 3h12v18l-3-2-3 2-3-2-3 2Z"/><path d="M9 8h6M9 12h6M9 16h3"/>',
+  help:'<circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.4c-.6.3-1 .8-1 1.5v.6M12 17.2v.1"/>',
   gift:'<rect x="3" y="8" width="18" height="13" rx="1"/><path d="M12 8v13M3 12h18M12 8c-2-4-6-4-6-1s6 1 6 1Zm0 0c2-4 6-4 6-1s-6 1-6 1Z"/>'
 };
 const icon = (name, cls = '') => `<svg class="icon ${cls}" viewBox="0 0 24 24" aria-hidden="true">${icons[name] || icons.heart}</svg>`;
@@ -101,6 +102,8 @@ const details = (ref, sp, hours) => {
 };
 const offers = sourceOffers.map(([ref,sp,num,period,hours]) => ({...details(ref, sp, hours),
   ref: ref.startsWith('PSY') ? 'À venir' : ref, id: ref.replaceAll('/','-'), sp, specialty: specialties[sp], dept: deptName(num), num, period, hours, soon: ref.startsWith('PSY'),
+  /* Ville de l’établissement : EXEMPLE (la préfecture du département) ; en production, la ville réelle, lue dans le CRM. */
+  city: deptCity(num), place: `${deptCity(num)} · ${deptName(num)} (${num})`,
   slots: (sourceSlots[ref] || []).map(s => { const [md, type] = s.split('|'); return {date: `2026-${md}`, type: type || hours}; })
 }));
 /* Dates en français : « 24 oct. », « 1er novembre », « du 27 octobre au 4 novembre 2026 ». */
@@ -118,7 +121,9 @@ function slotRange(o, long = false) {
   return sameMonth(a, b) ? `${asDate(a).getDate() === 1 ? '1er' : asDate(a).getDate()} – ${dayMonth(b)} ${year(b)}` : `${dayMonth(a)} – ${dayMonth(b)} ${year(b)}`;
 }
 const slotCount = n => `${n} créneau${n > 1 ? 'x' : ''}`;
-const slotTypes = o => o.slots.length ? [...new Set(o.slots.map(s => s.type))].join(' · ') : o.hours;
+/* Espaces insécables entre un nombre et son unité (24 h, 1 300 €) : « 24 » et « h » ne sont jamais séparés. */
+const units = t => String(t).replace(/(\d) (?=h\b|€)/g, '$1 ').replace(/(\d) (?=\d{3}\b)/g, '$1 ');
+const slotTypes = o => units(o.slots.length ? [...new Set(o.slots.map(s => s.type))].join(' · ') : o.hours);
 const slotKey = s => `${s.date}|${s.type}`;
 /* Mois couverts par une offre (« 2026-11 ») : ceux de ses créneaux, sinon ceux de sa période annoncée. */
 const MONTH_NAMES = ['janvier','fevrier','mars','avril','mai','juin','juillet','aout','septembre','octobre','novembre','decembre'];
@@ -132,7 +137,7 @@ const periodOptions = () => [...new Set(offers.flatMap(offerMonths))].sort().map
 const firstDate = o => o.slots[0]?.date || '9999';
 const TODAY = new Date().toISOString().slice(0, 10);
 /* Départements où des offres sont ouvertes : options du choix multiple. */
-const deptOptions = () => [...new Map(offers.map(o => [o.num, o.dept])).entries()].sort(([a], [b]) => a.localeCompare(b)).map(([num, dept]) => ({value: num, label: `${dept} (${num})`, meta: offerCount(offers.filter(o => o.num === num).length)}));
+const deptOptions = () => [...new Map(offers.map(o => [o.num, o.dept])).entries()].sort(([a], [b]) => a.localeCompare(b)).map(([num, dept]) => ({value: num, label: `${dept} (${num})`, hint: deptCity(num), meta: offerCount(offers.filter(o => o.num === num).length)}));
 const offerCount = n => `${n} offre${n > 1 ? 's' : ''}`;
 const MAIL = 'contact@laskacorp.com', MAIL_ETAB = 'affairesmedicales@laskacorp.com';
 /* Préfectures des départements où des offres sont ouvertes (lat, lon). */
@@ -170,35 +175,22 @@ const state = {
 };
 let route = '/', offerId = '', query = '';
 
-/* Profil : '' (inconnu), 'pro' (praticien), 'etab' (établissement).
-   Maquette : localStorage. Next.js : cookie « laska_profil » lu côté serveur (pas de flash au chargement). */
-const STORE = 'laska-profil';
-let audience = (() => { try { const v = localStorage.getItem(STORE); return v === 'pro' || v === 'etab' ? v : ''; } catch { return ''; } })();
-function setAudience(value, {rerender = true, origin = null} = {}) {
-  if (value === audience) return;
-  audience = value;
-  try { value ? localStorage.setItem(STORE, value) : localStorage.removeItem(STORE); } catch {}
-  if (rerender) transition(() => render(route === '/'), {kind: 'audience', origin});
-}
-/* Transitions de vue. kind : 'route' (changement de page), 'audience' (changement de profil, révélation en cercle
-   depuis le bouton cliqué), 'form' (formulaire envoyé). Les noms partagés sont posés par motion.css selon le type. */
-function transition(fn, {kind = 'route', origin = null} = {}) {
+/* Côté de la page : 'etab' sur les pages des établissements, 'pro' sur celles des praticiens et des offres, '' ailleurs.
+   Il n’y a plus de « profil » à choisir ni à mémoriser : ce côté adapte seulement le bouton principal, le texte WhatsApp et le rappel. */
+const ETAB_ROUTES = ['/etablissements', '/besoin'], PRO_ROUTES = ['/praticiens', '/postuler', '/eligibilite', '/offres', '/offre', '/avis', '/espace'];
+const pageSide = () => ETAB_ROUTES.includes(route) ? 'etab' : PRO_ROUTES.includes(route) ? 'pro' : '';
+/* Transitions de vue. kind : 'route' (changement de page) ou 'form' (formulaire envoyé). Les noms partagés sont posés
+   par motion.css selon le type. */
+function transition(fn, {kind = 'route'} = {}) {
   const html = document.documentElement;
   if (!document.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) { fn(); clearShared(); return; }
   html.dataset.vt = kind;
   const vt = document.startViewTransition(fn);
-  if (origin) vt.ready.then(() => {
-    const [x, y] = origin, r = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
-    html.animate({clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${r}px at ${x}px ${y}px)`]}, {duration: 760, easing: 'cubic-bezier(.76,0,.24,1)', pseudoElement: '::view-transition-new(root)'});
-  }).catch(() => {});
   vt.finished.finally(() => { delete html.dataset.vt; clearShared(); });
 }
 /* Éléments partagés entre deux pages (numéro et titre d’une offre). Posés au clic, retirés après la transition. */
 const vtName = (el, name) => { if (el) el.style.viewTransitionName = name; };
 function clearShared() { $$('[style*="view-transition-name"]').forEach(el => el.style.viewTransitionName = ''); }
-const originOf = (e, el) => e && e.clientX ? [e.clientX, e.clientY] : (r => [r.left + r.width / 2, r.top + r.height / 2])(el.getBoundingClientRect());
-/* Certaines pages indiquent clairement le public : elles fixent le profil. */
-const routeAudience = {'/praticiens':'pro','/postuler':'pro','/eligibilite':'pro','/espace':'pro','/etablissements':'etab','/besoin':'etab'};
 
 /* ───────────── Carte de France en points ───────────── */
 const FR = [[51.05,2.38],[50.95,2.6],[50.8,3.1],[50.5,3.6],[50.3,4.1],[50.15,4.85],[49.95,4.8],[49.8,4.9],[49.55,5.4],[49.5,5.9],[49.45,6.4],[49.2,6.8],[49.15,7.4],[49.05,8.2],[48.75,8.05],[48.3,7.75],[47.9,7.6],[47.6,7.55],[47.45,7.0],[47.25,6.9],[46.95,6.45],[46.55,6.1],[46.2,5.95],[46.15,6.3],[46.4,6.55],[46.2,6.8],[45.95,7.0],[45.65,6.85],[45.3,7.15],[45.1,6.95],[44.85,6.75],[44.45,6.9],[44.15,7.6],[43.85,7.5],[43.6,7.15],[43.45,6.9],[43.2,6.65],[43.1,6.15],[43.2,5.6],[43.35,5.2],[43.4,4.75],[43.5,4.2],[43.4,3.65],[43.2,3.2],[42.95,3.05],[42.5,3.15],[42.45,2.7],[42.4,2.2],[42.5,1.75],[42.6,1.45],[42.7,0.75],[42.8,0.3],[42.85,-0.25],[42.95,-0.75],[43.05,-1.3],[43.35,-1.78],[43.65,-1.45],[44.2,-1.3],[44.65,-1.25],[45.1,-1.15],[45.55,-1.1],[45.95,-1.15],[46.25,-1.25],[46.4,-1.75],[46.8,-2.1],[47.15,-2.2],[47.25,-2.55],[47.5,-2.75],[47.55,-3.2],[47.75,-3.85],[47.85,-4.35],[48.05,-4.7],[48.35,-4.8],[48.6,-4.6],[48.7,-4.0],[48.8,-3.4],[48.65,-2.8],[48.6,-2.1],[48.65,-1.6],[48.85,-1.6],[49.2,-1.6],[49.6,-1.9],[49.7,-1.6],[49.65,-1.25],[49.4,-1.15],[49.35,-0.55],[49.3,-0.1],[49.45,0.15],[49.7,0.2],[49.85,0.6],[49.95,1.2],[50.2,1.6],[50.6,1.6],[50.9,1.65]];
@@ -220,7 +212,7 @@ function dotsGrid() {
   return (mapDots = bands.map((b, i) => b.length ? `<g class="dot-band" style="--b:${i}">${b.join('')}</g>` : '').join(''));
 }
 const countByDept = list => list.reduce((c, o) => (c[o.num] = (c[o.num] || 0) + 1, c), {});
-const pinLabel = (dept, num, n) => `${dept} (${num}) : ${n ? offerCount(n) : 'aucune offre pour ces critères'}`;
+const pinLabel = (dept, num, n) => `${dept} (${num}), ${deptCity(num)} : ${n ? offerCount(n) : 'aucune offre pour ces critères'}`;
 /* list : offres affichées ; selected : département filtré. */
 /* selected : départements choisis (tableau). */
 function franceMap({list = offers, selected = [], label = 'Carte des offres par département'} = {}) {
@@ -228,7 +220,7 @@ function franceMap({list = offers, selected = [], label = 'Carte des offres par 
   const pins = Object.entries(deptGeo).map(([num, geo]) => {
     const n = counts[num] || 0, [x, y] = project(geo), o = offers.find(o => o.num === num);
     return `<a class="pin ${n ? '' : 'pin-off'} ${selected.includes(num) ? 'pin-on' : ''}" href="#/offres?departement=${num}" data-dept="${num}" data-name="${esc(o.dept)}" data-count="${n}" aria-label="${esc(pinLabel(o.dept, num, n))}" transform="translate(${x.toFixed(1)} ${y.toFixed(1)})" style="--pd:${waveDelay(x, y)}ms">
-      <g class="pin-inner"><circle class="pin-halo" r="30"/><circle class="pin-body" r="19"/><text class="pin-code" y="5">${num}</text><g class="pin-badge" transform="translate(15 -15)"><g class="badge-in ${n ? '' : 'is-zero'}"><circle r="10"/><text y="4.2">${n}</text></g></g></g></a>`;
+      <g class="pin-inner"><circle class="pin-hit" r="30"/><circle class="pin-halo" r="30"/><circle class="pin-body" r="19"/><text class="pin-code" y="5">${num}</text><g class="pin-badge" transform="translate(15 -15)"><g class="badge-in ${n ? '' : 'is-zero'}"><circle r="10"/><text y="4.2">${n}</text></g></g></g></a>`;
   }).join('');
   return `<figure class="france-map" data-intro><svg viewBox="0 0 620 610" role="group" aria-label="${label}"><g class="map-dots">${dotsGrid()}</g><g class="map-pins">${pins}</g></svg><div class="map-tip" aria-hidden="true"></div><figcaption>${icon('pin')}Chaque pastille est un département où une offre est ouverte.</figcaption></figure>`;
 }
@@ -250,7 +242,7 @@ function bindMap(root = document, onPick) {
     const hide = () => { tip.classList.remove('is-on'); hiddenAt = performance.now(); };
     $$('.pin', fig).forEach(pin => {
       const show = () => { const r = pin.getBoundingClientRect(), f = fig.getBoundingClientRect(); const n = +pin.dataset.count;
-        tip.innerHTML = `<strong>${esc(pin.dataset.name)} <span>${pin.dataset.dept}</span></strong>${n ? offerCount(n) : 'Aucune offre ici pour ces critères'}`;
+        tip.innerHTML = `<strong>${esc(pin.dataset.name)} <span>${pin.dataset.dept}</span></strong>${esc(deptCity(pin.dataset.dept))} · ${n ? offerCount(n) : 'aucune offre ici pour ces critères'}`;
         tip.style.left = `${r.left - f.left + r.width / 2}px`; tip.style.top = `${r.top - f.top}px`;
         tip.classList.toggle('is-instant', performance.now() - hiddenAt < 350); tip.classList.add('is-on'); };
       pin.addEventListener('pointerenter', show); pin.addEventListener('focus', show);
@@ -260,48 +252,34 @@ function bindMap(root = document, onPick) {
   });
 }
 
-/* ───────────── En-tête, choix du profil, pied de page ───────────── */
-function audSwitch(place) {
-  return `<div class="aud-switch aud-${audience || 'none'}" role="group" aria-label="Vous êtes">
-    <span class="aud-caption">Vous êtes</span>
-    <div class="aud-track"><span class="aud-thumb" aria-hidden="true"></span>
-      <button type="button" data-set-aud="pro" aria-pressed="${audience === 'pro'}" id="${place}-aud-pro">${icon('doctor')}Praticien</button>
-      <button type="button" data-set-aud="etab" aria-pressed="${audience === 'etab'}" id="${place}-aud-etab">${icon('hospital')}Établissement</button>
-    </div></div>`;
-}
-const navFor = () => audience === 'pro'
-  ? [['Offres','/offres'],['Accompagnement','/praticiens'],['Engagement','/engagement'],['Contact','/contact']]
-  : audience === 'etab'
-  ? [['Recruter','/etablissements'],['Engagement','/engagement'],['Contact','/contact']]
-  : [['Offres','/offres'],['Praticiens','/praticiens'],['Établissements','/etablissements'],['Engagement','/engagement'],['Contact','/contact']];
-
+/* ───────────── En-tête, menu, pied de page ─────────────
+   Un seul menu, le même pour tous et sur toutes les pages : plus d’interrupteur de profil ni de changement automatique. */
+const NAV = [['Offres d’emploi', '/offres'], ['Praticiens', '/praticiens'], ['Établissements', '/etablissements'], ['Avis', '/avis'], ['Contact', '/contact']];
+/* Bouton principal selon la page, jamais selon un mode : pages praticiens et offres → Créer mon dossier ; pages établissements
+   → Décrire mon besoin ; accueil et pages neutres → aucun (les deux portes suffisent).
+   Candidat connecté : aucun bouton orange, sur aucune page ; « Mon espace » (espaceButton) en tient lieu partout. */
 function headerCta() {
-  /* Praticien connecté : il a déjà son dossier ; « Mon espace » devient l’action principale de l’en-tête. */
-  if (audience === 'pro' && espaceUser()) return '';
-  if (audience === 'pro') return `<a class="btn btn-coral header-cta" href="#/postuler">${icon('file')}<span class="lg">Créer mon dossier</span><span class="sm">Mon dossier</span></a>`;
-  if (audience === 'etab') return `<a class="btn btn-coral header-cta" href="#/besoin">${icon('people')}<span class="lg">Décrire mon besoin</span><span class="sm">Mon besoin</span></a>`;
-  return `<div class="start"><button type="button" class="btn btn-coral header-cta" id="start-button" aria-expanded="false" aria-controls="start-menu">Commencer${icon('down')}</button>
-    <div class="start-menu" id="start-menu" hidden>
-      <p>Par où commencer ?</p>
-      <a href="#/postuler" data-pick="pro"><span class="start-ico">${icon('doctor')}</span><span><strong>Je suis praticien</strong><small>Créer mon dossier, gratuitement</small></span>${icon('arrow')}</a>
-      <a href="#/besoin" data-pick="etab"><span class="start-ico etab">${icon('hospital')}</span><span><strong>Je recrute</strong><small>Décrire le besoin de mon établissement</small></span>${icon('arrow')}</a>
-    </div></div>`;
+  if (espaceUser()) return '';
+  const side = pageSide();
+  if (side === 'etab' && route !== '/besoin') return `<a class="btn btn-coral header-cta" href="#/besoin">${icon('people')}Décrire mon besoin</a>`;
+  if (side === 'pro' && !['/postuler', '/espace'].includes(route)) return `<a class="btn btn-coral header-cta" href="#/postuler">${icon('file')}Créer mon dossier</a>`;
+  return '';
 }
 function header() {
   /* Pages sans entrée de menu : on allume la rubrique à laquelle elles appartiennent. */
-  const active = {'/offre': '/offres', '/postuler': '/praticiens', '/eligibilite': '/praticiens', '/avis': '/praticiens', '/besoin': '/etablissements'}[route] || route;
-  /* Barre de services (ordinateur) : horaires, téléphone et Espace candidat, en haut à droite. Elle s’efface au défilement :
-     seule la ligne principale reste collée en haut. Sur mobile, ces liens sont dans le menu (et l’avatar une fois connecté). */
-  const top = `<div class="header-top"><div class="container header-top-inner"><span class="top-hours">${icon('clock')}Du lundi au vendredi, de 9 h à 18 h</span><a class="top-link" href="${TEL}" aria-label="Appeler Laska Corporate au ${PHONE}">${icon('phone')}${PHONE}</a>${espaceButton()}</div></div>`;
-  return `<header class="site-header" data-aud="${audience || 'none'}">${top}<div class="container header-inner">${logo()}
-    ${audSwitch('head')}
+  const active = {'/offre': '/offres', '/postuler': '/praticiens', '/eligibilite': '/praticiens', '/besoin': '/etablissements'}[route] || route;
+  /* Barre de services (ordinateur) : téléphone et Espace candidat, en haut à droite (les horaires sont dans l’Aide et au survol du numéro). Elle s’efface au défilement :
+     seule la ligne principale reste collée en haut. Sur téléphone : menu, bouton « Aide » et avatar une fois connecté. */
+  const top = `<div class="header-top"><div class="container header-top-inner"><a class="top-link" href="${TEL}" title="Du lundi au vendredi, de 9 h à 18 h" aria-label="Appeler Laska Corporate au ${PHONE}, du lundi au vendredi de 9 h à 18 h">${icon('phone')}${PHONE}</a>${espaceButton()}</div></div>`;
+  return `<header class="site-header">${top}<div class="container header-inner">${logo()}
     <nav class="nav" id="navigation" aria-label="Navigation principale">
-      <div class="nav-mobile-switch">${audSwitch('drawer')}</div>
-      ${navFor().map(([n,p], k) => `<a href="#${p}" style="--n:${k + 1}" ${active === p ? 'aria-current="page"' : ''}>${n}${active === p ? '<span class="nav-dot" aria-hidden="true"></span>' : ''}</a>`).join('')}
-      <a class="nav-espace" href="#/espace" style="--n:${navFor().length + 1}" ${route === '/espace' ? 'aria-current="page"' : ''}>${icon('user')}${espaceUser() ? 'Mon espace candidat' : 'Espace candidat'}</a>
-      <a class="nav-phone" href="${TEL}" style="--n:${navFor().length + 2}">${icon('phone')}${PHONE}</a>
+      ${NAV.map(([n,p], k) => `<a href="#${p}" style="--n:${k + 1}" ${active === p ? 'aria-current="page"' : ''}>${n}${active === p ? '<span class="nav-dot" aria-hidden="true"></span>' : ''}</a>`).join('')}
+      <div class="nav-actions" style="--n:${NAV.length + 1}"><a class="btn btn-coral" href="#/postuler">${icon('file')}Je suis praticien : créer mon dossier</a><a class="btn btn-outline" href="#/besoin">${icon('people')}Je recrute : décrire mon besoin</a></div>
+      <a class="nav-espace" href="#/espace" style="--n:${NAV.length + 2}" ${route === '/espace' ? 'aria-current="page"' : ''}>${icon('user')}${espaceUser() ? 'Mon espace candidat' : 'Espace candidat'}</a>
+      <a class="nav-phone" href="${TEL}" style="--n:${NAV.length + 3}">${icon('phone')}${PHONE}</a>
     </nav>
     ${headerCta()}${espaceButton()}
+    <button type="button" class="header-help" popovertarget="help-panel" aria-haspopup="dialog">${icon('chat')}<span>Aide</span></button>
     <button class="menu-button" aria-expanded="false" aria-controls="navigation" id="menu-button"><span>Menu</span>${icon('menu')}</button>
   </div></header>`;
 }
@@ -311,10 +289,10 @@ function footer() {
     <p class="footer-claim">${dot('Une place pour chaque talent.')}</p>
     <div class="footer-route" aria-hidden="true"><span></span></div>
     <div class="footer-grid">
-      <div class="footer-col"><h3>${icon('doctor')}Praticiens</h3><a href="#/offres">Trouver une offre</a><a href="#/postuler">Créer mon dossier</a><a href="#/eligibilite">Suis-je éligible ?</a><a href="#/avis">Avis des praticiens</a><a href="#/praticiens?faq=1">Questions fréquentes</a></div>
-      <div class="footer-col"><h3>${icon('hospital')}Établissements</h3><a href="#/besoin">Décrire mon besoin</a><a href="#/etablissements">Recruter avec Laska Corporate</a>${audience === 'etab' ? '' : `<a href="mailto:${MAIL_ETAB}" data-mail-for="etab">${MAIL_ETAB}</a>`}<a href="#/etablissements?faq=1">Questions fréquentes</a></div>
-      <div class="footer-col"><h3>Laska Corporate</h3><a href="#/engagement">Notre engagement</a><a href="#/contact">Nous contacter</a><a href="#/mentions-legales">Mentions légales</a></div>
-      <div class="footer-col footer-contact"><h3>On se parle ?</h3><a class="footer-tel" href="${TEL}">${PHONE}</a><a href="mailto:${audience === 'etab' ? MAIL_ETAB : MAIL}" data-mail-for="${audience === 'etab' ? 'etab' : 'pro'}">${audience === 'etab' ? MAIL_ETAB : MAIL}</a><address>6 rue d’Armaillé, 75017 Paris</address></div>
+      <div class="footer-col"><h3>${icon('doctor')}Praticiens</h3><a href="#/offres">Trouver une offre</a><a href="#/postuler">Créer mon dossier</a><a href="#/eligibilite">Suis-je éligible ?</a><a href="#/avis">Avis des praticiens</a><a href="#/espace">Espace candidat</a><a href="#/praticiens?faq=1">Questions fréquentes</a></div>
+      <div class="footer-col"><h3>${icon('hospital')}Établissements</h3><a href="#/besoin">Décrire mon besoin</a><a href="#/etablissements">Recruter avec Laska Corporate</a><a href="mailto:${MAIL_ETAB}">${MAIL_ETAB}</a><a href="#/etablissements?faq=1">Questions fréquentes</a></div>
+      <div class="footer-col"><h3>Laska Corporate</h3><a href="#/engagement">Notre engagement</a><a href="#/contact">Nous contacter</a></div>
+      <div class="footer-col footer-contact"><h3>On se parle ?</h3><a class="footer-tel" href="${TEL}">${PHONE}</a><a href="mailto:${MAIL}">${MAIL}</a><address>6 rue d’Armaillé, 75017 Paris</address></div>
     </div>
     <div class="footer-bottom">${logo('foot')}<span>© 2026 Laska Corporate</span><div><a href="#/mentions-legales">Mentions légales</a><a href="#/mentions-legales?section=confidentialite">Confidentialité</a></div></div>
   </div></footer>`;
@@ -331,7 +309,7 @@ function countFor(specs = [], depts = []) {
 /* Recherche d’offres : les spécialités du CRM qui ont au moins une offre. */
 const specOptions = () => specialties.map((s, i) => ({value: String(i), label: s, n: offers.filter(o => o.sp === i).length})).filter(o => o.n).map(({value, label, n}) => ({value, label, meta: offerCount(n)}));
 /* Bouton de validation des listes : il annonce le résultat (« Voir les 5 offres »). */
-const seeLabel = n => n ? `Voir ${n === 1 ? 'l’offre' : `les ${n} offres`}` : 'Aucune offre, voir tout';
+const seeLabel = n => n ? `Voir ${n === 1 ? 'l’offre' : `les ${n} offres`}` : 'Aucune offre : voir les solutions';
 const setDone = (root, n) => $$('.multi-done', root).forEach(b => b.textContent = n ? `Voir ${n === 1 ? 'l’offre' : `les ${n} offres`}` : 'Aucune offre');
 function searchFields(prefix) {
   return `${multiSelect({id: `${prefix}-specialty`, name: 'specs', label: 'Vos spécialités', icon: 'doctor', options: specOptions(), selected: prefix === 'filter' ? state.filter.specs : [], placeholder: 'Toutes les spécialités', noun: ['spécialité', 'spécialités']})}
@@ -346,9 +324,18 @@ function multiSelect({id, name, label, icon: ic = '', options, selected = [], pl
     <button type="button" class="multi-toggle" id="${id}" popovertarget="${id}-panel" aria-labelledby="${id}-label ${id}-value" aria-haspopup="true">${ic ? icon(ic) : ''}<span class="multi-value" id="${id}-value">${esc(multiSummary(options, selected, placeholder, noun))}</span>${icon('down', 'multi-caret')}</button>
     <div class="multi-panel" id="${id}-panel" popover role="group" aria-labelledby="${id}-label">
       <div class="multi-head"><strong>${label}</strong><span>Plusieurs choix possibles</span><button type="button" class="multi-close" popovertarget="${id}-panel" popovertargetaction="hide" aria-label="Fermer la liste">${icon('close')}</button></div>
-      <div class="multi-options">${options.map((o, i) => `<label class="multi-option"><input type="checkbox" name="${name}" value="${esc(o.value)}" data-multi data-label="${esc(o.label)}" ${required ? 'data-required-group' : ''} ${selected.includes(o.value) ? 'checked' : ''}><span class="multi-text">${esc(o.label)}</span>${o.meta ? `<small>${o.meta}</small>` : ''}</label>`).join('')}</div>
+      <div class="multi-options">${options.map((o, i) => `<label class="multi-option"><input type="checkbox" name="${name}" value="${esc(o.value)}" data-multi data-label="${esc(o.label)}" ${required ? 'data-required-group' : ''} ${selected.includes(o.value) ? 'checked' : ''}><span class="multi-text">${esc(o.label)}${o.hint ? `<em>${esc(o.hint)}</em>` : ''}</span>${o.meta ? `<small>${o.meta}</small>` : ''}</label>`).join('')}</div>
       <div class="multi-foot"><button type="button" class="reset-link multi-clear">Tout effacer</button><button type="button" class="btn btn-primary multi-done" popovertarget="${id}-panel" popovertargetaction="hide">Valider</button></div>
     </div></div>`;
+}
+/* Compteurs des listes : chaque option annonce combien d’offres elle donnerait avec les autres choix en cours.
+   Une option à 0 est grisée (elle reste cochable : la page Offres propose alors des solutions). */
+function refreshCounts(root, f) {
+  const fits = (o, x) => (!x.specs.length || x.specs.includes(String(o.sp))) && (!x.depts.length || x.depts.includes(o.num)) && (!x.months?.length || offerMonths(o).some(m => x.months.includes(m)));
+  for (const key of ['specs', 'depts', 'months']) $$(`.multi[data-multi-name="${key}"] input[data-multi]`, root).forEach(i => {
+    const n = offers.filter(o => fits(o, {...f, [key]: [i.value]})).length, opt = i.closest('.multi-option'), small = $('small', opt);
+    opt.classList.toggle('is-zero', !n); if (small) small.textContent = n ? offerCount(n) : 'aucune offre';
+  });
 }
 function multiSummary(options, selected, placeholder, [one, many]) {
   const chosen = options.filter(o => selected.includes(o.value));
@@ -422,44 +409,28 @@ function bindBrief(root = document) {
       state.brief[key] = state.brief[key] === val ? '' : val;
       $$(`[data-brief="${key}"]`, form).forEach(c => c.setAttribute('aria-pressed', c.dataset.value === state.brief[key]));
       $('[data-brief-hint]', form).textContent = briefHint();
-      setAudience('etab', {rerender: false}); syncHeader();
     });
     form.addEventListener('change', e => {
       if (e.target.name !== 'briefSpecs') return;
       state.brief.specialties = $$('[name="briefSpecs"]:checked', form).map(i => i.value);
       $('[data-brief-hint]', form).textContent = briefHint();
-      if (audience !== 'etab') { setAudience('etab', {rerender: false}); syncHeader(); announceSwitch('etab'); }
     });
     form.addEventListener('submit', e => {
       e.preventDefault();
       const v = state.employer.values;
       if (state.brief.specialties.length) v.specialties = [...state.brief.specialties];
       if (state.brief.contract) v.contract = state.brief.contract;
-      state.employer.success = false; setAudience('etab', {rerender: false});
-      location.hash = '/besoin';
+      state.employer.success = false; v.wizardSeen = v.wizardReady = false;
+      /* Spécialités et contrat déjà choisis : la demande s’ouvre directement sur les dates. */
+      location.hash = v.specialties?.length && v.contract ? '/besoin?etape=2' : '/besoin';
     });
   });
 }
-/* Met à jour l’en-tête sans recharger la page (après un choix dans un formulaire). */
-function syncHeader() {
-  const old = $('.site-header'); if (!old) return;
-  /* La pastille de l’interrupteur glisse de son ancienne place à la nouvelle (sinon elle sauterait au remplacement). */
-  const thumbOf = () => $('.header-inner>.aud-switch .aud-thumb'), before = thumbOf()?.getBoundingClientRect(), wasShown = !!$('.header-inner>.aud-switch:not(.aud-none)');
-  const tmp = document.createElement('div'); tmp.innerHTML = header(); old.replaceWith(tmp.firstElementChild); bindHeader(); window.LaskaMotion?.refreshHeader();
-  const thumb = thumbOf(); if (!thumb || !before || matchMedia('(prefers-reduced-motion: reduce)').matches || !audience) return;
-  const dx = before.left - thumb.getBoundingClientRect().left;
-  if (wasShown && dx) {
-    thumb.animate([{translate: `${dx}px 0`, scale: '1.06 .92'}, {translate: '0 0', scale: '1 1'}], {duration: 420, easing: 'cubic-bezier(.32,.72,0,1)'});
-    /* Les libellés changent de couleur quand la pastille passe dessous, pas avant. */
-    $$('.header-inner>.aud-switch .aud-track button').forEach(b => { const on = b.getAttribute('aria-pressed') === 'true'; b.animate([{color: on ? '#0f5c59' : '#ffffff'}, {color: on ? '#ffffff' : '#0f5c59'}], {duration: 220, delay: on ? 40 : 0, easing: 'ease-out', fill: 'backwards'}); });
-  } else if (!wasShown) thumb.animate([{opacity: 0, scale: '.7'}, {opacity: 1, scale: '1'}], {duration: 320, easing: 'cubic-bezier(.22,1,.36,1)'});
-}
-
 function offerCard(o) {
   return `<article class="offer-card ${o.soon ? 'is-soon' : ''}" data-dept="${o.num}" data-offer="${o.id}">
     <div class="card-top"><span class="status ${o.soon ? 'soon' : ''}">${o.soon ? 'À venir' : 'Disponible'}</span>${favButton(o)}<span class="dept-num" aria-hidden="true">${o.num}</span></div>
     <h3><a href="#/offre/${o.id}" class="stretched">${o.specialty}</a></h3>
-    <p class="offer-place">${icon('pin')}${o.dept} (${o.num})</p>
+    <p class="offer-place">${icon('pin')}${o.place}</p>
     <div class="offer-meta"><span>${icon('calendar')}${slotRange(o)}</span><span>${icon('clock')}${o.slots.length ? `${slotCount(o.slots.length)} · ${slotTypes(o)}` : 'Dates à venir'}</span><span>${icon('badge')}${o.contract}</span><span class="ref">${icon('file')}Réf. ${o.ref}</span></div>
     <span class="card-go" aria-hidden="true">${icon('arrow')}</span></article>`;
 }
@@ -489,42 +460,37 @@ function cta({title, text, label, href, alt = true}) {
 }
 const promise = items => `<ul class="promise">${items.map(([ic,t]) => `<li>${icon(ic)}${t}</li>`).join('')}</ul>`;
 
-/* ───────────── Accueil : deux portes ───────────── */
-/* Les noms de transition des portes (door-pro / door-etab) sont posés par motion.css pendant un changement de profil. */
-function doorPro(mode) {
+/* ───────────── Accueil : deux portes, toujours ─────────────
+   Le visiteur ouvre la porte qui le concerne. Rien n’est mémorisé, rien ne change tout seul. */
+function doorPro() {
   const total = countFor();
-  if (mode === 'mini') return `<article class="door door-pro door-mini"><img class="door-bg" src="assets/medecin.jpg" alt="" width="1100" height="733"><h2>${dot('Votre prochain poste en France.')}</h2><p><strong>Professionnel de santé ?</strong> ${total} offres ouvertes, un conseiller gratuit.</p><button type="button" class="btn btn-outline" data-set-aud="pro">Espace praticien${icon('swap')}</button></article>`;
-  const H = mode === 'focus' ? 'h1' : 'h2';
-  return `<article class="door door-pro door-${mode}">
+  return `<article class="door door-pro door-half">
     <div class="door-body">
-      <${H} class="door-title">Votre prochain poste <em>en France</em><span class="dot">.</span></${H}>
-      <p class="lead"><strong>Professionnels de santé</strong>&nbsp;: trouvez une offre et avancez avec un conseiller, du diplôme à la prise de poste.</p>
+      <h2 class="door-title">Votre prochain poste <em>en France</em><span class="dot">.</span></h2>
+      <p class="lead"><strong>Médecins et professionnels de santé</strong>&nbsp;: trouvez une offre et avancez avec un conseiller, du diplôme à la prise de poste.</p>
       <form class="hero-search" id="home-search" role="search" aria-label="Trouver une offre">${searchFields('home')}<button class="btn btn-primary" type="submit"><span id="home-count">Voir les ${total} offres</span>${icon('arrow')}</button></form>
       ${promise([['check','Gratuit pour les praticiens'],['clock','Réponse sous 48 h'],['globe','Depuis la France ou l’étranger']])}
       <a class="elig-teaser" href="#/eligibilite">${icon('diploma')}<span><strong>Puis-je exercer en France ?</strong>Faites le point en 3 questions</span>${icon('arrow')}</a>
     </div>
-    ${mode === 'focus' ? `<figure class="door-photo"><img src="assets/medecin.jpg" alt="Médecin en blouse, bras croisés" width="1100" height="733" fetchpriority="high"><figcaption><span class="live-dot"></span>${total} offres ouvertes en ce moment</figcaption></figure>` : `<img class="door-avatar" src="assets/medecin.jpg" alt="" width="1100" height="733">`}
+    <img class="door-avatar" src="assets/medecin.jpg" alt="" width="1100" height="733">
   </article>`;
 }
-function doorEtab(mode) {
-  if (mode === 'mini') return `<article class="door door-etab door-mini"><img class="door-bg" src="assets/equipe.jpg" alt="" width="1100" height="1650"><h2>${dot('Du renfort pour vos équipes.')}</h2><p><strong>Vous recrutez ?</strong> Intérim, vacation, CDI ou CDD, profils vérifiés.</p><button type="button" class="btn btn-white" data-set-aud="etab">Espace établissement${icon('swap')}</button></article>`;
-  const H = mode === 'focus' ? 'h1' : 'h2';
-  return `<article class="door door-etab door-${mode}">
+/* Porte établissement : un seul bouton. La pré-demande (spécialités, contrat) est sur la page Établissements. */
+function doorEtab() {
+  return `<article class="door door-etab door-half">
     <div class="door-body">
-      <${H} class="door-title">Du renfort pour <em>vos équipes</em><span class="dot">.</span></${H}>
-      <p class="lead"><strong>Hôpitaux, cliniques, EHPAD, centres de santé</strong>&nbsp;: intérim, vacation, CDI ou CDD, des professionnels aux profils vérifiés, adaptés à votre besoin.</p>
-      ${quickBrief('home')}
+      <h2 class="door-title">Du renfort pour <em>vos équipes</em><span class="dot">.</span></h2>
+      <p class="lead"><strong>Hôpitaux, cliniques, EHPAD, centres de santé</strong>&nbsp;: des professionnels aux profils vérifiés, en intérim, en vacation, en CDD ou en CDI.</p>
+      <div class="door-actions"><a class="btn btn-coral" href="#/besoin">Décrire mon besoin${icon('arrow')}</a><a class="text-link" href="#/etablissements">Comment ça marche${icon('arrow')}</a></div>
+      ${promise([['shield','Profils vérifiés'],['people','Un interlocuteur dédié'],['bolt','Remplacements urgents']])}
       <p class="urgent">${icon('bolt')}Besoin urgent ? <a href="${TEL}"><strong>${PHONE}</strong></a><span aria-hidden="true">·</span><button type="button" data-callback>Être rappelé</button></p>
     </div>
-    ${mode === 'focus' ? `<figure class="door-photo"><img src="assets/equipe.jpg" alt="Médecin portant un masque chirurgical devant un hôpital" width="1100" height="1650"><figcaption>${icon('shield')}Diplômes contrôlés avant chaque mise en relation</figcaption></figure>` : `<img class="door-avatar" src="assets/equipe.jpg" alt="" width="1100" height="1650">`}
+    <img class="door-avatar" src="assets/equipe.jpg" alt="" width="1100" height="1650">
   </article>`;
 }
 function homeHero() {
-  if (!audience) return `<section class="split-hero is-open"><h1 class="sr-only">Laska Corporate, le recrutement médical pour les professionnels et les établissements de santé</h1>
-    <div class="container"><div class="split-intro">${icon('swap')}<span class="intro-text">Choisissez votre espace : <strong>praticien</strong> ou <strong>établissement</strong>. Laska Corporate s’en souviendra.</span><div class="intro-switch">${audSwitch('intro')}</div></div>
-    <div class="split-grid">${doorPro('half')}${doorEtab('half')}</div></div></section>`;
-  const pro = audience === 'pro';
-  return `<section class="split-hero is-${audience}"><div class="container split-grid">${pro ? doorPro('focus') + doorEtab('mini') : doorEtab('focus') + doorPro('mini')}</div></section>`;
+  return `<section class="split-hero is-open"><h1 class="sr-only">Laska Corporate, le recrutement médical pour les professionnels et les établissements de santé</h1>
+    <div class="container"><div class="split-grid">${doorPro()}${doorEtab()}</div></div></section>`;
 }
 
 /* Index des spécialités : survoler (ou parcourir au clavier) une spécialité montre sur la carte où elle recrute,
@@ -547,7 +513,7 @@ function missionsSection() {
   return `<section class="section missions"><div class="container missions-grid">
     <div class="missions-copy"><h2 aria-label="${offers.length} offres, ${depts} départements."><span class="count" data-count-to="${offers.length}">${offers.length}</span> offres, <span class="count" data-count-to="${depts}">${depts}</span> départements<span class="dot">.</span></h2><p class="section-lead">Choisissez une spécialité ou un département pour voir ses offres.</p>
       ${specialtyIndex()}
-      ${btn('Toutes les offres', '#/offres', 'outline')}</div>
+      ${btn('Toutes les offres', '#/offres', 'outline')}<a class="text-link missions-depts" href="#/offres?filtres=1">${icon('pin')}Voir les offres par département</a></div>
     <div class="missions-map">${franceMap()}</div>
   </div></section>`;
 }
@@ -556,11 +522,7 @@ function belief() {
 }
 function proSections() {
   return `${missionsSection()}
-  <section class="section section-paper"><div class="container"><div class="section-head"><h2>${dot('Du diplôme à la prise de poste.')}</h2><a class="text-link" href="#/praticiens">Mon accompagnement${icon('arrow')}</a></div>${journey()}</div></section>`;
-}
-function etabSections() {
-  return `<section class="section"><div class="container"><div class="section-head"><h2>${dot('Un besoin. Une équipe à vos côtés.')}</h2><a class="text-link" href="#/etablissements">Recruter avec Laska Corporate${icon('arrow')}</a></div>${steps(employerSteps)}</div></section>
-  ${verifySection()}`;
+  <section class="section section-paper"><div class="container"><div class="section-head"><h2>${dot('Du diplôme à la prise de poste.')}</h2><a class="text-link" href="#/praticiens">L’accompagnement${icon('arrow')}</a></div>${journey()}</div></section>`;
 }
 function verifySection() {
   return `<section class="section verify"><div class="container verify-grid"><figure class="verify-photo"><img src="assets/praticienne.jpg" alt="Praticienne en blouse blanche" width="1100" height="733" loading="lazy"></figure>
@@ -568,12 +530,9 @@ function verifySection() {
     ${checkList(['Le diplôme d’origine du professionnel','Sa situation auprès de l’Ordre concerné','Le suivi de ses démarches d’autorisation d’exercice'])}
     <div class="sector-line"><span>Nous accompagnons</span>${['Hôpitaux publics','Cliniques privées','EHPAD','Centres de santé','Cabinets'].map(s => `<span class="tag">${s}</span>`).join('')}</div></div></div></section>`;
 }
-function crossBand() {
-  return `<section class="cross-band"><div class="container cross-inner"><span class="cross-ico">${icon('hospital')}</span><div><h2>${dot('Vous recrutez pour un établissement ?')}</h2><p>Décrivez votre besoin en une minute. Intérim, vacation, CDI ou CDD.</p></div><button type="button" class="btn btn-white" data-set-aud="etab">Espace établissement${icon('swap')}</button></div></section>`;
-}
 function home() {
-  /* « Ils nous font confiance. » : des témoignages extraits des avis (le bloc complet des avis est dans l’espace praticien et sur #/avis). */
-  return homeHero() + (audience === 'etab' ? etabSections() : proSections() + (audience ? '' : crossBand())) + temoignagesSection() + belief();
+  /* « Ils nous font confiance. » : des témoignages extraits des avis (le bloc complet des avis est sur la page Praticiens et sur #/avis). */
+  return homeHero() + proSections() + temoignagesSection() + belief();
 }
 
 /* ───────────── Pages publics ───────────── */
@@ -582,7 +541,7 @@ function subHero({crumb, title, lead, actions, photo, alt, note, side = ''}) {
   return `<section class="sub-hero"><div class="container">${breadcrumb([[crumb]])}<div class="sub-grid"><div class="sub-copy"><h1>${title}</h1><p class="lead">${lead}</p>${actions}${note || ''}</div>${side || `<figure class="sub-photo"><img src="assets/${photo}" alt="${alt}" width="1100" height="733" fetchpriority="high"></figure>`}</div></div></section>`;
 }
 function practitioners() {
-  return subHero({crumb:'Espace praticien', title:`Exercez en France, <em>accompagné</em><span class="dot">.</span>`, lead:'Diplôme, autorisations, mission : un conseiller vous aide à chaque étape. Gratuitement.', actions:`<div class="actions">${btn('Créer mon dossier','#/postuler','coral')}${btn('Suis-je éligible ?','#/eligibilite','outline','')}</div><a class="text-link elig-link" href="#/offres">Voir les offres${icon('arrow')}</a>`, note:promise([['check','Gratuit'],['clock','Réponse sous 48 h'],['globe','Depuis la France ou l’étranger']]), photo:'praticienne.jpg', alt:'Praticienne souriante en blouse blanche'})
+  return subHero({crumb:'Praticiens', title:`Exercez en France, <em>accompagné</em><span class="dot">.</span>`, lead:'Diplôme, autorisations, mission : un conseiller vous aide à chaque étape. Gratuitement.', actions:`<div class="actions">${btn('Créer mon dossier','#/postuler','coral')}${btn('Suis-je éligible ?','#/eligibilite','outline','')}</div><a class="text-link elig-link" href="#/offres">Voir les offres${icon('arrow')}</a>`, note:promise([['check','Gratuit'],['clock','Réponse sous 48 h'],['globe','Depuis la France ou l’étranger']]), photo:'praticienne.jpg', alt:'Praticienne souriante en blouse blanche'})
   + `<section class="section section-paper"><div class="container"><div class="section-head"><h2>${dot('Un parcours clair, à votre rythme.')}</h2></div>${journey()}
     <details class="journey-details"><summary>Voir les démarches en détail ${icon('plus')}</summary><div class="details-body">${checkList(['Étude de votre diplôme et de votre parcours','Orientation vers la procédure de reconnaissance adaptée','Mise en relation avec des offres compatibles','Suivi de l’autorisation d’exercice','Accompagnement à la prise de poste'])}</div></details></div></section>
   ${avisSection()}
@@ -590,21 +549,23 @@ function practitioners() {
   ${cta({title:'Faisons le premier pas.', text:'Cinq étapes courtes, et votre conseiller vous rappelle sous 48 h.', label:'Créer mon dossier', href:'#/postuler'})}`;
 }
 function employers() {
-  return subHero({crumb:'Espace établissement', title:`Du renfort pour <em>vos équipes</em><span class="dot">.</span>`, lead:'Intérim, vacation, CDI ou CDD. Des professionnels de santé aux profils vérifiés, adaptés à votre besoin.', actions:'', side:`<div class="brief-card"><p class="brief-card-title">${icon('file')}Préparez votre demande</p>${quickBrief('etab')}<a class="urgent" href="${TEL}">${icon('bolt')}Besoin urgent ? <strong>${PHONE}</strong></a></div>`, note:promise([['badge','Intérim, vacation, CDI, CDD'],['shield','Profils vérifiés'],['people','Un interlocuteur dédié']])})
+  /* Tarifs encore à préciser : repliés sous une phrase (la page reste courte, surtout sur téléphone). */
+  const pricingOpen = !!(PRICING.interim || PRICING.cdi || PRICING.delay);
+  return subHero({crumb:'Établissements', title:`Du renfort pour <em>vos équipes</em><span class="dot">.</span>`, lead:'Intérim, vacation, CDI ou CDD. Des professionnels de santé aux profils vérifiés, adaptés à votre besoin.', actions:'', side:`<div class="brief-card"><p class="brief-card-title">${icon('file')}Préparez votre demande</p>${quickBrief('etab')}<a class="urgent" href="${TEL}">${icon('bolt')}Besoin urgent ? <strong>${PHONE}</strong></a></div>`, note:promise([['badge','Intérim, vacation, CDI, CDD'],['shield','Profils vérifiés'],['people','Un interlocuteur dédié']])})
   + `<section class="section section-paper"><div class="container"><div class="section-head"><h2>${dot('Un besoin. Une équipe à vos côtés.')}</h2></div>${steps(employerSteps)}</div></section>
   ${verifySection()}
   <section class="section section-paper"><div class="container contract-grid">
     <article class="contract"><span class="contract-tag">Intérim · Vacation</span><h3>${dot('Un besoin ponctuel.')}</h3><p>Remplacements, gardes, vacations, renfort saisonnier. Indiquez vos créneaux : nous proposons des profils dès qu’une compatibilité est identifiée.</p></article>
-    <article class="contract contract-dark"><span class="contract-tag">CDI · CDD</span><h3>${dot('Un recrutement dans la durée.')}</h3><p>Un professionnel qui rejoint votre équipe pour une durée définie ou sur le long terme, à partir de la date que vous choisissez, accompagné dans ses démarches d’exercice.</p></article>
+    <article class="contract contract-dark"><span class="contract-tag">CDI · CDD</span><h3>${dot('Un recrutement dans la durée.')}</h3><p>Un professionnel rejoint votre équipe, pour une durée définie ou sur le long terme, à la date que vous choisissez. Nous l’accompagnons dans ses démarches.</p></article>
   </div></section>
-  <section class="section pricing"><div class="container"><div class="section-head"><h2>${dot('Tarifs et délais.')}</h2><p class="section-lead">Ce qu’il faut savoir avant de nous confier une demande.</p></div>
-    <div class="pricing-grid">
+  <section class="section pricing"><div class="container"><div class="section-head"><h2>${dot('Tarifs et délais.')}</h2><p class="section-lead">${pricingOpen ? 'Ce qu’il faut savoir avant de nous confier une demande.' : 'Les tarifs dépendent du contrat et de la durée : un conseiller vous les présente sous 24 h ouvrées, sans engagement.'}</p></div>
+    ${pricingOpen ? '' : `<details class="journey-details pricing-fold"><summary>Voir ce qui est compris ${icon('plus')}</summary><div class="details-body">`}<div class="pricing-grid">
       <article class="price-card"><h3>Intérim et vacation</h3><div class="price">${PRICING.interim || todo('tarif de la mise à disposition', 'Par exemple : par garde, par journée, ou en pourcentage.')}</div>${checkList(['Profils vérifiés : diplôme et situation auprès de l’Ordre','Remplacements urgents','Un interlocuteur dédié'])}</article>
       <article class="price-card"><h3>CDI et CDD</h3><div class="price">${PRICING.cdi || todo('honoraires de recrutement', 'Par exemple : forfait ou pourcentage du salaire annuel.')}</div>${checkList(['Profils vérifiés avant présentation','Suivi des démarches d’autorisation d’exercice','Accompagnement après l’arrivée'])}</article>
       <article class="price-card price-delay"><h3>Délais</h3><div class="price">${PRICING.delay || todo('délai moyen avant un premier profil')}</div><p>Une seule demande suffit pour commencer, sans engagement. Pour un besoin urgent, appelez le <a class="text-link" href="${TEL}">${PHONE}</a>.</p></article>
-    </div></div></section>
+    </div>${pricingOpen ? '' : '</div></details>'}</div></section>
   <section class="section" id="faq"><div class="container faq-layout"><div><h2>Recruter, en toute clarté<span class="dot">.</span></h2><a class="text-link" href="#/contact">Une autre question ?${icon('arrow')}</a></div>${faq(employerFAQ)}</div></section>
-  ${cta({title:'Parlons de votre prochain renfort.', text:'Une seule demande pour commencer. Réponse rapide, sans engagement.', label:'Décrire mon besoin', href:'#/besoin'})}`;
+  ${cta({title:'Parlons de votre prochain renfort.', text:'Une seule demande pour commencer. Un conseiller vous rappelle sous 24 h ouvrées, sans engagement.', label:'Décrire mon besoin', href:'#/besoin'})}`;
 }
 function engagement() {
   return `<section class="engagement-hero"><div class="container">${breadcrumb([['Notre engagement']])}<h1>Ouvrir les portes<span class="dot">.</span><br><em>Reconnaître les talents</em><span class="dot">.</span></h1><p class="lead">L’origine d’un diplôme ou une différence ne définit pas une compétence.</p></div></section>
@@ -616,24 +577,24 @@ function engagement() {
 /* ───────────── Offres ───────────── */
 function offerRow(o) {
   return `<article class="offer-row ${o.soon ? 'is-soon' : ''}" data-dept="${o.num}" data-offer="${o.id}" data-flip="${o.id}"><span class="row-num" aria-hidden="true">${o.num}</span>
-    <div class="row-main"><h2><a href="#/offre/${o.id}" class="stretched">${o.specialty}</a></h2><p>${icon('pin')}${o.dept} (${o.num})<span class="sep"></span>${o.contract}<span class="sep"></span><span class="ref">Réf. ${o.ref}</span></p></div>
+    <div class="row-main"><h2><a href="#/offre/${o.id}" class="stretched">${o.specialty}</a></h2><p><span class="row-place" title="${esc(o.place)}">${icon('pin')}${o.city} (${o.num})<span class="sr-only">, ${o.dept}</span></span><span class="sep"></span>${o.contract}<span class="sep"></span><span class="ref">Réf. ${o.ref}</span></p></div>
     <div class="row-when">${icon('calendar')}<span>${slotRange(o)}<small>${o.slots.length ? `${slotCount(o.slots.length)} · ${slotTypes(o)}` : 'Dates à venir'}</small></span></div>
     <span class="status ${o.soon ? 'soon' : ''}">${o.soon ? 'À venir' : 'Disponible'}</span>
     ${favButton(o)}<span class="row-go" aria-hidden="true">${icon('arrow')}</span></article>`;
 }
 function offersPage() {
-  return `<section class="page-heading"><div class="container">${breadcrumb([['Offres']])}<h1>${dot('Trouvez l’offre qui vous correspond.')}</h1><p class="lead">Votre spécialité, votre région. Les résultats se mettent à jour pendant que vous choisissez.</p></div></section>
+  return `<section class="page-heading"><div class="container">${breadcrumb([['Offres d’emploi']])}<h1>${dot('Trouvez l’offre qui vous correspond.')}</h1><p class="lead">Votre spécialité, votre région. Les résultats se mettent à jour pendant que vous choisissez.</p></div></section>
   <section class="offers-section"><div class="container">
+    <button type="button" class="btn btn-outline filter-open" id="filter-open" aria-expanded="false" aria-controls="filter-form">${icon('search')}<span>Filtrer les offres<span id="filter-n"></span></span>${icon('down', 'filter-caret')}</button>
     <form class="filter-bar" id="filter-form" role="search" aria-label="Rechercher une offre"><div class="filter-fields">${searchFields('filter')}${multiSelect({id: 'filter-month', name: 'months', label: 'Période', icon: 'calendar', options: periodOptions(), selected: state.filter.months, placeholder: 'Toutes les périodes', noun: ['mois', 'mois']})}</div>
-      <div class="filter-status" role="group" aria-label="Disponibilité des offres"><span class="filter-thumb" aria-hidden="true"></span>${[['all','Toutes'],['open','Disponibles'],['soon','À venir']].map(([v,t]) => `<button type="button" class="filter-chip" data-status="${v}" aria-pressed="false">${t}<span data-count="${v}"></span></button>`).join('')}</div></form>
+      <div class="filter-status" role="group" aria-label="Disponibilité des offres"><span class="filter-thumb" aria-hidden="true"></span>${[['all','Toutes'],['open','Disponibles'],['soon','À venir']].map(([v,t]) => `<button type="button" class="filter-chip" data-status="${v}" aria-pressed="false">${t}<span data-count="${v}"></span></button>`).join('')}</div>
+      <button type="button" class="btn btn-primary filter-apply" data-filter-close>Voir les offres</button></form>
     <div class="results-head"><p id="results-count" role="status" aria-live="polite"></p><button type="button" class="reset-link" id="reset-filters">${icon('close')}Tout effacer</button>
       <button type="button" class="fav-filter" id="fav-filter" aria-pressed="${state.filter.fav}">${icon('heart')}Offres gardées <span data-fav-count>${favList().length}</span></button>
       <label class="sort-field" for="sort">Trier<select id="sort"><option value="date" ${state.sort === 'date' ? 'selected' : ''}>Dates les plus proches</option><option value="dept" ${state.sort === 'dept' ? 'selected' : ''}>Par département</option><option value="spec" ${state.sort === 'spec' ? 'selected' : ''}>Par spécialité</option></select></label>
       <div class="view-toggle" role="group" aria-label="Affichage"><button type="button" data-view="list" aria-pressed="${state.view === 'list'}">${icon('list')}Liste</button><button type="button" data-view="map" aria-pressed="${state.view === 'map'}">${icon('map')}Carte</button></div></div>
     <div class="offers-layout view-${state.view}"><div id="offer-results"></div><aside class="offers-map" aria-label="Carte des résultats"><div id="map-slot"></div></aside></div>
-    ${audience === 'etab'
-      ? `<div class="offer-note"><div><h2>${dot('Vous avez un besoin similaire ?')}</h2><p>Décrivez-le en une minute : nous vous proposons des profils vérifiés.</p></div>${btn('Décrire mon besoin','#/besoin','coral')}</div>`
-      : `<div class="offer-note"><div><h2>${dot('Pas encore la bonne offre ?')}</h2><p>Confiez-nous votre projet : nous vous prévenons dès qu’une offre vous correspond.</p></div>${btn('Créer mon dossier','#/postuler','coral')}</div>`}
+    <div class="offer-note"><div><h2>${dot('Pas encore la bonne offre ?')}</h2><p>Confiez-nous votre projet : nous vous prévenons dès qu’une offre vous correspond.</p></div>${btn('Créer mon dossier','#/postuler','coral')}</div>
   </div></section>`;
 }
 function filtered() {
@@ -652,7 +613,9 @@ function updateResults(writeURL = true) {
   $$('[data-status]').forEach(b => b.setAttribute('aria-pressed', b.dataset.status === f.status));
   moveThumb();
   $('#reset-filters').hidden = !any;
-  setDone($('#filter-form'), list.length);
+  setDone($('#filter-form'), list.length); refreshCounts($('#filter-form'), f);
+  const nf = f.specs.length + f.depts.length + f.months.length + (f.status !== 'all') + f.fav;
+  $('#filter-n').textContent = nf ? ` (${nf})` : ''; $('[data-filter-close]').textContent = list.length ? seeLabel(list.length) : 'Aucune offre : voir les solutions';
   const alts = [];
   if (!list.length) {
     const match = (o, specs, depts) => (!specs.length || specs.includes(String(o.sp))) && (!depts.length || depts.includes(o.num));
@@ -700,6 +663,12 @@ function bindOffers() {
   $('#filter-form').addEventListener('submit', e => { e.preventDefault(); sync(); });
   $$('[data-status]').forEach(b => b.addEventListener('click', () => { state.filter.status = b.dataset.status; sync(); }));
   $('#reset-filters').addEventListener('click', resetFilters);
+  /* Téléphone : les résultats d’abord ; « Filtrer les offres » ouvre les filtres, « Voir les N offres » les referme. */
+  const fo = $('#filter-open'), ff = $('#filter-form');
+  const showFilters = open => { ff.classList.toggle('is-open', open); fo.setAttribute('aria-expanded', open); if (open) $('.multi-toggle', ff)?.focus(); };
+  fo.addEventListener('click', () => showFilters(!ff.classList.contains('is-open')));
+  if (p.get('filtres') && matchMedia('(max-width: 860px)').matches) { ff.classList.add('is-open'); fo.setAttribute('aria-expanded', 'true'); }
+  $('[data-filter-close]', ff).addEventListener('click', () => { showFilters(false); fo.focus(); fo.scrollIntoView({block: 'nearest'}); });
   $('#offer-results').addEventListener('click', e => {
     const alt = e.target.closest('[data-alt]')?.dataset.alt; if (!alt) return;
     if (alt === 'all-depts') { state.filter.depts = []; setMultiValues(deptMulti(), []); }
@@ -725,25 +694,24 @@ function slotPicker(o) {
   if (!o.slots.length) return `<h2>Les dates</h2><p>Les dates de cette offre seront publiées à son ouverture (${o.period.toLowerCase()}). Demandez à être informé : votre conseiller vous les communique en premier.</p>`;
   const picked = state.picks[o.id] || [];
   return `<h2 id="slots-title">Les créneaux</h2><p>Cochez ceux qui vous intéressent. Vous pourrez les ajuster avec votre conseiller.</p>
-    <fieldset class="slot-picks" data-offer="${o.id}" aria-labelledby="slots-title"><legend class="sr-only">Créneaux de cette offre</legend>${o.slots.map(s => slotTile(o, s, {attrs: 'data-pick', checked: picked.includes(slotKey(s))})).join('')}</fieldset>`;
+    <fieldset class="slot-picks" data-offer="${o.id}" aria-labelledby="slots-title"><legend class="sr-only">Créneaux de cette offre</legend>${o.slots.map(s => slotTile(o, s, {attrs: 'data-slot-pick', checked: picked.includes(slotKey(s))})).join('')}</fieldset>`;
 }
 function bindPicks(root = document) {
   const box = $('.slot-picks[data-offer]', root); if (!box) return;
-  box.addEventListener('change', () => { const v = $$('input[data-pick]:checked', box).map(i => i.value); state.picks[box.dataset.offer] = v; saveDraft(); const out = $('#apply-picks', root); if (out) out.textContent = pickText(v.length); });
+  box.addEventListener('change', () => { const v = $$('input[data-slot-pick]:checked', box).map(i => i.value); state.picks[box.dataset.offer] = v; saveDraft(); const out = $('#apply-picks', root); if (out) out.textContent = pickText(v.length); });
 }
 function offerDetail() {
   const o = offers.find(x => x.id === offerId); if (!o) return notFound();
   const apply = o.soon ? 'Être informé' : 'Je postule';
   const similar = offers.filter(x => x.id !== o.id && (x.sp === o.sp || x.num === o.num)).slice(0, 3);
-  return `<section class="detail-hero"><span class="detail-num" aria-hidden="true">${o.num}</span><div class="container">${breadcrumb([['Offres', '#/offres' + filterQuery()], [o.specialty]])}
-    <div class="detail-head"><div class="card-top"><span class="status ${o.soon ? 'soon' : ''}">${o.soon ? 'À venir' : 'Disponible'}</span><span class="ref">Réf. ${o.ref}</span><div class="detail-actions">${favButton(o, 'fav-lg')}<button type="button" class="share-btn" data-share="${o.id}">${icon('share')}<span>Partager</span></button></div></div><h1>${o.specialty}<span class="dot">.</span></h1><p class="detail-place">${icon('pin')}${o.dept} (${o.num})</p></div>
-    <dl class="detail-facts">${[['calendar','Dates',slotRange(o, true)],['clock','Créneaux',o.slots.length ? `${slotCount(o.slots.length)} · ${slotTypes(o)}` : 'Dates à venir'],['pin','Département',`${o.dept} (${o.num})`],['file','Référence',o.ref]].map(([i,t,d]) => `<div>${icon(i)}<dt>${t}</dt><dd>${d}</dd></div>`).join('')}</dl></div></section>
+  return `<section class="detail-hero"><span class="detail-num" aria-hidden="true">${o.num}</span><div class="container">${breadcrumb([['Offres d’emploi', '#/offres' + filterQuery()], [o.specialty]])}
+    <div class="detail-head"><div class="card-top"><span class="status ${o.soon ? 'soon' : ''}">${o.soon ? 'À venir' : 'Disponible'}</span><div class="detail-actions">${favButton(o, 'fav-lg')}<button type="button" class="share-btn" data-share="${o.id}">${icon('share')}<span>Partager</span></button></div></div><h1>${o.specialty}<span class="dot">.</span></h1></div>
+    <dl class="detail-facts">${[['pin','Lieu',`${o.city}<small>${o.dept} (${o.num})</small>`],['badge','Contrat',o.contract],['euro','Rémunération',units(o.pay)],['calendar','Dates',`${slotRange(o, true)}<small>${o.slots.length ? `${slotCount(o.slots.length)} · ${slotTypes(o)}` : 'Dates à venir'}</small>`]].map(([i,t,d]) => `<div>${icon(i)}<dt>${t}</dt><dd>${d}</dd></div>`).join('')}</dl></div></section>
   <div class="container detail-layout"><div class="detail-copy">
     ${slotPicker(o)}
     <h2>Les conditions</h2>
     <dl class="conditions">
-      <div>${icon('badge')}<dt>Contrat</dt><dd>${o.contract}</dd></div>
-      <div>${icon('file')}<dt>Rémunération</dt><dd>${o.pay}</dd></div>
+      <div>${icon('badge')}<dt>Contrat</dt><dd>${o.contract}${explain(contractKey(o.contract))}</dd></div>
       <div>${icon('hospital')}<dt>Établissement</dt><dd>${o.structure}<small>Nom communiqué par votre conseiller, l’offre est confidentielle.</small></dd></div>
       <div>${icon('heart')}<dt>Avantages</dt><dd><span class="perks">${o.perks.map(p => `<span class="tag">${p}</span>`).join('')}</span></dd></div>
     </dl>
@@ -751,10 +719,11 @@ function offerDetail() {
     <h2>Après votre candidature</h2>
     <ol class="mini-steps"><li><strong>Sous 48 h</strong>Un conseiller vous rappelle.</li><li><strong>Ensemble</strong>Point sur votre diplôme et votre situation d’exercice.</li><li><strong>Ensuite</strong>Présentation de la mission et de la suite.</li></ol>
     <details class="journey-details"><summary>Une question sur cette offre ? ${icon('plus')}</summary><div class="details-body"><p>Nous vous répondons en précisant l’offre concernée.</p><a class="text-link" href="#/contact?offre=${o.id}">Poser ma question${icon('arrow')}</a></div></details>
+    <p class="detail-ref">${icon('file')}<span>Référence de l’offre : <strong>${o.ref}</strong></span>${o.soon ? '' : `<button type="button" class="reset-link" data-copy="${o.ref}">${icon('link')}Copier</button>`}</p>
   </div>
   <aside class="apply-card"><p class="apply-kicker">${o.soon ? 'Cette offre vous intéresse ?' : 'Votre prochain pas'}</p><h2>${dot(o.soon ? 'Soyez informé en premier.' : 'Un premier contact suffit.')}</h2><p>Vos coordonnées et votre spécialité. Votre conseiller s’occupe de la suite.</p>${o.slots.length ? `<p class="apply-picks" id="apply-picks" aria-live="polite">${pickText((state.picks[o.id] || []).length)}</p>` : ''}${btn(apply, `#/postuler/${o.id}`, 'coral')}${promise([['check','Gratuit'],['clock','Réponse sous 48 h']])}<div class="apply-help"><span>Besoin d’aide ?</span><a class="text-link" href="${TEL}">${icon('phone')}${PHONE}</a><button type="button" class="text-link" data-callback>Être rappelé</button></div></aside></div>
   ${similar.length ? `<section class="section section-paper"><div class="container"><div class="section-head"><h2>${dot('Offres proches.')}</h2><a class="text-link" href="#/offres">Toutes les offres${icon('arrow')}</a></div><div class="offer-grid">${similar.map(offerCard).join('')}</div></div></section>` : ''}
-  <div class="mobile-apply"><span>${o.specialty}<small>${o.dept} · Gratuit</small></span>${btn(apply, `#/postuler/${o.id}`, 'coral')}</div>`;
+  <div class="mobile-apply"><span>${o.specialty}<small>${o.city} · Gratuit</small></span>${btn(apply, `#/postuler/${o.id}`, 'coral')}</div>`;
 }
 
 /* ───────────── Formulaires ───────────── */
@@ -877,22 +846,53 @@ function pills(name, label, options, value = '', {required = true, full = true} 
 /* Bloc affiché selon une réponse ; rule = « nom:valeur ». */
 const when = (rule, on, content, cls = '') => `<div class="cond-block ${cls}" data-when="${esc(rule)}" ${on ? '' : 'hidden'}>${content}</div>`;
 /* Dépôt de fichier (CV, justificatif) : on clique ou on glisse. Le fichier reste dans le navigateur (simulation). */
-function uploadField(id, label, v, {help, ext = 'pdf', accept = 'application/pdf,.pdf', required = false, cond = false, requiredWhen = '', empty = 'Choisir un PDF', missing = 'Ajoutez ce document.'} = {}) {
+/* Pièces : PDF ou photo (sur téléphone, le choix propose l’appareil photo). Rien n’est obligatoire au premier contact. */
+const DOC_FILES = {ext: 'pdf,jpg,jpeg,png,heic,heif,webp', accept: 'application/pdf,.pdf,image/*'};
+const LATER = 'Pas de fichier sous la main ? Envoyez-le plus tard, par WhatsApp ou par email.';
+function uploadField(id, label, v, {help, ext = 'pdf', accept = 'application/pdf,.pdf', required = false, cond = false, requiredWhen = '', multiple = false, empty = 'Choisir un fichier', missing = 'Ajoutez ce document.'} = {}) {
   const name = v[`${id}Name`], error = v[`${id}Error`];
-  return `<div class="field full upload-field"><label for="${id}">${label}${required || cond || requiredWhen ? ' <span class="req" aria-hidden="true">*</span>' : ''}</label><label class="upload-area" for="${id}">${icon('file')}<span><strong id="${id}-name" data-empty="${esc(empty)}">${name ? esc(name) : error ? 'Fichier refusé' : esc(empty)}</strong><small id="${id}-help" data-help="${esc(help)}">${name ? 'Fichier prêt. Il ne sera pas envoyé (simulation).' : esc(help)}</small></span></label><input id="${id}" name="${id}" type="file" accept="${accept}" class="sr-only" data-ext="${ext}" data-missing="${esc(missing)}" ${required ? 'required' : ''} ${cond ? 'data-cond-required' : ''} ${requiredWhen ? `data-required-when="${esc(requiredWhen)}"` : ''} ${error ? 'data-invalid-file="true"' : ''}><button class="reset-link" data-clear="${id}" type="button" ${name || error ? '' : 'hidden'}>Retirer le fichier</button></div>`;
+  return `<div class="field full upload-field"><label for="${id}">${label}${required || cond || requiredWhen ? ' <span class="req" aria-hidden="true">*</span>' : ''}</label><label class="upload-area" for="${id}">${icon('file')}<span><strong id="${id}-name" data-empty="${esc(empty)}">${name ? esc(name) : error ? 'Fichier refusé' : esc(empty)}</strong><small id="${id}-help" data-help="${esc(help)}">${name ? 'Fichier prêt. Il ne sera pas envoyé (simulation).' : esc(help)}</small></span></label><input id="${id}" name="${id}" type="file" accept="${accept}" ${multiple ? 'multiple' : ''} class="sr-only" data-ext="${ext}" data-missing="${esc(missing)}" ${required ? 'required' : ''} ${cond ? 'data-cond-required' : ''} ${requiredWhen ? `data-required-when="${esc(requiredWhen)}"` : ''} ${error ? 'data-invalid-file="true"' : ''}><button class="reset-link" data-clear="${id}" type="button" ${name || error ? '' : 'hidden'}>Retirer le fichier</button></div>`;
 }
 /* Choix long (situation) : des cartes à bouton radio, avec un titre et une phrase d’explication.
    « needs » annonce ce qui sera demandé ensuite (date, copie), pour qu’il n’y ait pas de surprise. */
-function choiceCards(name, legend, options, value = '', {msg = 'Choisissez une réponse.'} = {}) {
-  return `<fieldset class="field full choice-field" id="${name}-group"><legend>${legend} <span class="req" aria-hidden="true">*</span></legend><div class="choice-cards">${options.map((o, i) => `<label class="choice-card" style="--c:${i}"><input type="radio" name="${name}" id="${name}-${i}" value="${esc(o.value)}" ${value === o.value ? 'checked' : ''} required data-group-msg="${esc(msg)}" aria-labelledby="${name}-${i}-title" aria-describedby="${name}-${i}-text"><span class="choice-mark" aria-hidden="true"></span><span class="choice-body"><strong id="${name}-${i}-title">${esc(o.value)}</strong><span id="${name}-${i}-text">${esc(o.text)}${o.needs ? `<em>${icon('file')}${o.needs}</em>` : ''}</span></span></label>`).join('')}</div></fieldset>`;
+function choiceCards(name, legend, options, value = '', {msg = 'Choisissez une réponse.', intro = ''} = {}) {
+  return `<fieldset class="field full choice-field" id="${name}-group"><legend>${legend} <span class="req" aria-hidden="true">*</span></legend>${intro}<div class="choice-cards">${options.map((o, i) => `<label class="choice-card" style="--c:${i}"><input type="radio" name="${name}" id="${name}-${i}" value="${esc(o.value)}" ${value === o.value ? 'checked' : ''} required data-group-msg="${esc(msg)}" aria-labelledby="${name}-${i}-title" aria-describedby="${name}-${i}-text"><span class="choice-mark" aria-hidden="true"></span><span class="choice-body"><strong id="${name}-${i}-title">${esc(o.value)}</strong><span id="${name}-${i}-text">${esc(o.text)}${o.needs ? `<em>${icon('file')}${o.needs}</em>` : ''}</span></span></label>`).join('')}</div></fieldset>`;
 }
+/* « C’est quoi ? » : une explication courte qui s’ouvre au toucher (jamais au survol), à côté du mot à comprendre.
+   Définitions simples, à faire valider par Laska Corporate (voir README). */
+const CONTRACT_DEFS = [
+  ['interim', 'Intérim', 'L’intérim, c’est quoi ?', 'Vous êtes salarié de Laska Corporate, qui vous paie, et vous travaillez quelques jours ou quelques semaines dans un établissement.'],
+  ['vacation', 'Vacation', 'La vacation, c’est quoi ?', 'L’établissement vous paie directement, à la demi-journée ou à la garde, pour un besoin ponctuel.'],
+  ['cdd', 'CDD', 'Le CDD, c’est quoi ?', 'Un contrat avec l’établissement, avec une date de fin fixée à l’avance.'],
+  ['cdi', 'CDI', 'Le CDI, c’est quoi ?', 'Un poste stable dans l’établissement, sans date de fin.']
+];
+const EXPLAIN = {
+  evc: ['Les EVC, c’est quoi ?', 'Les épreuves de vérification des connaissances : l’examen national que passent les praticiens diplômés hors de l’Union européenne pour pouvoir exercer en France.'],
+  autorisation: ['L’autorisation d’exercice, c’est quoi ?', 'La décision du ministère de la Santé qui vous permet d’exercer votre métier en France. Elle vient après les EVC et une période de travail encadrée dans un établissement.'],
+  rpps: ['Le RPPS, c’est quoi ?', 'Le numéro qui identifie chaque professionnel de santé en France. L’Ordre de votre profession vous le donne à votre inscription.'],
+  afgsu: ['L’AFGSU, c’est quoi ?', 'L’attestation de formation aux gestes et soins d’urgence : une formation courte, de deux ou trois jours, demandée par les établissements.'],
+  contrats: ['Intérim, vacation, CDD, CDI : quelle différence ?', `<dl class="explain-list">${CONTRACT_DEFS.map(([, t, , d]) => `<div><dt>${t}</dt><dd>${d}</dd></div>`).join('')}</dl>`],
+  ...Object.fromEntries(CONTRACT_DEFS.map(([k, , q, d]) => [k, [q, d]]))
+};
+const contractKey = c => CONTRACT_DEFS.find(([, t]) => t === c)?.[0];
+let explainN = 0;
+function explain(key, cls = '') {
+  const e = EXPLAIN[key]; if (!e) return '';
+  const id = `explain-${key}-${++explainN}`;
+  return `<div class="explain ${cls}"><button type="button" class="explain-btn" aria-expanded="false" aria-controls="${id}" data-explain>${icon('help')}<span>${e[0]}</span></button><div class="explain-text" id="${id}" hidden>${e[1]}</div></div>`;
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-explain]'); if (!b) return;
+  const box = document.getElementById(b.getAttribute('aria-controls')), open = b.getAttribute('aria-expanded') !== 'true';
+  b.setAttribute('aria-expanded', open); if (box) box.hidden = !open;
+});
 const consentField = () => `<p class="privacy-note">${icon('shield')}<span>Vos informations servent uniquement à traiter cette demande. <a href="#/mentions-legales?section=confidentialite">Utilisation de mes données</a></span></p>`;
 /* Situation du praticien : quatre cas. Les trois derniers demandent une date ; les deux derniers, une copie du justificatif. */
 const SITUATIONS = [
   {value: 'Sans EVC', text: 'Épreuves de vérification des connaissances (EVC) non validées et absence d’autorisation d’exercice à ce jour.'},
   {value: 'EVC validées, sans autorisation d’exercice', text: 'Épreuves de vérification des connaissances (EVC) réussies, mais autorisation d’exercice non encore obtenue.', needs: 'Date de réussite à indiquer, preuve facultative'},
-  {value: 'EVC validées avec autorisation d’exercice', text: 'Épreuves de vérification des connaissances (EVC) réussies et autorisation d’exercice obtenue.', needs: 'Date et copie de l’autorisation à joindre, attestation RPPS facultative'},
-  {value: 'Diplôme français ou européen', text: 'Titulaire d’un diplôme de docteur en médecine délivré en France ou dans un État membre de l’Union européenne (UE).', needs: 'Date et copie du diplôme à joindre, attestation RPPS facultative'}
+  {value: 'EVC validées avec autorisation d’exercice', text: 'Épreuves de vérification des connaissances (EVC) réussies et autorisation d’exercice obtenue.', needs: 'Date à indiquer ; copies si vous les avez'},
+  {value: 'Diplôme français ou européen', text: 'Titulaire d’un diplôme de docteur en médecine délivré en France ou dans un État membre de l’Union européenne (UE).', needs: 'Date à indiquer ; copies si vous les avez'}
 ];
 const [SIT_NONE, SIT_EVC, SIT_AUTH, SIT_EU] = SITUATIONS.map(s => s.value);
 /* Pour chaque situation : la date demandée, la pièce obligatoire s’il y en a une, et une pièce facultative
@@ -910,12 +910,12 @@ function slotChoice(o) {
   const picked = state.picks[o.id] || [];
   return `<fieldset class="field full slot-choice" id="slotChoice-group"><legend>Vos créneaux pour cette offre <span class="req" aria-hidden="true">*</span></legend><small id="slotChoice-help">Cochez au moins un créneau.</small><div class="slot-picks is-compact">${o.slots.map(s => slotTile(o, s, {name: 'slotChoice', attrs: 'data-multi data-required-group', checked: picked.includes(slotKey(s))})).join('')}</div></fieldset>`;
 }
-/* Dossier praticien : cinq étapes, dans l’ordre du traitement. Tout est demandé sauf les souhaits, CV compris.
-   Quand le praticien postule à une offre, ses disponibilités sont les créneaux cochés : on ne lui redemande pas
-   « Dès maintenant / À partir d’une date ». */
+/* Dossier praticien : cinq étapes, une par écran (v8), dans l’ordre du traitement. Les pièces et les souhaits
+   sont facultatifs. Quand le praticien postule à une offre, ses disponibilités sont les créneaux cochés : on ne lui
+   redemande pas « Dès maintenant / À partir d’une date ». Chaque étape : {title, html, optional, lead}. */
 const REGIONS = ['Partout en France', 'Île-de-France', 'Auvergne-Rhône-Alpes', 'Provence-Alpes-Côte d’Azur', 'Occitanie', 'Nouvelle-Aquitaine', 'Grand Est', 'Hauts-de-France', 'Bretagne', 'Pays de la Loire', 'Normandie', 'Bourgogne-Franche-Comté', 'Centre-Val de Loire', 'Corse', 'Outre-mer'];
 const LANGUAGES = ['Français', 'Anglais', 'Arabe', 'Espagnol', 'Portugais', 'Allemand', 'Italien', 'Autre langue'];
-function candidateFields(s, o) {
+function candidateStages(s, o) {
   const v = s.values, f = (n, l, opt = {}) => field(n, l, {...opt, value: v[n] || ''});
   v.specialties ||= v.specialty ? [v.specialty] : [];
   if (!v.residence && v.abroad !== undefined) v.residence = v.abroad ? 'Hors de France' : 'En France';
@@ -924,32 +924,33 @@ function candidateFields(s, o) {
   if (!Array.isArray(v.contractWish)) v.contractWish = v.contractWish === 'Les deux' ? ['Intérim', 'CDI'] : v.contractWish ? [v.contractWish] : [];
   const withSlots = !!o?.slots.length;
   const proof = sit => {
-    const {date, doc, extra} = SIT_PROOF[sit], files = {ext:'pdf,jpg,jpeg,png', accept:'application/pdf,.pdf,image/jpeg,.jpg,.jpeg,image/png,.png'};
-    return when(`stage:${sit}`, v.stage === sit, `<div class="auth-block is-required"><p class="auth-title">${icon(doc ? 'badge' : 'calendar')}<span><strong>${esc(sit)}</strong>${doc ? 'Indiquez la date et joignez une copie. L’attestation RPPS est facultative.' : 'Indiquez la date de réussite. La preuve est facultative.'}</span></p><div class="form-grid">${f(date[0], date[1], {type:'date', required:false, cond:true, full:true, attrs:`max="${TODAY}"`, help:date[2]})}${doc ? uploadField(doc[0], doc[1], v, {...files, help:doc[4], cond:true, empty:doc[2], missing:doc[3]}) : ''}${uploadField(extra[0], `${extra[1]} <span class="field-note">facultatif</span>`, v, {...files, help:extra[3], empty:extra[2]})}</div></div>`, 'cond-panel');
+    const {date, doc, extra} = SIT_PROOF[sit], files = DOC_FILES;
+    return when(`stage:${sit}`, v.stage === sit, `<div class="auth-block is-required"><p class="auth-title">${icon(doc ? 'badge' : 'calendar')}<span><strong>${esc(sit)}</strong>${doc ? 'Indiquez la date. Les copies sont facultatives : joignez-les maintenant ou plus tard.' : 'Indiquez la date de réussite. La preuve est facultative.'}</span></p><div class="form-grid">${f(date[0], date[1], {type:'date', required:false, cond:true, full:true, attrs:`max="${TODAY}"`, help:date[2]})}${doc ? uploadField(doc[0], `${doc[1]} <span class="field-note">facultatif</span>`, v, {...files, help:`PDF ou photo, 10 Mo maximum. ${LATER}`, empty:doc[2]}) : ''}${uploadField(extra[0], `${extra[1]} <span class="field-note">facultatif</span>`, v, {...files, help:extra[3].replace('PDF, JPG ou PNG', 'PDF ou photo'), empty:extra[2]})}</div></div>`, 'cond-panel');
   };
-  return `<div class="form-grid">
-    ${formStep(1, 'Vous')}
-    ${f('firstName','Prénom',{autocomplete:'given-name'})}${f('lastName','Nom',{autocomplete:'family-name'})}
-    ${f('email','Email',{type:'email',autocomplete:'email',full:true,placeholder:'nom@exemple.com'})}
-    ${f('phone','Téléphone',{type:'tel',full:true,code:v.phoneCode,help:'Votre conseiller vous appelle à ce numéro sous 48 h.'})}
-    ${pills('residence','Où vivez-vous aujourd’hui ?',['En France','Hors de France'],v.residence)}
-    ${formStep(2, 'Votre métier')}
-    ${chipPicker({name: 'specialties', legend: 'Vos spécialités', options: specialtyChoices(), selected: v.specialties, top: 9, required: true})}
-    ${when('specialties:Autre spécialité', v.specialties.includes('Autre spécialité'), f('specialtyOther','Quelle autre spécialité ?',{required:false,cond:true,full:true}))}
-    ${f('country','Pays du diplôme',{options:countries,full:true})}
-    ${when('country:Autre pays', v.country === 'Autre pays', f('countryOther','Quel pays ?',{required:false,cond:true,full:true}))}
-    ${formStep(3, 'Votre situation')}
-    ${choiceCards('stage', 'Votre situation aujourd’hui', SITUATIONS, v.stage, {msg: 'Choisissez votre situation.'})}
-    ${proof(SIT_EVC)}${proof(SIT_AUTH)}${proof(SIT_EU)}
-    ${uploadField('cv','Votre CV', v, {help:'PDF, 10 Mo maximum. Vous pouvez aussi le glisser ici.', required:true, empty:'Joindre mon CV', missing:'Joignez votre CV, au format PDF.'})}
-    ${formStep(4, withSlots ? 'Vos créneaux' : 'Vos disponibilités')}
-    ${withSlots ? slotChoice(o) + `<p class="slots-sync">${icon('calendar')}<span>Vos disponibilités sont les créneaux cochés : ce sont ceux de la fiche de l’offre, et ce que vous changez ici y est aussi changé.</span></p>`
-      : pills('availability','Quand pouvez-vous commencer ?',['Dès maintenant',FROM_DATE],v.availability) + when(`availability:${FROM_DATE}`, v.availability === FROM_DATE, f('availableFrom','Disponible à partir du',{type:'date',required:false,cond:true,full:true,attrs:`min="${TODAY}"`}), 'cond-panel')}
-    ${formStep(5, 'Vos souhaits <small>facultatif</small>')}
-    ${chipPicker({name: 'regions', legend: 'Où souhaitez-vous exercer ?', options: REGIONS.map(r => ({value: r, label: r})), selected: v.regions || [], top: 7, more: 'régions'})}
-    ${chipPicker({name: 'contractWish', legend: 'Quel contrat recherchez-vous ?', options: CONTRACT_WISHES.map(c => ({value: c, label: c})), selected: v.contractWish})}
-    ${chipPicker({name: 'languages', legend: 'Langues parlées', options: LANGUAGES.map(r => ({value: r, label: r})), selected: v.languages || []})}
-  </div>${consentField()}`;
+  return [
+    {title: 'Vous', html: `
+      ${f('firstName','Prénom',{autocomplete:'given-name'})}${f('lastName','Nom',{autocomplete:'family-name'})}
+      ${f('email','Email',{type:'email',autocomplete:'email',full:true,placeholder:'nom@exemple.com'})}
+      ${f('phone','Téléphone',{type:'tel',full:true,code:v.phoneCode,help:'Votre conseiller vous appelle à ce numéro sous 48 h.'})}
+      ${pills('residence','Où vivez-vous aujourd’hui ?',['En France','Hors de France'],v.residence)}`},
+    {title: 'Votre métier', html: `
+      ${chipPicker({name: 'specialties', legend: 'Vos spécialités', options: specialtyChoices(), selected: v.specialties, top: 9, required: true})}
+      ${when('specialties:Autre spécialité', v.specialties.includes('Autre spécialité'), f('specialtyOther','Quelle autre spécialité ?',{required:false,cond:true,full:true}))}
+      ${f('country','Pays du diplôme',{options:countries,full:true})}
+      ${when('country:Autre pays', v.country === 'Autre pays', f('countryOther','Quel pays ?',{required:false,cond:true,full:true}))}`},
+    {title: 'Votre situation', html: `
+      ${choiceCards('stage', 'Votre situation aujourd’hui', SITUATIONS, v.stage, {msg: 'Choisissez votre situation.', intro: `<div class="explain-row">${explain('evc')}${explain('autorisation')}</div>`})}
+      ${proof(SIT_EVC)}${proof(SIT_AUTH)}${proof(SIT_EU)}
+      ${uploadField('cv','Votre CV <span class="field-note">facultatif</span>', v, {...DOC_FILES, multiple:true, help:`PDF ou photos (plusieurs possibles), 10 Mo maximum. ${LATER}`, empty:'Joindre mon CV ou le prendre en photo'})}`},
+    {title: withSlots ? 'Vos créneaux' : 'Vos disponibilités', html: withSlots
+      ? slotChoice(o) + `<p class="slots-sync">${icon('calendar')}<span>Vos disponibilités sont les créneaux cochés : ce sont ceux de la fiche de l’offre, et ce que vous changez ici y est aussi changé.</span></p>`
+      : pills('availability','Quand pouvez-vous commencer ?',['Dès maintenant',FROM_DATE],v.availability) + when(`availability:${FROM_DATE}`, v.availability === FROM_DATE, f('availableFrom','Disponible à partir du',{type:'date',required:false,cond:true,full:true,attrs:`min="${TODAY}"`}), 'cond-panel')},
+    {title: 'Pour aller plus loin', optional: true, lead: 'Ces réponses aident votre conseiller à vous proposer les bonnes offres. Vous pouvez aussi passer cette étape.', html: `
+      ${chipPicker({name: 'regions', legend: 'Où souhaitez-vous exercer ?', options: REGIONS.map(r => ({value: r, label: r})), selected: v.regions || [], top: 7, more: 'régions'})}
+      ${chipPicker({name: 'contractWish', legend: 'Quel contrat recherchez-vous ?', options: CONTRACT_WISHES.map(c => ({value: c, label: c})), selected: v.contractWish})}
+      ${explain('contrats', 'full')}
+      ${chipPicker({name: 'languages', legend: 'Langues parlées', options: LANGUAGES.map(r => ({value: r, label: r})), selected: v.languages || []})}`}
+  ];
 }
 
 /* Créneaux en série : une période (du… au…) et les jours concernés, au lieu d’ajouter chaque date une par une. */
@@ -983,7 +984,7 @@ const SLOT_TYPES = ['Garde 24 h','Journée 10 h','Journée 12 h','Nuit 12 h'];
 function slotRow(r, si, ri, name, count) {
   const type = `<div class="field slot-type"><label for="slot-${si}-${ri}-type">Créneau</label><select id="slot-${si}-${ri}-type" name="slot-${si}-${ri}-type" data-slot="${si}:${ri}:type">${SLOT_TYPES.map(t => `<option ${t === r.type ? 'selected' : ''}>${t}</option>`).join('')}</select></div>`;
   const remove = count > 1 ? `<button type="button" class="slot-remove" data-slot-remove="${si}:${ri}" aria-label="Retirer ${r.kind === 'range' ? 'la période' : 'la date'} ${ri + 1} (${esc(name)})">${icon('close')}</button>` : '';
-  if (r.kind !== 'range') return `<li class="slot-row ${r.fresh ? 'is-new' : ''}">${dateField({id: `slot-${si}-${ri}-date`, label: 'Date', value: r.date, required: true, attrs: `data-slot="${si}:${ri}:date" data-error-label="${esc(name)} : date ${ri + 1}" min="${TODAY}"`})}${type}${remove}</li>`;
+  if (r.kind !== 'range') return `<li class="slot-row ${r.fresh ? 'is-new' : ''}">${dateField({id: `slot-${si}-${ri}-date`, label: 'Date', value: r.date, required: true, attrs: `data-slot="${si}:${ri}:date" data-error-label="${esc(name)} : choisissez la date${count > 1 ? ` n° ${ri + 1}, ou retirez cette ligne` : ', ou cochez « Dates à définir »'}" min="${TODAY}"`})}${type}${remove}</li>`;
   return `<li class="slot-row is-range ${r.fresh ? 'is-new' : ''}">
     ${dateField({id: `slot-${si}-${ri}-from`, label: 'Du', value: r.from, required: true, attrs: `data-slot="${si}:${ri}:from" data-error-label="${esc(name)} : début de la période" min="${TODAY}"`})}
     ${dateField({id: `slot-${si}-${ri}-to`, label: 'Au', value: r.to, required: true, attrs: `data-slot="${si}:${ri}:to" data-after="slot-${si}-${ri}-from-value" data-error-label="${esc(name)} : fin de la période" min="${r.from || TODAY}"`})}
@@ -1023,32 +1024,37 @@ function slotsList(v, specs) {
     </fieldset>`;
   }).join('');
 }
-/* Titre d’étape dans un formulaire : l’ordre est réel, d’où le numéro. */
-const formStep = (n, title) => `<h3 class="form-step"><span aria-hidden="true">${n}</span>${title}</h3>`;
-function employerFields(s) {
+/* Demande de renfort : trois étapes, une par écran (v8). Le téléphone est conseillé : c’est le plus rapide pour
+   un rappel sous 24 h ouvrées. */
+function employerStages(s) {
   const v = s.values, f = (n, l, o = {}) => field(n, l, {...o, value: v[n] || ''});
   v.specialties ||= [];
   if (v.contract && !contracts.includes(v.contract)) v.contract = '';
-  return `<div class="form-grid">
-    ${formStep(1, 'Votre besoin')}
-    ${chipPicker({name: 'specialties', legend: 'Spécialités recherchées', options: specialtyChoices(), selected: v.specialties, top: 9, required: true})}
-    ${when('specialties:Autre spécialité', v.specialties.includes('Autre spécialité'), f('specialtyOther','Quelle autre spécialité ?',{required:false,cond:true,full:true}))}
-    ${pills('contract','Type de contrat',contracts,v.contract)}
-    ${formStep(2, `<em data-dates-title>${datesTitle(v)}</em>`)}
-    <div class="slots-area" id="slots-area">${slotsArea(v)}</div>
-    ${formStep(3, 'Vos coordonnées')}
-    ${f('organization','Établissement',{autocomplete:'organization',full:true,placeholder:'Ex. Centre hospitalier de…'})}${f('contactName','Votre nom',{autocomplete:'name'})}${f('email','Email professionnel',{type:'email',autocomplete:'email'})}</div>
-  <details class="optional-details" ${v.phone || v.extraMessage || v.structure ? 'open' : ''}><summary>${icon('plus')}<span>Ajouter un téléphone ou des précisions</span><em>Facultatif</em></summary><div class="details-body form-grid">${f('phone','Téléphone',{type:'tel',required:false,full:true,code:v.phoneCode})}${f('structure','Type de structure',{required:false,options:['Hôpital public','Clinique privée','EHPAD','Centre de santé','Cabinet médical','Autre'],full:true})}${f('extraMessage','Votre précision',{type:'textarea',required:false,full:true,placeholder:'Rythme, contexte ou précisions sur les créneaux…',help:'500 caractères maximum.'})}</div></details>${consentField()}`;
+  return [
+    {title: 'Votre besoin', html: `
+      ${chipPicker({name: 'specialties', legend: 'Spécialités recherchées', options: specialtyChoices(), selected: v.specialties, top: 9, required: true})}
+      ${when('specialties:Autre spécialité', v.specialties.includes('Autre spécialité'), f('specialtyOther','Quelle autre spécialité ?',{required:false,cond:true,full:true}))}
+      ${pills('contract','Type de contrat',contracts,v.contract)}
+      ${explain('contrats', 'full')}`},
+    {title: datesTitle(v), html: `<div class="slots-area" id="slots-area">${slotsArea(v)}</div>`},
+    {title: 'Vos coordonnées', html: `
+      ${f('organization','Établissement',{autocomplete:'organization',full:true,placeholder:'Ex. Centre hospitalier de…'})}${f('contactName','Votre nom',{autocomplete:'name'})}${f('email','Email professionnel',{type:'email',autocomplete:'email'})}
+      ${f('phone','Téléphone <span class="field-note">conseillé</span>',{type:'tel',required:false,full:true,code:v.phoneCode,help:'Le plus rapide : un conseiller vous rappelle sous 24 h ouvrées.'})}
+      <details class="optional-details full" ${v.extraMessage || v.structure ? 'open' : ''}><summary>${icon('plus')}<span>Ajouter des précisions</span><em>Facultatif</em></summary><div class="details-body form-grid">${f('structure','Type de structure',{required:false,options:['Hôpital public','Clinique privée','EHPAD','Centre de santé','Cabinet médical','Autre'],full:true})}${f('extraMessage','Votre précision',{type:'textarea',required:false,full:true,placeholder:'Rythme, contexte ou précisions sur les créneaux…',help:'500 caractères maximum.'})}</div></details>`}
+  ];
 }
 function progressRing() {
   return `<div class="progress" aria-live="polite"><svg viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="19"/><circle class="progress-bar" cx="22" cy="22" r="19" pathLength="100"/></svg><span class="progress-text" id="progress-text"></span></div>`;
 }
 /* Récapitulatif avant envoi : chaque partie relue d’un coup d’œil, avec « Modifier » qui ramène au bon endroit.
    Il sert aussi, en lecture seule, dans la confirmation (« Revoir ce que vous avez envoyé », imprimable). */
+/* Adresse probablement mal tapée (suggestion ignorée dans le formulaire) : on le redit au récapitulatif. */
+const mailCheck = mail => { const better = emailSuggestion(mail || ''); return esc(mail || '') + (better ? `<span class="review-warn">Vérifiez : vouliez-vous dire ${esc(better)} ?</span>` : ''); };
 function review(kind, o, {readonly = false} = {}) {
   const v = state[kind].values;
   const rows = list => list.filter(([, val]) => val).map(([k, val]) => `<div><dt>${k}</dt><dd>${val}</dd></div>`).join('');
-  const block = (title, edit, list) => { const body = rows(list); return `<section class="review-block"><div class="review-head"><h3>${title}</h3>${readonly ? '' : `<button type="button" class="review-edit" data-edit="${edit}">${icon('file')}Modifier</button>`}</div>${body ? `<dl>${body}</dl>` : '<p class="review-empty">Rien de précisé.</p>'}</section>`; };
+  /* « Modifier » ramène à l’étape du formulaire (data-edit) et au champ concerné (data-edit-focus). */
+  const block = (title, [step, focus], list) => { const body = rows(list); return `<section class="review-block"><div class="review-head"><h3>${title}</h3>${readonly ? '' : `<button type="button" class="review-edit" data-edit="${step}" data-edit-focus="${focus}">${icon('file')}Modifier<span class="sr-only"> : ${title}</span></button>`}</div>${body ? `<dl>${body}</dl>` : '<p class="review-empty">Rien de précisé.</p>'}</section>`; };
   const specName = x => x === 'Autre spécialité' ? (v.specialtyOther?.trim() || x) : x;
   const specs = (v.specialties || []).map(specName).map(esc).join(', ');
   let blocks;
@@ -1057,41 +1063,48 @@ function review(kind, o, {readonly = false} = {}) {
     const dates = (v.specialties || []).map(sp => [esc(specName(sp)), short
       ? (v.slotFlex?.[sp] ? 'Dates à définir avec Laska Corporate' : `<ul class="review-list">${(v.slots?.[sp] || []).map(r => `<li>${slotLine(r)}</li>`).join('')}</ul>`)
       : (v.startFlex?.[sp] ? 'Date à définir avec Laska Corporate' : v.startFrom?.[sp] ? `À partir du ${dateLabel(v.startFrom[sp]).toLowerCase()}` : '')]);
-    blocks = block('Votre besoin', 'specialties-group', [['Spécialités', specs], ['Contrat', esc(v.contract || '')]])
-      + block(datesTitle(v), 'slots-area', dates)
-      + block('Vos coordonnées', 'organization', [['Établissement', esc(v.organization || '')], ['Votre nom', esc(v.contactName || '')], ['Email', esc(v.email || '')], ['Téléphone', esc(phoneText(v.phone, v.phoneCode))], ['Type de structure', esc(v.structure || '')], ['Précision', esc(v.extraMessage || '')]]);
+    blocks = block('Votre besoin', [1, 'specialties-group'], [['Spécialités', specs], ['Contrat', esc(v.contract || '')]])
+      + block(datesTitle(v), [2, 'slots-area'], dates)
+      + block('Vos coordonnées', [3, 'organization'], [['Établissement', esc(v.organization || '')], ['Votre nom', esc(v.contactName || '')], ['Email', mailCheck(v.email)], ['Téléphone', esc(phoneText(v.phone, v.phoneCode))], ['Type de structure', esc(v.structure || '')], ['Précision', esc(v.extraMessage || '')]]);
   } else {
     const picks = o ? (state.picks[o.id] || []).slice().sort().map(k => { const [date, type] = k.split('|'); return `<li>${dateLabel(date)} · ${esc(type)}</li>`; }).join('') : '';
-    const offerLine = o ? `${esc(o.specialty)}, ${esc(o.dept)} · réf. ${o.ref}` : '';
+    const offerLine = o ? `${esc(o.specialty)}, ${esc(o.place)} · réf. ${o.ref}` : '';
     const proof = SIT_PROOF[v.stage] || {}, sitDate = proof.date && v[proof.date[0]], sitDoc = proof.doc && v[`${proof.doc[0]}Name`], sitExtra = proof.extra && v[`${proof.extra[0]}Name`];
-    blocks = block('Vous', 'firstName', [['Nom', esc(`${v.firstName || ''} ${v.lastName || ''}`.trim())], ['Email', esc(v.email || '')], ['Téléphone', esc(phoneText(v.phone, v.phoneCode))], ['Lieu de vie', esc(v.residence || '')]])
-      + block('Votre métier', 'specialties-group', [['Spécialités', specs], ['Pays du diplôme', esc(v.country === 'Autre pays' ? (v.countryOther || '') : (v.country || ''))]])
-      + block('Votre situation', 'stage-group', [['Situation', esc(v.stage || '')], [proof.date?.[1] || '', sitDate ? dateLabel(sitDate) : ''], [proof.doc?.[1] || '', sitDoc ? esc(sitDoc) : ''], [proof.extra?.[1] || '', sitExtra ? esc(sitExtra) : ''], ['CV', esc(v.cvName || '')]])
+    blocks = block('Vous', [1, 'firstName'], [['Nom', esc(`${v.firstName || ''} ${v.lastName || ''}`.trim())], ['Email', mailCheck(v.email)], ['Téléphone', esc(phoneText(v.phone, v.phoneCode))], ['Lieu de vie', esc(v.residence || '')]])
+      + block('Votre métier', [2, 'specialties-group'], [['Spécialités', specs], ['Pays du diplôme', esc(v.country === 'Autre pays' ? (v.countryOther || '') : (v.country || ''))]])
+      + block('Votre situation', [3, 'stage-group'], [['Situation', esc(v.stage || '')], [proof.date?.[1] || '', sitDate ? dateLabel(sitDate) : ''], [proof.doc?.[1] || '', sitDoc ? esc(sitDoc) : proof.doc ? 'À envoyer plus tard' : ''], [proof.extra?.[1] || '', sitExtra ? esc(sitExtra) : ''], ['CV', v.cvName ? esc(v.cvName) : 'À envoyer plus tard']])
       + (o?.slots.length
-        ? block('Vos créneaux', 'slotChoice-group', [['Offre', offerLine], ['Créneaux', picks ? `<ul class="review-list">${picks}</ul>` : '']])
-        : block('Vos disponibilités', 'availability-group', [['Début', v.availability === FROM_DATE && v.availableFrom ? `À partir du ${dateLabel(v.availableFrom).toLowerCase()}` : esc(v.availability || '')], ['Offre', offerLine]]))
-      + block('Vos souhaits', 'regions-group', [['Où', esc((v.regions || []).join(', '))], ['Contrats', esc([].concat(v.contractWish || []).join(', '))], ['Langues', esc((v.languages || []).join(', '))]]);
+        ? block('Vos créneaux', [4, 'slotChoice-group'], [['Offre', offerLine], ['Créneaux', picks ? `<ul class="review-list">${picks}</ul>` : '']])
+        : block('Vos disponibilités', [4, 'availability-group'], [['Début', v.availability === FROM_DATE && v.availableFrom ? `À partir du ${dateLabel(v.availableFrom).toLowerCase()}` : esc(v.availability || '')], ['Offre', offerLine]]))
+      + block('Pour aller plus loin', [5, 'regions-group'], [['Où', esc((v.regions || []).join(', '))], ['Contrats', esc([].concat(v.contractWish || []).join(', '))], ['Langues', esc((v.languages || []).join(', '))]]);
   }
   if (readonly) return `<div class="review is-readonly">${blocks}</div>`;
-  const send = kind === 'employer' ? 'Envoyer ma demande' : o?.soon ? 'Envoyer : être informé' : o ? 'Envoyer ma candidature' : 'Envoyer mon dossier';
+  /* Lexique : Créer mon dossier → Envoyer mon dossier ; Je postule → Envoyer ma candidature ; Décrire mon besoin ou Être informé → Envoyer ma demande. */
+  const send = kind === 'employer' || o?.soon ? 'Envoyer ma demande' : o ? 'Envoyer ma candidature' : 'Envoyer mon dossier';
   return `<div class="review" data-review="${kind}"><h2 tabindex="-1">${dot('Vérifiez avant d’envoyer.')}</h2><p class="review-lead">Tout est juste ? Envoyez. Sinon, touchez « Modifier » à côté de la partie à corriger.</p>${blocks}
-    <div class="review-actions"><button type="button" class="btn btn-coral btn-full" data-send="${kind}">${send}${icon('arrow')}</button><button type="button" class="reset-link" data-edit="">${icon('back')}Revenir au formulaire</button></div></div>`;
+    <div class="review-actions"><button type="button" class="btn btn-coral btn-full" data-send="${kind}">${send}${icon('arrow')}</button><button type="button" class="reset-link" data-edit="last">${icon('back')}Revenir au formulaire</button></div></div>`;
 }
+/* Confirmation : c’est envoyé, ce qui se passe ensuite, et rien d’autre à faire. */
 function success(kind) {
-  const s = state[kind], v = s.values, o = kind === 'contact' ? null : offers.find(x => x.id === offerId);
-  const heading = kind === 'contact' ? 'Votre message est prêt.' : kind === 'employer' ? 'Votre demande est prête.' : 'Votre candidature est prête.';
-  const next = kind === 'employer' ? [['Rapidement','Un interlocuteur vous rappelle pour préciser le besoin et les créneaux.'],['Ensuite','Vous recevez des profils vérifiés.'],['Enfin','Nous organisons la rencontre.']] : kind === 'contact' ? [['Sous 24 h ouvrées','Notre équipe vous répond par email.']] : [['Sous 48 h','Votre conseiller vous rappelle.'],['Ensemble','Vous complétez le dossier administratif.'],['Ensuite','Vous recevez des offres compatibles.']];
-  const reach = kind === 'employer' ? `au ${PHONE} ou à ${MAIL_ETAB}` : `au ${PHONE}`, what = kind === 'employer' ? 'demande' : kind === 'contact' ? 'message' : 'dossier';
+  const s = state[kind], v = s.values, o = kind === 'contact' ? null : offers.find(x => x.id === offerId), call = phoneText(v.phone, v.phoneCode);
+  const heading = kind === 'contact' ? 'Votre message est envoyé.' : kind === 'employer' || o?.soon ? 'Votre demande est envoyée.' : o ? 'Votre candidature est envoyée.' : 'Votre dossier est envoyé.';
+  const lead = kind === 'contact' ? 'Notre équipe vous répond par email sous 24 h ouvrées.' : kind === 'employer' ? (call ? `Un conseiller vous rappelle sous 24 h ouvrées au ${esc(call)}.` : `Un conseiller vous répond par email sous 24 h ouvrées, à ${esc(v.email || 'votre adresse')}.`) : `${o?.soon ? 'Nous vous prévenons dès que cette offre ouvre. ' : ''}Votre conseiller vous appelle sous 48 h${call ? ` au ${esc(call)}` : ''}.`;
+  const next = kind === 'employer' ? [['Sous 24 h ouvrées', `Un conseiller vous ${call ? 'rappelle' : 'écrit'} pour préciser le besoin et les dates.`],['Ensuite','Vous recevez des profils vérifiés.'],['Enfin','Nous organisons la rencontre.']] : kind === 'contact' ? [] : [['Sous 48 h','Votre conseiller vous appelle.'],['Ensemble','Vous complétez votre dossier : pièces et démarches.'],['Ensuite','Vous recevez des offres qui vous correspondent.']];
+  const what = kind === 'employer' || o?.soon ? 'demande' : kind === 'contact' ? 'message' : o ? 'candidature' : 'dossier';
+  const docsLater = kind === 'candidate' && !v.cvName ? `<p class="success-later">${icon('file')}<span>Votre CV n’est pas encore joint : envoyez-le quand vous voulez, <a class="text-link" href="${waLink()}" target="_blank" rel="noopener">par WhatsApp</a> ou <a class="text-link" href="mailto:${MAIL}">par email</a>. Votre conseiller le rattache à votre ${what}.</span></p>` : '';
   return `<div class="success-state"><div class="success-symbol"><svg viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="24"/><path d="m15 27 7 7 15-16"/></svg></div><h2 tabindex="-1">${dot(heading)}</h2>
-    ${s.ref ? `<div class="success-ref">${icon('file')}<p>Votre référence : <strong>${s.ref}</strong><small>Gardez-la : elle permet de retrouver votre ${what} en un instant.</small></p><button type="button" class="reset-link" data-copy="${s.ref}">${icon('link')}Copier</button></div>` : ''}
-    <ol class="mini-steps">${next.map(([a,b], k) => `<li style="--k:${k}"><strong>${a}</strong>${b}</li>`).join('')}</ol>
+    <p class="success-lead"><strong>${lead}</strong> Vous n’avez rien d’autre à faire.</p>${docsLater}
+    ${s.ref ? `<div class="success-ref">${icon('file')}<p>Votre référence : <strong>${s.ref}</strong><small>Notez-la : elle figure aussi dans l’email de confirmation.</small></p><button type="button" class="reset-link" data-copy="${s.ref}">${icon('link')}Copier</button></div>` : ''}
+    ${next.length ? `<ol class="mini-steps">${next.map(([a,b], k) => `<li style="--k:${k}"><strong>${a}</strong>${b}</li>`).join('')}</ol>` : ''}
     ${kind !== 'contact' ? `<details class="sent-recap"><summary>Revoir ce que vous avez envoyé ${icon('plus')}</summary><div class="details-body">${review(kind, o, {readonly: true})}</div></details>` : ''}
-    <div class="notice">${icon('shield')}<p><strong>Simulation terminée.</strong> Aucune donnée n’a été envoyée. En service réel, un email de confirmation avec ce récapitulatif part à ${v.email ? `<strong>${esc(v.email)}</strong>` : 'votre adresse'}. Pour une demande réelle, contactez Laska Corporate ${reach}.</p></div>
-    <div class="actions">${kind !== 'contact' ? `<button type="button" class="btn btn-outline" data-print>${icon('print')}Imprimer ou enregistrer en PDF</button>` : ''}${btn('Retour à l’accueil','#/','primary','')}<button class="reset-link" type="button" data-restart="${kind}">Recommencer la simulation</button></div></div>`;
+    ${sampleNote(`Maquette : rien n’est réellement envoyé. En service réel, un email de confirmation part à ${v.email ? esc(v.email) : 'votre adresse'}.`)}
+    <div class="actions">${kind !== 'contact' ? `<button type="button" class="btn btn-outline" data-print>${icon('print')}Imprimer ou enregistrer en PDF</button>` : ''}${btn('Retour à l’accueil','#/','primary','')}${MAQUETTE ? `<button class="reset-link" type="button" data-restart="${kind}">Recommencer la simulation</button>` : ''}</div></div>`;
 }
 /* Après un changement d’écran dans la carte du formulaire : remonter en haut de la carte, focus sur le titre. */
 function focusCard(sel) {
-  const card = $('.form-card'); if (card) window.scrollTo({top: Math.max(0, card.getBoundingClientRect().top + scrollY - 100), behavior: 'instant'});
+  /* On ne fait défiler que si le haut de la carte est caché ou trop bas (téléphone : l’en-tête de la page est au-dessus). */
+  const card = $('.form-card'), top = card?.getBoundingClientRect().top;
+  if (card && (top < 80 || top > innerHeight * .35)) window.scrollTo({top: Math.max(0, top + scrollY - 88), behavior: 'instant'});
   $(sel)?.focus({preventScroll: true});
 }
 /* « Modifier » : retour au formulaire, à la bonne partie. */
@@ -1101,42 +1114,82 @@ function goToField(id) {
   window.scrollTo({top: Math.max(0, t.getBoundingClientRect().top + scrollY - 140), behavior: 'instant'});
   (t.matches('input, select, textarea, button') ? t : t.querySelector('input:not([type=hidden]):not(.sr-only), button, select, textarea'))?.focus({preventScroll: true});
 }
+/* ───────────── Formulaires en étapes (v8) ─────────────
+   Une étape par écran : « Étape 2 sur 5 », une barre d’avancement, Continuer et Retour. L’étape est dans l’adresse
+   (?etape=2, puis ?etape=recap) : le bouton Retour du téléphone fonctionne. Toutes les étapes sont dans la page mais
+   seule l’étape en cours est visible ; validate() ignore les champs masqués, il ne vérifie donc que cette étape.
+   Avant le récapitulatif, toutes les étapes sont revérifiées : la première incomplète s’affiche, avec ses erreurs. */
+const formStages = kind => kind === 'employer' ? employerStages(state.employer) : candidateStages(state.candidate, offers.find(x => x.id === offerId));
+const stepHash = (kind, step) => `#${kind === 'employer' ? '/besoin' : `/postuler${offerId ? '/' + offerId : ''}`}${step === 1 ? '' : `?etape=${step}`}`;
+let stepAfter = null; /* après un changement d’étape : champ à atteindre (focus) ou erreurs à montrer (errors) */
+function goStep(kind, step, {replace = false, focus = '', errors = false} = {}) {
+  stepAfter = {focus, errors};
+  const hash = stepHash(kind, step), from = Number($('#application-form')?.dataset.step) || 0;
+  if (replace || hash === location.hash) history.replaceState(history.state, '', hash);
+  else history.pushState({wizard: kind, prev: from}, '', hash);
+  navigate();
+}
+/* Étape demandée par l’adresse. Le récapitulatif n’est montré que si toutes les étapes ont été vérifiées. */
+function currentStep(kind, total) {
+  const e = new URLSearchParams(query).get('etape');
+  if (e === 'recap') return state[kind].values.wizardReady ? 'recap' : total;
+  return Math.min(Math.max(1, parseInt(e, 10) || 1), total);
+}
+/* Saisie retrouvée après un rechargement : dit sur place (plus de message éphémère), avec « Tout effacer ». */
+const draftNote = kind => restored[kind] ? `<div class="draft-note" role="status">${icon('clock')}<p>Nous avons gardé ce que vous aviez commencé à remplir.</p><button type="button" class="reset-link" data-draft-clear="${kind}">Tout effacer</button><button type="button" class="draft-close" data-draft-keep="${kind}" aria-label="Fermer ce message">${icon('close')}</button></div>` : '';
+function wizard(kind, stages, n, o) {
+  const s = state[kind], st = stages[n - 1], total = stages.length, seen = !!s.values.wizardSeen;
+  const next = seen ? 'Revenir au récapitulatif' : n === total ? 'Vérifier avant d’envoyer' : 'Continuer';
+  return `${draftNote(kind)}
+    ${o && n === 1 ? `<div class="application-offer"><span class="row-num" aria-hidden="true">${o.num}</span><p><strong>${o.specialty}</strong>${o.place} · ${slotRange(o)}</p><a class="text-link" href="#/offre/${o.id}">Voir l’offre</a></div>` : ''}
+    <div class="wizard-head"><p class="wizard-count">Étape ${n} sur ${total}${st.optional ? ' · facultative' : ''}</p><h2 id="form-title" tabindex="-1">${st.title}</h2>
+      <div class="wizard-bar" role="progressbar" aria-label="Avancement" aria-valuemin="1" aria-valuemax="${total}" aria-valuenow="${n}" aria-valuetext="Étape ${n} sur ${total}"><span style="--p:${Math.round(n / total * 100)}%"></span></div>
+      ${st.lead ? `<p class="wizard-lead">${st.lead}</p>` : `<p class="muted small"><span class="req">*</span> obligatoire</p>`}</div>
+    <form id="application-form" novalidate data-kind="${kind}" data-step="${n}" data-steps="${total}" aria-labelledby="form-title"><div id="form-errors"></div>
+      ${stages.map((x, i) => `<section class="form-stage" data-stage="${i + 1}" ${i + 1 === n ? '' : 'hidden'}><div class="form-grid">${x.html}</div></section>`).join('')}
+      ${n === 1 ? consentField() : ''}
+      <div class="form-actions wizard-actions">${n > 1 ? `<button type="button" class="btn btn-outline wizard-back" data-step-back>${icon('back')}Retour</button>` : ''}${st.optional && !seen ? '<button type="button" class="reset-link wizard-skip" data-step-skip>Passer cette étape</button>' : ''}<button type="submit" class="btn btn-primary wizard-next">${next}${icon('arrow')}</button></div>
+    </form>`;
+}
+/* Une étape est-elle complète ? On la rend visible le temps de la vérifier, sans rien afficher. */
+function stageIssues(form, k) {
+  const stages = $$('.form-stage', form), was = stages.map(x => x.hidden);
+  stages.forEach((x, i) => x.hidden = i !== k - 1);
+  const n = findIssues(form).length;
+  stages.forEach((x, i) => x.hidden = was[i]);
+  return n;
+}
 function application(employer = false) {
   const kind = employer ? 'employer' : 'candidate', s = state[kind], o = offers.find(x => x.id === offerId);
   s.values.offerId = o?.id || '';
-  const crumbs = employer ? [['Établissements','#/etablissements'],['Mon besoin']] : o ? [['Offres','#/offres' + filterQuery()],[o.specialty, `#/offre/${o.id}`],['Je postule']] : [['Praticiens','#/praticiens'],['Mon dossier']];
+  const stages = formStages(kind), step = currentStep(kind, stages.length);
+  const crumbs = employer ? [['Établissements','#/etablissements'],['Décrire mon besoin']] : o ? [['Offres d’emploi','#/offres' + filterQuery()],[o.specialty, `#/offre/${o.id}`],[o.soon ? 'Être informé' : 'Je postule']] : [['Praticiens','#/praticiens'],['Créer mon dossier']];
   const title = employer ? 'Trouvons votre renfort.' : o ? 'Cette offre vous intéresse ?' : 'Démarrons votre dossier.';
-  /* Arrivé ici depuis l’autre espace : on le dit clairement, avec le bon formulaire en un clic. */
-  const other = employer ? 'pro' : 'etab', otherHref = employer ? '#/postuler' : '#/besoin';
-  const wrongWay = switchNote?.route === route && switchNote.from === other
-    ? `<div class="wrong-banner" role="status">${icon('swap')}<div><strong>Vous étiez dans l’espace ${spaceName(other)}.</strong><p>${employer ? 'Ce formulaire sert aux établissements qui cherchent du renfort.' : 'Ce formulaire sert aux praticiens qui créent leur dossier.'}</p><div class="topic-fixes"><a class="btn btn-primary" href="${otherHref}" data-pick="${other}">${employer ? 'Je suis praticien : créer mon dossier' : 'Je recrute : décrire mon besoin'}</a><button type="button" class="reset-link" data-keep-form>${employer ? 'Oui, je recrute' : 'Oui, je suis praticien'}</button></div></div></div>`
-    : `<p class="form-switch">${icon('swap')}<span>${employer ? 'Vous êtes praticien ?' : 'Vous recrutez pour un établissement ?'} <a href="${otherHref}" data-pick="${other}">${employer ? 'Créer mon dossier' : 'Décrire mon besoin'}</a></span></p>`;
-  const submit = employer ? 'Demander du renfort' : o && o.soon ? 'Être informé' : o ? 'Envoyer ma candidature' : 'Être recontacté';
+  /* Mauvais formulaire ? Le renvoi vers l’autre reste dans la colonne de gauche, hors de la carte à remplir. */
+  const otherWay = `<div class="form-help form-other"><span>${employer ? 'Vous êtes praticien ?' : 'Vous recrutez ?'}</span><a class="text-link" href="${employer ? '#/postuler' : '#/besoin'}">${icon('swap')}${employer ? 'Créer mon dossier' : 'Décrire mon besoin'}</a></div>`;
+  /* Aides : à gauche sur ordinateur, sous la carte sur téléphone (form-after). */
+  const helps = `<div class="form-help"><span>Vous préférez appeler ?</span><a class="text-link" href="${TEL}">${icon('phone')}${PHONE}</a></div>${employer ? `<div class="form-help"><span>Ou écrire :</span><a class="text-link" href="mailto:${MAIL_ETAB}">${icon('mail')}${MAIL_ETAB}</a></div>` : ''}${o ? '' : otherWay}`;
+  const lead = employer ? 'Trois étapes courtes, puis vous relisez tout avant d’envoyer. Un conseiller vous rappelle sous 24 h ouvrées.' : `${stages.length === 5 ? 'Cinq' : stages.length} étapes courtes, puis vous relisez tout avant d’envoyer. Votre conseiller complète le dossier avec vous.`;
   return `<div class="container">${breadcrumb(crumbs)}</div><section class="form-page"><div class="container form-layout">
-    <aside class="form-intro"><h1>${dot(title)}</h1><p class="lead">${employer ? 'Vos spécialités et vos dates, puis vos coordonnées. Vous relisez tout avant d’envoyer.' : 'Cinq étapes courtes, puis vous relisez tout avant d’envoyer. Votre conseiller complète le dossier avec vous.'}</p>
+    <aside class="form-intro"><h1>${dot(title)}</h1><p class="lead">${lead}</p>
       <figure class="form-photo"><img src="assets/${employer ? 'equipe.jpg' : 'consultation.jpg'}" alt="" width="1100" height="733" loading="lazy"><figcaption>${icon(employer ? 'shield' : 'clock')}<span><strong>${employer ? 'Des profils vérifiés' : 'Un retour sous 48 h'}</strong>${employer ? 'Intérim, vacation, CDI, CDD' : 'Gratuit et sans engagement'}</span></figcaption></figure>
-      <div class="form-help"><span>Vous préférez appeler ?</span><a class="text-link" href="${TEL}">${icon('phone')}${PHONE}</a></div>
-      ${employer ? `<div class="form-help"><span>Ou écrire :</span><a class="text-link" href="mailto:${MAIL_ETAB}" data-mail-for="etab">${icon('mail')}${MAIL_ETAB}</a></div>` : ''}</aside>
-    <div class="form-card">${s.success ? success(kind) : s.review ? review(kind, o) : `
-      ${wrongWay}
-      ${o ? `<div class="application-offer"><span class="row-num" aria-hidden="true">${o.num}</span><p><strong>${o.specialty}</strong>${o.dept} (${o.num}) · ${slotRange(o)}</p><a class="text-link" href="#/offre/${o.id}">Voir l’offre</a></div>` : ''}
-      <div class="form-head"><div><h2 id="form-title">${employer ? 'Votre demande' : 'Vos informations'}</h2><p class="muted small"><span class="req">*</span> Champs obligatoires</p></div>${progressRing()}</div>
-      <form id="application-form" novalidate data-kind="${kind}" aria-labelledby="form-title"><div id="form-errors"></div>${employer ? employerFields(s) : candidateFields(s, o)}
-      <div class="form-actions"><button type="submit" class="btn btn-primary btn-full">${submit}${icon('arrow')}</button></div></form>`}</div>
+      ${helps}</aside>
+    <div class="form-card">${s.success ? success(kind) : step === 'recap' ? review(kind, o) : wizard(kind, stages, step, o)}</div>
+    <div class="form-after">${helps}</div>
   </div></section>`;
 }
 /* Deux adresses : les établissements écrivent au service des affaires médicales. */
-const mailChannel = (who, on) => `<a class="channel ${on ? 'is-match' : ''}" href="mailto:${who === 'etab' ? MAIL_ETAB : MAIL}" data-mail="${who}" data-mail-for="${who}">${icon('mail')}<span><small>${who === 'etab' ? 'Établissements' : 'Praticiens et autres demandes'}</small><strong>${who === 'etab' ? MAIL_ETAB : MAIL}</strong></span></a>`;
+const mailChannel = (who, on) => `<a class="channel ${on ? 'is-match' : ''}" href="mailto:${who === 'etab' ? MAIL_ETAB : MAIL}" data-mail="${who}">${icon('mail')}<span><small>${who === 'etab' ? 'Établissements' : 'Praticiens et autres demandes'}</small><strong>${who === 'etab' ? MAIL_ETAB : MAIL}</strong></span></a>`;
 function contact() {
   const v = state.contact.values, f = (n, l, o = {}) => field(n, l, {...o, value: v[n] || ''});
   const o = offers.find(x => x.id === new URLSearchParams(query).get('offre'));
   if ((v.offerId || '') !== (o?.id || '')) state.contact.success = false;
   v.offerId = o?.id || '';
-  if (!v.topicTouched) v.topic = o || audience === 'pro' ? 'Je suis praticien' : audience === 'etab' ? 'Je recrute' : '';
+  if (!v.topicTouched) v.topic = o ? 'Je suis praticien' : '';
   const etab = v.topic === 'Je recrute';
   return `<section class="page-heading"><div class="container">${breadcrumb([['Contact']])}<h1>${dot('On se parle ?')}</h1><p class="lead">Notre équipe vous répond sous 24 h ouvrées.</p></div></section>
-  <div class="container contact-layout"><div class="form-card">${state.contact.success ? success('contact') : `<div class="form-head"><div><h2 id="form-title">Votre message</h2><p class="muted small"><span class="req">*</span> Champs obligatoires</p></div>${progressRing()}</div>
-    ${o ? `<div class="application-offer"><span class="row-num" aria-hidden="true">${o.num}</span><p>À propos de <strong>${o.specialty}</strong>${o.dept} · Réf. ${o.ref}</p></div>` : ''}
+  <div class="container contact-layout"><div class="form-card">${state.contact.success ? success('contact') : `${draftNote('contact')}<div class="form-head"><div><h2 id="form-title">Votre message</h2><p class="muted small"><span class="req">*</span> Champs obligatoires</p></div>${progressRing()}</div>
+    ${o ? `<div class="application-offer"><span class="row-num" aria-hidden="true">${o.num}</span><p>À propos de <strong>${o.specialty}</strong>${o.place} · Réf. ${o.ref}</p></div>` : ''}
     <form id="contact-form" novalidate data-kind="contact" aria-labelledby="form-title"><div id="form-errors"></div><div class="form-grid">${pills('topic','Votre demande concerne',['Je suis praticien','Je recrute','Autre sujet'],v.topic)}<div class="topic-check" id="topic-check" role="status"></div>${f('contactName','Votre nom',{autocomplete:'name',full:true})}${f('email','Email',{type:'email',autocomplete:'email',full:true})}${f('message','Comment pouvons-nous vous aider ?',{type:'textarea',full:true,placeholder:'Votre question ou votre besoin…',help:'10 caractères minimum.'})}</div>${consentField()}
     <div class="form-actions"><button type="submit" class="btn btn-primary btn-full">Envoyer mon message${icon('arrow')}</button></div></form>`}</div>
   <aside class="contact-channels"><a class="channel channel-dark" href="${TEL}">${icon('phone')}<span><small>Plutôt par téléphone ?</small><strong>${PHONE}</strong>Lundi – vendredi, 9 h – 18 h</span></a><button type="button" class="channel channel-call" data-callback>${icon('phone')}<span><small>Être rappelé</small><strong>Laissez votre numéro</strong>Nous vous appelons au moment choisi</span></button><a class="channel" href="${waLink()}" target="_blank" rel="noopener">${icon('chat')}<span><small>WhatsApp</small><strong>Écrire sur WhatsApp</strong>Pratique depuis l’étranger</span></a>${etab ? mailChannel('etab', true) + mailChannel('pro', false) : mailChannel('pro', !!v.topic) + mailChannel('etab', false)}<div class="channel">${icon('pin')}<span><small>Notre adresse</small><strong>6 rue d’Armaillé</strong>75017 Paris</span></div></aside></div>`;
@@ -1145,7 +1198,7 @@ function notFound() {
   return `<section class="not-found container"><p class="nf-num" aria-hidden="true">404</p><h1>${dot('Retrouvons votre chemin.')}</h1><p class="lead">Cette page n’existe pas ou plus.</p><div class="actions">${btn('Retour à l’accueil','#/')}${btn('Voir les offres','#/offres','outline')}</div></section>`;
 }
 
-function legal(){return `<section class="page-heading"><div class="container">${breadcrumb([['Informations légales']])}<h1>Des informations en toute transparence<span class="dot">.</span></h1><p class="lead">Mentions légales et protection de vos données.</p></div></section><div class="container legal-layout"><nav class="legal-nav" aria-label="Sommaire des informations légales"><strong>Sur cette page</strong><a href="#/mentions-legales?section=editeur">L’éditeur du site</a><a href="#/mentions-legales?section=confidentialite">Vos données personnelles</a><a href="#/mentions-legales?section=droits">Vos droits</a><a href="#/mentions-legales?section=cookies">Cookies et traceurs</a></nav><article class="legal-copy"><h2 id="editeur">Mentions légales</h2><h3>L’éditeur</h3><dl class="legal-facts"><div><dt>Raison sociale</dt><dd>LASKA CORPORATE, société par actions simplifiée (SAS)</dd></div><div><dt>Capital social</dt><dd>${todo('montant du capital social')}</dd></div><div><dt>Immatriculation</dt><dd>RCS de Paris, SIREN 983 374 398</dd></div><div><dt>TVA intracommunautaire</dt><dd>FR29 983 374 398 <small>(calculé à partir du SIREN, à confirmer)</small></dd></div><div><dt>Siège social</dt><dd>6 rue d’Armaillé, 75017 Paris</dd></div><div><dt>Téléphone</dt><dd><a href="tel:+33184803696">+33 1 84 80 36 96</a></dd></div><div><dt>Email</dt><dd><a href="mailto:contact@laskacorp.com">contact@laskacorp.com</a> · établissements : <a href="mailto:${MAIL_ETAB}">${MAIL_ETAB}</a></dd></div></dl><h3>Directeur de la publication</h3><p>Mohamed Amine Hachicha, Président de LASKA CORPORATE.</p><h3>Hébergement</h3><dl class="legal-facts"><div><dt>Site</dt><dd>Vercel Inc., 440 N Barranca Avenue #4133, Covina, CA 91723, États-Unis <small>(hébergeur du site actuel, à confirmer pour la version publiée)</small></dd></div><div><dt>Données des formulaires</dt><dd>Supabase, région Union européenne (Francfort, Allemagne) <small>(annoncé sur le site actuel, à confirmer)</small></dd></div></dl><h3>Crédits</h3><p>Logo : LASKA CORPORATE. Polices : Manrope et DM Sans (licence SIL Open Font). Photographies d’illustration : Unsplash, elles ne représentent pas l’équipe Laska Corporate.</p><h3>Accessibilité</h3><p>Ce site vise le niveau AA des règles d’accessibilité (RGAA). Une difficulté pour utiliser une page ? Écrivez à <a href="mailto:contact@laskacorp.com">contact@laskacorp.com</a> ou appelez le <a href="tel:+33184803696">01 84 80 36 96</a> : nous vous apportons l’information autrement.</p><h3>Propriété intellectuelle</h3><p>Les textes, graphismes, logo et éléments du site appartiennent à LASKA CORPORATE ou à leurs ayants droit. Les photographies d’illustration de cette maquette proviennent d’Unsplash et ne représentent pas l’équipe Laska Corporate.</p><h2 id="confidentialite">Vos données personnelles</h2><p>Les informations ci-dessous reprennent les principes annoncés sur le site Laska Corporate. Les formulaires de cette maquette fonctionnent uniquement en simulation : aucun envoi, stockage sur serveur ou dépôt de fichier n’est effectué.</p><h3>Qui est responsable ?</h3><p>LASKA CORPORATE, 6 rue d’Armaillé, 75017 Paris. Pour toute question : <a href="mailto:contact@laskacorp.com">contact@laskacorp.com</a>.</p><h3>Le dossier praticien</h3><p>Les coordonnées, la spécialité, le pays du diplôme, la résidence, la situation auprès de l’Ordre, la disponibilité, le CV et la référence éventuelle d’une offre permettent d’étudier le profil et d’organiser l’accompagnement sollicité. Dans cette maquette, le dossier demande les coordonnées (téléphone avec l’indicatif du pays), le lieu de vie, les spécialités, le pays du diplôme, la situation (EVC, autorisation d’exercice, diplôme français ou européen, avec la date et, selon le cas, une copie de l’autorisation ou du diplôme ; en option, une preuve de réussite aux EVC ou l’attestation RPPS), le CV et les disponibilités ; les souhaits (régions, contrats, langues) sont facultatifs.</p><p>Base annoncée : mesures précontractuelles prises à votre demande. Durée de conservation annoncée : 2 ans à compter du dernier échange, sauf poursuite active du dossier.</p><h3>La demande d’un établissement</h3><p>Les informations sur l’établissement, son contact et le besoin de recrutement servent à répondre à la demande de renfort. Base annoncée : intérêt légitime. Durée de conservation annoncée : 3 ans à compter du dernier échange.</p><h3>Les avis des praticiens</h3><p>Le formulaire d’avis recueille vos nom et prénom, votre spécialité, votre pays d’exercice, votre note et votre texte. Votre avis n’est publié qu’après relecture par notre équipe, et seulement avec votre prénom, l’initiale de votre nom, votre spécialité et votre pays ; il peut être repris comme témoignage sur la page d’accueil. Base : votre consentement, donné en cochant la case du formulaire. Vous pouvez le retirer à tout moment en écrivant à <a href="mailto:contact@laskacorp.com">contact@laskacorp.com</a> : votre avis est alors retiré du site. Durée de conservation : ${todo('durée de conservation des avis')}</p><h3>Le formulaire de contact</h3><p>Les coordonnées, le sujet et le message servent à traiter la demande. Base annoncée : intérêt légitime. Durée de conservation annoncée : 12 mois, sauf poursuite dans le cadre d’un dossier.</p><h3>Accès et hébergement</h3><p>Le site actuel indique un accès limité aux personnes habilitées chez Laska Corporate et un hébergement des données collectées via Supabase dans l’Union européenne, à Francfort. L’hébergement réel devra être confirmé pour la version publiée.</p><h2 id="droits">Vos droits</h2><p>Vous pouvez demander l’accès, la rectification, l’effacement, la limitation, l’opposition ou la portabilité de vos données en écrivant à <a href="mailto:contact@laskacorp.com">contact@laskacorp.com</a>. Le site annonce une réponse sous un mois. Vous pouvez également adresser une réclamation à la <a href="https://www.cnil.fr/" target="_blank" rel="noopener">CNIL</a>.</p><h2 id="cookies">Cookies et traceurs</h2><p>Cette maquette n’utilise aucun outil d’analyse ni cookie publicitaire. Elle mémorise uniquement votre espace (praticien ou établissement) dans votre navigateur, pour adapter l’affichage. Les informations saisies dans les formulaires sont gardées dans cet onglet du navigateur (stockage de session) pour ne pas être perdues en cas de rechargement ; elles disparaissent quand vous fermez l’onglet. Les fichiers ne sont jamais gardés.</p><p class="small">Contenu proposé pour la maquette, à faire valider avant publication.</p></article></div>`;}
+function legal(){return `<section class="page-heading"><div class="container">${breadcrumb([['Informations légales']])}<h1>Des informations en toute transparence<span class="dot">.</span></h1><p class="lead">Mentions légales et protection de vos données.</p></div></section><div class="container legal-layout"><nav class="legal-nav" aria-label="Sommaire des informations légales"><strong>Sur cette page</strong><a href="#/mentions-legales?section=editeur">L’éditeur du site</a><a href="#/mentions-legales?section=confidentialite">Vos données personnelles</a><a href="#/mentions-legales?section=droits">Vos droits</a><a href="#/mentions-legales?section=cookies">Cookies et traceurs</a></nav><article class="legal-copy"><h2 id="editeur">Mentions légales</h2><h3>L’éditeur</h3><dl class="legal-facts"><div><dt>Raison sociale</dt><dd>LASKA CORPORATE, société par actions simplifiée (SAS)</dd></div><div><dt>Capital social</dt><dd>${todo('montant du capital social')}</dd></div><div><dt>Immatriculation</dt><dd>RCS de Paris, SIREN 983 374 398</dd></div><div><dt>TVA intracommunautaire</dt><dd>FR29 983 374 398 <small>(calculé à partir du SIREN, à confirmer)</small></dd></div><div><dt>Siège social</dt><dd>6 rue d’Armaillé, 75017 Paris</dd></div><div><dt>Téléphone</dt><dd><a href="tel:+33184803696">+33 1 84 80 36 96</a></dd></div><div><dt>Email</dt><dd><a href="mailto:contact@laskacorp.com">contact@laskacorp.com</a> · établissements : <a href="mailto:${MAIL_ETAB}">${MAIL_ETAB}</a></dd></div></dl><h3>Directeur de la publication</h3><p>Mohamed Amine Hachicha, Président de LASKA CORPORATE.</p><h3>Hébergement</h3><dl class="legal-facts"><div><dt>Site</dt><dd>Vercel Inc., 440 N Barranca Avenue #4133, Covina, CA 91723, États-Unis <small>(hébergeur du site actuel, à confirmer pour la version publiée)</small></dd></div><div><dt>Données des formulaires</dt><dd>Supabase, région Union européenne (Francfort, Allemagne) <small>(annoncé sur le site actuel, à confirmer)</small></dd></div></dl><h3>Crédits</h3><p>Logo : LASKA CORPORATE. Polices : Manrope et DM Sans (licence SIL Open Font). Photographies d’illustration : Unsplash, elles ne représentent pas l’équipe Laska Corporate.</p><h3>Accessibilité</h3><p>Ce site vise le niveau AA des règles d’accessibilité (RGAA). Une difficulté pour utiliser une page ? Écrivez à <a href="mailto:contact@laskacorp.com">contact@laskacorp.com</a> ou appelez le <a href="tel:+33184803696">01 84 80 36 96</a> : nous vous apportons l’information autrement.</p><h3>Propriété intellectuelle</h3><p>Les textes, graphismes, logo et éléments du site appartiennent à LASKA CORPORATE ou à leurs ayants droit. Les photographies d’illustration de cette maquette proviennent d’Unsplash et ne représentent pas l’équipe Laska Corporate.</p><h2 id="confidentialite">Vos données personnelles</h2><p>Les informations ci-dessous reprennent les principes annoncés sur le site Laska Corporate. Les formulaires de cette maquette fonctionnent uniquement en simulation : aucun envoi, stockage sur serveur ou dépôt de fichier n’est effectué.</p><h3>Qui est responsable ?</h3><p>LASKA CORPORATE, 6 rue d’Armaillé, 75017 Paris. Pour toute question : <a href="mailto:contact@laskacorp.com">contact@laskacorp.com</a>.</p><h3>Le dossier praticien</h3><p>Ces informations servent à étudier votre profil et à vous accompagner. Quand vous postulez à une offre, sa référence est gardée avec votre dossier.</p><p>Le dossier demande :</p><ul class="legal-list"><li>vos coordonnées, avec votre téléphone et l’indicatif de votre pays ;</li><li>votre lieu de vie ;</li><li>vos spécialités et le pays de votre diplôme ;</li><li>votre situation (EVC, autorisation d’exercice, ou diplôme français ou européen) et sa date ;</li><li>vos disponibilités.</li></ul><p>Le reste est facultatif au premier contact : le CV, la copie de l’autorisation ou du diplôme, la preuve de réussite aux EVC, l’attestation RPPS et vos souhaits (régions, contrats, langues). Vous pouvez les envoyer plus tard.</p><p>Base annoncée : mesures précontractuelles prises à votre demande. Durée de conservation annoncée : 2 ans à compter du dernier échange, sauf poursuite active du dossier.</p><h3>La demande d’un établissement</h3><p>Les informations sur l’établissement, son contact et le besoin de recrutement servent à répondre à la demande de renfort. Base annoncée : intérêt légitime. Durée de conservation annoncée : 3 ans à compter du dernier échange.</p><h3>Les avis des praticiens</h3><p>Le formulaire d’avis recueille vos nom et prénom, votre spécialité, votre pays d’exercice, votre note et votre texte. Votre avis n’est publié qu’après relecture par notre équipe, et seulement avec votre prénom, l’initiale de votre nom, votre spécialité et votre pays ; il peut être repris comme témoignage sur la page d’accueil. Base : votre consentement, donné en cochant la case du formulaire. Vous pouvez le retirer à tout moment en écrivant à <a href="mailto:contact@laskacorp.com">contact@laskacorp.com</a> : votre avis est alors retiré du site. Durée de conservation : ${todo('durée de conservation des avis')}</p><h3>Le formulaire de contact</h3><p>Les coordonnées, le sujet et le message servent à traiter la demande. Base annoncée : intérêt légitime. Durée de conservation annoncée : 12 mois, sauf poursuite dans le cadre d’un dossier.</p><h3>Accès et hébergement</h3><p>Le site actuel indique un accès limité aux personnes habilitées chez Laska Corporate et un hébergement des données collectées via Supabase dans l’Union européenne, à Francfort. L’hébergement réel devra être confirmé pour la version publiée.</p><h2 id="droits">Vos droits</h2><p>Vous pouvez demander l’accès, la rectification, l’effacement, la limitation, l’opposition ou la portabilité de vos données en écrivant à <a href="mailto:contact@laskacorp.com">contact@laskacorp.com</a>. Le site annonce une réponse sous un mois. Vous pouvez également adresser une réclamation à la <a href="https://www.cnil.fr/" target="_blank" rel="noopener">CNIL</a>.</p><h2 id="cookies">Cookies et traceurs</h2><p>Cette maquette n’utilise aucun outil d’analyse ni cookie publicitaire. Elle garde seulement dans votre navigateur les offres que vous mettez de côté et, pour la démonstration, les avis saisis et l’Espace candidat. Les informations saisies dans les formulaires sont gardées dans cet onglet du navigateur (stockage de session) pour ne pas être perdues en cas de rechargement ; elles disparaissent quand vous fermez l’onglet. Les fichiers ne sont jamais gardés.</p><p class="small">Contenu proposé pour la maquette, à faire valider avant publication.</p></article></div>`;}
 
 /* ───────────── Validation et formulaires ───────────── */
 function normalized(s) { return String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[’']/g, ''); }
@@ -1182,11 +1235,9 @@ function updateProgress(form) {
   text.innerHTML = done === groups.length ? `${icon('check')}<span>Prêt</span>` : `<strong>${done}/${groups.length}</strong><span>obligatoires</span>`;
   ring.closest('.progress').classList.toggle('is-done', done === groups.length);
 }
-function validate(form) {
-  form.querySelectorAll('.error-text').forEach(e => e.remove());
-  form.querySelectorAll('[aria-invalid]').forEach(e => { e.removeAttribute('aria-invalid'); const help = e.closest('.field')?.querySelector('small[id]'); help ? e.setAttribute('aria-describedby', help.id) : e.removeAttribute('aria-describedby'); });
-  form.querySelectorAll('.field.has-error').forEach(e => { e.classList.remove('has-error'); e.removeAttribute('aria-describedby'); });
-  $('#form-errors', form).innerHTML = ''; const issues = [], seen = new Set();
+/* Ce qui manque ou ne va pas dans les champs visibles du formulaire, sans rien afficher. */
+function findIssues(form) {
+  const issues = [], seen = new Set();
   for (const el of form.elements) {
     if (!el.name || el.type === 'submit' || el.type === 'button' || el.closest('[hidden]') || seen.has(el.name)) continue;
     let message = '';
@@ -1203,13 +1254,20 @@ function validate(form) {
     else if (el.type === 'tel' && el.value) message = phoneProblem(el.value, phoneCodeOf(el));
     else if (el.name === 'message' && el.value.trim().length < 10) message = 'Précisez votre demande en 10 caractères minimum.';
     else if (el.dataset.min && el.value.trim().length < Number(el.dataset.min)) message = el.dataset.minMsg || `Écrivez au moins ${el.dataset.min} caractères.`;
-    if (message) {
-      const target = group ? (wrap.querySelector('.multi-toggle') || wrap.querySelector('input')) : el.dataset.picker ? document.getElementById(el.dataset.picker) : el;
-      issues.push({target, label, message});
-      const error = document.createElement('p'); error.className = 'error-text'; error.id = el.name + '-error'; error.innerHTML = `${icon('close')}${message}`; wrap?.append(error);
-      if (group) { wrap.classList.add('has-error'); wrap.setAttribute('aria-describedby', error.id); }
-      else { el.setAttribute('aria-invalid', 'true'); el.setAttribute('aria-describedby', error.id); if (el.dataset.picker) document.getElementById(el.dataset.picker)?.setAttribute('aria-invalid', 'true'); }
-    }
+    if (message) issues.push({el, wrap, group, label, message, target: group ? (wrap.querySelector('.multi-toggle') || wrap.querySelector('input')) : el.dataset.picker ? document.getElementById(el.dataset.picker) : el});
+  }
+  return issues;
+}
+function validate(form) {
+  form.querySelectorAll('.error-text').forEach(e => e.remove());
+  form.querySelectorAll('[aria-invalid]').forEach(e => { e.removeAttribute('aria-invalid'); const help = e.closest('.field')?.querySelector('small[id]'); help ? e.setAttribute('aria-describedby', help.id) : e.removeAttribute('aria-describedby'); });
+  form.querySelectorAll('.field.has-error').forEach(e => { e.classList.remove('has-error'); e.removeAttribute('aria-describedby'); });
+  $('#form-errors', form).innerHTML = '';
+  const issues = findIssues(form);
+  for (const {el, wrap, group, message} of issues) {
+    const error = document.createElement('p'); error.className = 'error-text'; error.id = el.name + '-error'; error.innerHTML = `${icon('close')}${message}`; wrap?.append(error);
+    if (group) { wrap.classList.add('has-error'); wrap.setAttribute('aria-describedby', error.id); }
+    else { el.setAttribute('aria-invalid', 'true'); el.setAttribute('aria-describedby', error.id); if (el.dataset.picker) document.getElementById(el.dataset.picker)?.setAttribute('aria-invalid', 'true'); }
   }
   if (!issues.length) return true;
   issues.forEach((x, i) => { if (!x.target.id) x.target.id = `error-target-${i}`; });
@@ -1226,8 +1284,9 @@ const ruleOn = (form, rule) => {
 };
 function syncConditionals(form) {
   $$('[data-when]', form).forEach(block => block.hidden = !ruleOn(form, block.dataset.when));
-  $$('[data-cond-required]', form).forEach(i => i.required = !i.closest('[hidden]'));
-  $$('[data-required-when]', form).forEach(i => i.required = !i.closest('[hidden]') && ruleOn(form, i.dataset.requiredWhen));
+  /* Une étape masquée du formulaire ne compte pas : seuls les blocs conditionnels masqués rendent un champ facultatif. */
+  $$('[data-cond-required]', form).forEach(i => i.required = !i.closest('[hidden]:not(.form-stage)'));
+  $$('[data-required-when]', form).forEach(i => i.required = !i.closest('[hidden]:not(.form-stage)') && ruleOn(form, i.dataset.requiredWhen));
   $$('[data-req-rule]', form).forEach(b => b.classList.toggle('is-required', ruleOn(form, b.dataset.reqRule)));
 }
 /* Un champ corrigé perd son message d’erreur tout de suite, sans attendre un nouvel envoi. */
@@ -1249,11 +1308,11 @@ function bindFiles(form, s) {
     const set = (name, error) => { s.values[`${id}Name`] = name; s.values[`${id}Error`] = error; };
     const clean = () => { file.removeAttribute('aria-invalid'); field.querySelector('.error-text')?.remove(); const help = field.querySelector('small[id]'); if (help) file.setAttribute('aria-describedby', help.id); };
     file.addEventListener('change', () => {
-      const f = file.files[0]; if (!f) return;
-      const problem = fileProblem(f, exts), valid = !problem;
-      set(valid ? f.name : '', !valid); s.values[`${id}ErrorMsg`] = problem;
+      const list = [...file.files]; if (!list.length) return;
+      const problem = list.map(f => fileProblem(f, exts)).find(Boolean) || '', valid = !problem, names = list.map(f => f.name).join(', '), bytes = list.reduce((n, f) => n + f.size, 0), mb = bytes < 102400 ? 'moins de 0,1 Mo' : `${(bytes / 1048576).toLocaleString('fr-FR', {maximumFractionDigits: 1})} Mo`;
+      set(valid ? names : '', !valid); s.values[`${id}ErrorMsg`] = problem;
       if (!valid) { file.value = ''; file.dataset.invalidFile = 'true'; nameEl.textContent = 'Fichier refusé'; helpEl.innerHTML = problem; }
-      else { delete file.dataset.invalidFile; nameEl.textContent = f.name; helpEl.textContent = `Fichier prêt (${(f.size / 1048576).toLocaleString('fr-FR', {maximumFractionDigits: 1})} Mo). Il ne sera pas envoyé (simulation).`; clean(); }
+      else { delete file.dataset.invalidFile; nameEl.textContent = names; helpEl.textContent = `${list.length > 1 ? `${list.length} fichiers prêts` : 'Fichier prêt'} (${mb}). ${list.length > 1 ? 'Ils ne seront pas envoyés' : 'Il ne sera pas envoyé'} (simulation).`; clean(); }
       clear.hidden = false; updateProgress(form);
     });
     ['dragenter', 'dragover'].forEach(t => area.addEventListener(t, e => { e.preventDefault(); area.classList.add('is-drag'); }));
@@ -1295,8 +1354,13 @@ function bindSlots(form, s) {
     const add = e.target.closest('[data-slot-add]'), remove = e.target.closest('[data-slot-remove]');
     if (add) {
       const si = add.dataset.slotAdd, rows = v.slots[spec(si)], range = add.dataset.kind === 'range', type = rows.at(-1)?.type || SLOT_TYPES[0];
-      rows.push(range ? {kind: 'range', from: '', to: '', days: [1, 2, 3, 4, 5, 6, 7], type, fresh: true} : {kind: 'date', date: '', type, fresh: true});
-      paint(`#slot-${si}-${rows.length - 1}-${range ? 'from' : 'date'}`);
+      /* Une ligne de date encore vide n’est jamais laissée derrière (elle bloquerait l’envoi) : une période la remplace,
+         une nouvelle date commence par elle. */
+      const empty = rows.findIndex(r => r.kind === 'date' && !r.date);
+      const item = range ? {kind: 'range', from: '', to: '', days: [1, 2, 3, 4, 5, 6, 7], type, fresh: true} : {kind: 'date', date: '', type, fresh: true};
+      if (empty < 0) rows.push(item); else if (range) rows.splice(empty, 1, item);
+      const at = empty < 0 ? rows.length - 1 : empty;
+      paint(`#slot-${si}-${at}-${range ? 'from' : 'date'}`);
     }
     if (remove) {
       const [si, ri] = remove.dataset.slotRemove.split(':'), sp = spec(si), [gone] = v.slots[sp].splice(Number(ri), 1);
@@ -1307,7 +1371,7 @@ function bindSlots(form, s) {
 }
 function bindForm(form, kind) {
   if (!form) return; const s = state[kind];
-  const onChange = () => { saveForm(form, kind); syncConditionals(form); updateProgress(form); saveDraft(); };
+  const onChange = () => { saveForm(form, kind); if (kind !== 'contact') s.values.wizardReady = false; syncConditionals(form); updateProgress(form); saveDraft(); };
   form.addEventListener('input', onChange); form.addEventListener('change', onChange);
   syncConditionals(form);
   bindMulti(form); bindFiles(form, s); bindDates(form);
@@ -1316,16 +1380,13 @@ function bindForm(form, kind) {
   if (kind === 'candidate') form.addEventListener('change', e => { if (e.target.name === 'slotChoice' && s.values.offerId) state.picks[s.values.offerId] = $$('[name="slotChoice"]:checked', form).map(i => i.value); });
   /* Contact : l’adresse qui correspond au sujet est mise en avant. */
   if (kind === 'contact') {
-    /* Sujet incohérent avec l’espace du visiteur, ou avec ce que dit son message : on le signale, on propose de corriger. */
+    /* Sujet incohérent avec ce que dit le message : on le signale, on propose de corriger. */
     const box = $('#topic-check', form);
     const check = () => {
       const topic = form.querySelector('[name="topic"]:checked')?.value || '', said = topic === 'Je recrute' ? 'etab' : topic === 'Je suis praticien' ? 'pro' : '';
       const fromMessage = messageSide($('#message', form).value);
       let text = '', fixes = [];
-      if (!s.values.topicOk && said && audience && said !== audience) {
-        text = `Vous êtes dans l’espace ${spaceName(audience)}, mais vous avez choisi « ${topic} ».`;
-        fixes = audience === 'pro' ? [['pro', 'Je suis praticien'], ['etab', 'Je recrute vraiment']] : [['etab', 'Je recrute'], ['pro', 'Je suis bien praticien']];
-      } else if (!s.values.topicOk && fromMessage && fromMessage !== said) {
+      if (!s.values.topicOk && fromMessage && fromMessage !== said) {
         text = fromMessage === 'etab' ? 'Votre message parle d’un recrutement.' : 'Votre message semble venir d’un praticien.';
         fixes = [[fromMessage, fromMessage === 'etab' ? 'Choisir « Je recrute »' : 'Choisir « Je suis praticien »'], ['keep', 'Non, c’est correct']];
       }
@@ -1337,7 +1398,6 @@ function bindForm(form, kind) {
       if (v === 'keep') { s.values.topicOk = true; check(); return; }
       const radio = $$('[name="topic"]', form).find(r => r.value === (v === 'etab' ? 'Je recrute' : 'Je suis praticien'));
       if (!radio.checked) { radio.checked = true; radio.dispatchEvent(new Event('change', {bubbles: true})); }
-      if (audience !== v) { setAudience(v, {rerender: false}); syncHeader(); }
       check(); radio.focus();
     });
     let typing;
@@ -1366,8 +1426,12 @@ function bindForm(form, kind) {
   });
   form.addEventListener('submit', e => {
     e.preventDefault(); saveForm(form, kind); if (!validate(form)) return;
-    if (kind === 'contact') { s.success = true; s.ref = newRef(); saveDraft(); transition(() => { render(false); focusCard('.success-state h2'); }, {kind: 'form'}); return; }
-    s.review = true; saveDraft(); transition(() => { render(false); focusCard('.review h2'); }, {kind: 'form'});
+    if (kind === 'contact') { restored.contact = false; s.success = true; s.ref = newRef(); saveDraft(); transition(() => { render(false); focusCard('.success-state h2'); }, {kind: 'form'}); return; }
+    const n = Number(form.dataset.step), total = Number(form.dataset.steps);
+    restored[kind] = false;
+    if (n < total && !s.values.wizardSeen) { saveDraft(); goStep(kind, n + 1); return; }
+    for (let k = 1; k <= total; k++) if (stageIssues(form, k)) { saveDraft(); goStep(kind, k, {errors: true}); return; }
+    s.values.wizardReady = s.values.wizardSeen = true; saveDraft(); goStep(kind, 'recap');
   });
   /* « Partout en France » exclut les régions, et inversement. */
   if (kind === 'candidate') form.addEventListener('change', e => {
@@ -1384,12 +1448,13 @@ function bindForm(form, kind) {
    suppression involontaire, saisie perdue) reçoit une aide sur place et une façon simple de revenir en arrière.
    Rien n’est bloquant : le visiteur garde toujours la main. */
 
-/* Messages éphémères avec action (« Annuler »…). 10 s, et ils restent tant que la souris ou le clavier est dessus. */
+/* Messages éphémères, seulement en réponse à une action (« Annuler »…). 10 s, et ils restent tant que la souris ou le clavier est dessus.
+   Un changement de page les ferme (navigate). */
 function toast(message, {action = null, icon: ic = 'check', timeout = 10000} = {}) {
   let zone = document.querySelector('.toast-zone');
   if (!zone) { zone = document.createElement('div'); zone.className = 'toast-zone'; zone.setAttribute('aria-live', 'polite'); document.body.append(zone); }
   zone.querySelectorAll('.toast').forEach(t => t.remove());
-  const el = document.createElement('div'); el.className = 'toast';
+  const el = document.createElement('div'); el.className = 'toast'; el.dataset.born = Date.now();
   el.innerHTML = `${icon(ic)}<p>${message}</p>${action ? `<button type="button" class="toast-action">${action.label}</button>` : ''}<button type="button" class="toast-close" aria-label="Fermer ce message">${icon('close')}</button>`;
   zone.append(el);
   let timer;
@@ -1413,19 +1478,6 @@ function askChoice({title, text, choices}) {
   });
   d.addEventListener('close', () => d.remove());
   d.showModal();
-}
-const spaceName = v => v === 'pro' ? 'praticien' : v === 'etab' ? 'établissement' : '';
-/* Changer d’espace (en rejoignant la page équivalente de l’autre public), avec « Annuler » pendant 10 s. */
-function switchAudience(v, {origin = null, announce = true} = {}) {
-  if (v === audience) return;
-  const prev = audience, twin = v ? {pro:{'/etablissements':'/praticiens','/besoin':'/postuler'}, etab:{'/praticiens':'/etablissements','/postuler':'/besoin'}}[v][route] : '';
-  if (twin) { setAudience(v, {rerender: false}); pendingOrigin = origin; location.hash = twin; } else setAudience(v, {origin});
-  if (announce) toast(v ? `Vous êtes maintenant dans l’espace ${spaceName(v)}.` : 'Retour à l’accueil des deux espaces.', {icon: 'swap', action: {label: 'Annuler', run: () => switchAudience(prev, {announce: false})}});
-}
-/* Quand le site choisit l’espace à la place du visiteur (page visitée, recherche, mini-brief), il le dit et propose l’autre. */
-function announceSwitch(to) {
-  const other = to === 'pro' ? 'etab' : 'pro';
-  toast(`Vous êtes dans l’espace ${spaceName(to)}.`, {icon: 'swap', action: {label: other === 'etab' ? 'Je suis un établissement' : 'Je suis praticien', run: () => switchAudience(other, {announce: false})}});
 }
 
 /* Adresse email : les fautes de frappe les plus courantes (gmial.com, hotmail.fe, .con, @ oublié…). */
@@ -1509,12 +1561,12 @@ function fieldHint(input, html, fix = null) {
 function fileProblem(f, exts) {
   const ext = f.name.split('.').pop().toLowerCase(), mb = (f.size / 1048576).toLocaleString('fr-FR', {maximumFractionDigits: 1}), name = esc(f.name);
   if (!exts.includes(ext)) {
-    if (['doc','docx','odt','pages','rtf','txt'].includes(ext)) return `« ${name} » est un document de traitement de texte. Enregistrez-le en PDF (menu Fichier, puis Enregistrer sous ou Exporter, format PDF) et réessayez.`;
+    if (['doc','docx','odt','pages','rtf','txt'].includes(ext)) return `« ${name} » est un document de traitement de texte. Enregistrez-le en PDF (menu Fichier, puis Enregistrer sous, format PDF), ou prenez-le en photo.`;
     if (ext === 'heic') return `« ${name} » est une photo d’iPhone (format HEIC). ${exts.includes('jpg') ? 'Envoyez plutôt une capture d’écran de la photo, ou exportez-la en JPG.' : 'Ici, il faut un PDF.'}`;
-    if (['jpg','jpeg','png','webp','gif'].includes(ext)) return `« ${name} » est une image. Ici, il faut un PDF. Vous pourrez aussi l’envoyer plus tard à votre conseiller.`;
-    return `« ${name} » n’est pas dans un format accepté. Choisissez un fichier ${exts.includes('jpg') ? 'PDF, JPG ou PNG' : 'PDF'}.`;
+    if (['jpg','jpeg','png','webp','gif'].includes(ext)) return `« ${name} » est une image. Ici, il faut un PDF.`;
+    return `« ${name} » n’est pas dans un format accepté. Choisissez un ${exts.includes('jpg') ? 'PDF ou une photo' : 'PDF'}.`;
   }
-  if (f.size > 10 * 1048576) return `« ${name} » pèse ${mb} Mo, la limite est 10 Mo. Essayez une version plus légère, ou envoyez-le plus tard à votre conseiller.`;
+  if (f.size > 10 * 1048576) return `« ${name} » pèse ${mb} Mo, la limite est 10 Mo. Prenez-le plutôt en photo, ou envoyez-le plus tard par WhatsApp.`;
   return '';
 }
 /* Saisie gardée dans l’onglet (stockage de session) : un rechargement ou une fausse manœuvre ne fait rien perdre.
@@ -1535,10 +1587,6 @@ function loadDraft() {
     Object.assign(state.picks, d.picks || {});
   } catch {}
 }
-function offerRestore(kind) {
-  if (!restored[kind]) return; restored[kind] = false;
-  toast('Nous avons gardé ce que vous aviez commencé à remplir.', {action: {label: 'Tout effacer', run: () => { state[kind] = {values: {}, success: false}; saveDraft(); render(false); }}});
-}
 /* Message de contact : à qui semble-t-il s’adresser ? (mots courants, sans accents ni apostrophes) */
 const PRO_SIGNS = ['mon diplome','mes diplomes','ma candidature','postuler','je postule','mon cv','autorisation dexercice','mon autorisation','evc','equivalence','je suis medecin','je suis infirmi','je suis pharmacien','je suis praticien','je suis dentiste','je suis kine','je suis sage-femme','mon dossier','je cherche un poste','je cherche du travail','je cherche un emploi','exercer en france','travailler en france','etre recrute'];
 const ETAB_SIGNS = ['renfort','recruter','nous recrutons','notre etablissement','notre service','notre clinique','notre hopital','notre ehpad','notre centre','notre equipe','notre structure','nous cherchons','nous recherchons','remplacant','remplacement','poste a pourvoir','postes a pourvoir','gardes a pourvoir','nos patients','manque de medecin','manque de personnel','besoin de medecin','besoin dun medecin','besoin de personnel'];
@@ -1548,45 +1596,16 @@ function messageSide(text) {
 }
 
 /* ───────────── Rendu et liaisons ───────────── */
-function closeMenus() {
-  const m = $('#start-menu'), b = $('#start-button'); if (m) { m.hidden = true; b.setAttribute('aria-expanded', 'false'); }
-}
 function bindHeader() {
   const mb = $('#menu-button');
   mb.addEventListener('click', () => { const open = mb.getAttribute('aria-expanded') !== 'true'; mb.setAttribute('aria-expanded', open); mb.innerHTML = `<span>${open ? 'Fermer' : 'Menu'}</span>${icon(open ? 'close' : 'menu')}`; $('#navigation').classList.toggle('open', open); document.body.classList.toggle('menu-open', open); });
-  $('#start-button')?.addEventListener('click', e => { e.stopPropagation(); const m = $('#start-menu'), open = m.hidden; m.hidden = !open; e.currentTarget.setAttribute('aria-expanded', open); if (open) m.querySelector('a').focus(); });
 }
-/* Délégation globale : boutons de profil et liens qui fixent un profil. */
+/* Délégation globale : « + N autres » dans les listes de choix. */
 document.addEventListener('click', e => {
   const more = e.target.closest('.pick-toggle'); if (!more) return;
   const list = more.previousElementSibling, open = list.hidden;
   list.hidden = !open; more.setAttribute('aria-expanded', open); more.textContent = open ? 'Voir moins' : `+ ${more.dataset.more} autres ${more.dataset.noun || 'spécialités'}`;
   if (open) list.querySelector('input')?.focus();
-});
-document.addEventListener('click', e => {
-  const set = e.target.closest('[data-set-aud]');
-  if (set) {
-    e.preventDefault(); const v = set.dataset.setAud; if (v === audience) return;
-    switchAudience(v, {origin: originOf(e, set)});
-    return;
-  }
-  /* Adresse email de l’autre public : on demande avant d’ouvrir la messagerie. */
-  const mail = e.target.closest('a[data-mail-for]');
-  if (mail && audience && mail.dataset.mailFor !== audience) {
-    e.preventDefault();
-    const toEtab = mail.dataset.mailFor === 'etab', right = toEtab ? MAIL : MAIL_ETAB;
-    askChoice({
-      title: toEtab ? 'Cette adresse est celle des établissements' : 'Cette adresse est celle des praticiens',
-      text: toEtab ? `Vous êtes dans l’espace praticien. Pour votre dossier, une offre ou une question, écrivez plutôt à <strong>${MAIL}</strong>.` : `Vous êtes dans l’espace établissement. Pour un besoin de renfort, écrivez plutôt au service des affaires médicales : <strong>${MAIL_ETAB}</strong>.`,
-      choices: [{label: `Écrire à ${right}`, run: () => { location.href = `mailto:${right}`; }}, {label: toEtab ? 'Je recrute, continuer' : 'C’est un autre sujet, continuer', run: () => { location.href = mail.href; }}]
-    });
-    return;
-  }
-  const keep = e.target.closest('[data-keep-form]');
-  if (keep) { switchNote = null; keep.closest('.wrong-banner').replaceWith(Object.assign(document.createElement('div'), {hidden: true})); return; }
-  const pick = e.target.closest('[data-pick]');
-  if (pick) setAudience(pick.dataset.pick, {rerender: false});
-  if (!e.target.closest('.start')) closeMenus();
 });
 document.addEventListener('click', e => {
   const fav = e.target.closest('[data-fav]');
@@ -1597,14 +1616,36 @@ document.addEventListener('click', e => {
     toast(on ? 'Offre gardée dans ce navigateur.' : 'Offre retirée de vos offres gardées.', {icon: 'heart', action: on ? {label: 'Voir mes offres gardées', run: () => { state.filter = {specs: [], depts: [], months: [], fav: true, status: 'all'}; location.hash = '/offres?gardees=1'; }} : {label: 'Annuler', run: () => { toggleFav(id); syncFavButtons(id); refresh(); }}});
     return;
   }
+  /* Aller à une partie de la page (sans toucher à l’adresse, qui sert à la navigation) et y placer le curseur. */
+  const goto = e.target.closest('[data-goto]');
+  if (goto) { const t = document.getElementById(goto.dataset.goto); if (t) { t.scrollIntoView({block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'}); t.querySelector('input:not([type=hidden]):not(.sr-only), select, textarea')?.focus({preventScroll: true}); } return; }
   const share = e.target.closest('[data-share]'); if (share) { shareOffer(offers.find(o => o.id === share.dataset.share)); return; }
   if (e.target.closest('[data-callback]')) { callbackDialog(); return; }
   const copy = e.target.closest('[data-copy]'); if (copy) { (navigator.clipboard?.writeText(copy.dataset.copy) || Promise.reject()).then(() => toast('Référence copiée.'), () => toast(`Votre référence : ${copy.dataset.copy}`, {icon: 'file'})); return; }
   if (e.target.closest('[data-print]')) { $$('.sent-recap').forEach(d => d.open = true); window.print(); return; }
+  /* Récapitulatif : « Modifier » ramène à l’étape et au champ ; « Revenir au formulaire », à la dernière étape. */
   const edit = e.target.closest('[data-edit]');
-  if (edit) { const kind = edit.closest('[data-review]')?.dataset.review; if (!kind) return; state[kind].review = false; transition(() => { render(false); goToField(edit.dataset.edit); }, {kind: 'form'}); return; }
+  if (edit) {
+    const kind = edit.closest('[data-review]')?.dataset.review; if (!kind) return;
+    const total = formStages(kind).length, last = edit.dataset.edit === 'last';
+    if (last && history.state?.wizard === kind && history.state.prev === total) { history.back(); return; }
+    goStep(kind, last ? total : Number(edit.dataset.edit), {focus: edit.dataset.editFocus || ''}); return;
+  }
+  /* Étapes : Retour (l’étape d’avant, par l’historique quand on en vient), Passer (étape facultative). */
+  const back = e.target.closest('[data-step-back]');
+  if (back) {
+    const form = back.closest('form'), kind = form.dataset.kind, n = Number(form.dataset.step);
+    saveForm(form, kind); saveDraft();
+    if (history.state?.wizard === kind && history.state.prev === n - 1) history.back(); else goStep(kind, n - 1, {replace: true});
+    return;
+  }
+  if (e.target.closest('[data-step-skip]')) { e.target.closest('form').requestSubmit(); return; }
+  const keep = e.target.closest('[data-draft-keep]');
+  if (keep) { restored[keep.dataset.draftKeep] = false; keep.closest('.draft-note').remove(); return; }
+  const clear = e.target.closest('[data-draft-clear]');
+  if (clear) { const kind = clear.dataset.draftClear; restored[kind] = false; state[kind] = {values: {}, success: false}; saveDraft(); if (kind === 'contact') render(false); else goStep(kind, 1, {replace: true}); return; }
   const send = e.target.closest('[data-send]');
-  if (send) { const s = state[send.dataset.send]; s.review = false; s.success = true; s.ref = newRef(); saveDraft(); transition(() => { render(false); focusCard('.success-state h2'); }, {kind: 'form'}); }
+  if (send) { const s = state[send.dataset.send]; s.success = true; s.ref = newRef(); saveDraft(); transition(() => { render(false); focusCard('.success-state h2'); }, {kind: 'form'}); }
 });
 /* Clic sur une offre : son numéro de département et son titre deviendront ceux de la fiche (transition partagée). */
 document.addEventListener('click', e => {
@@ -1615,32 +1656,41 @@ document.addEventListener('click', e => {
   if (route === '/offres') offersScroll = scrollY;
 }, true);
 /* Changement de page. Depuis une fiche, son numéro repart vers la ligne ou la carte d’où l’on venait. */
-let arrival = null, offersScroll = 0, pendingOrigin = null, switchNote = null;
+let arrival = null, offersScroll = 0;
 function navigate() {
+  /* Changement d’étape dans un formulaire (boutons ou historique) : seule la carte change, la page ne saute pas. */
+  const [path] = location.hash.slice(1).split('?'), parts = path.split('/').filter(Boolean), next = '/' + (parts[0] || '');
+  if ((next === '/postuler' || next === '/besoin') && next === route && (parts[1] || '') === offerId) {
+    const after = stepAfter; stepAfter = null;
+    transition(() => { render(false); afterStep(after); }, {kind: 'form'});
+    return;
+  }
   arrival = {route, offerId};
   if (route === '/offre' && !$('[style*="view-transition-name"]')) { vtName($('.detail-num'), 'offer-num'); vtName($('.detail-head h1'), 'offer-title'); }
-  const origin = pendingOrigin; pendingOrigin = null;
+  /* Les messages éphémères d’une page ne suivent pas le visiteur sur la suivante (sauf ceux qui viennent de s’afficher). */
+  $$('.toast-zone .toast').forEach(t => { if (Date.now() - Number(t.dataset.born || 0) > 800) t.remove(); });
   /* Nouvelle page : le clavier et le lecteur d’écran repartent du contenu, pas du lien cliqué (sans faire défiler). */
-  transition(() => { render(); $('#main')?.focus({preventScroll: true}); }, origin ? {kind: 'audience', origin} : {kind: 'route'});
+  transition(() => { render(); $('#main')?.focus({preventScroll: true}); }, {kind: 'route'});
 }
 
+function afterStep(after) {
+  const form = $('#application-form');
+  if (after?.errors && form) { validate(form); return; }
+  if (after?.focus && document.getElementById(after.focus)) { goToField(after.focus); return; }
+  focusCard('#form-title, .review h2, .success-state h2');
+}
 function render(scroll = true) {
   document.dispatchEvent(new CustomEvent('laska:before-render'));
   const [path, q] = (location.hash.slice(1) || '/').split('?'), parts = path.split('/').filter(Boolean);
   route = '/' + (parts[0] || ''); offerId = parts[1] || ''; query = q || '';
-  let implicitFrom = null;
-  if (routeAudience[route] && routeAudience[route] !== audience) { implicitFrom = audience; setAudience(routeAudience[route], {rerender: false}); }
-  if ((route === '/offres' || route === '/offre') && !audience) { implicitFrom = ''; setAudience('pro', {rerender: false}); }
-  const formRoute = route === '/besoin' || route === '/postuler';
-  if (implicitFrom && formRoute) switchNote = {from: implicitFrom, route}; else if (switchNote?.route !== route) switchNote = null;
-  const titles = {'/':'Une place pour chaque talent','/praticiens':'Espace praticien','/etablissements':'Espace établissement','/engagement':'Notre engagement','/offres':'Offres','/offre':'Offre','/postuler':'Mon dossier','/besoin':'Mon besoin','/contact':'Contact','/mentions-legales':'Mentions légales','/eligibilite':'Suis-je éligible ?','/avis':'Avis des praticiens','/admin':'Modération des avis','/espace':'Espace candidat'};
+  const titles = {'/':'Une place pour chaque talent','/praticiens':'Praticiens','/etablissements':'Établissements','/engagement':'Notre engagement','/offres':'Offres d’emploi','/offre':'Offre','/postuler':offerId ? 'Postuler' : 'Créer mon dossier','/besoin':'Décrire mon besoin','/contact':'Contact','/mentions-legales':'Mentions légales','/eligibilite':'Suis-je éligible ?','/avis':'Avis des praticiens','/admin':'Modération des avis','/espace':'Espace candidat'};
   document.title = `Laska Corporate — ${titles[route] || 'Page introuvable'}`;
   document.body.classList.toggle('has-mobile-action', route === '/offre');
   document.body.classList.remove('menu-open');
   $('#help-panel')?.hidePopover?.();
-  document.body.dataset.aud = audience || 'none';
+  document.body.dataset.side = pageSide() || 'none';
   if (route === '/postuler') {
-    if ((state.candidate.values.offerId || '') !== offerId) state.candidate.success = false;
+    if ((state.candidate.values.offerId || '') !== offerId) { state.candidate.success = false; state.candidate.values.wizardSeen = state.candidate.values.wizardReady = false; }
     state.candidate.values.offerId = offerId;
     if (offerId && !(state.candidate.values.specialties || []).length) { const linked = offers.find(o => o.id === offerId); if (linked) state.candidate.values.specialties = [linked.specialty]; }
   }
@@ -1652,14 +1702,14 @@ function render(scroll = true) {
     const homeDepts = () => multiValues($('#home-dept').closest('.multi'));
     bindMulti(hs);
     const homeSpecs = () => multiValues($('#home-specialty').closest('.multi'));
-    const upd = () => { const n = countFor(homeSpecs(), homeDepts()), label = seeLabel(n); setDone(hs, n); window.LaskaMotion ? window.LaskaMotion.roll($('#home-count'), label) : $('#home-count').textContent = label; };
+    const upd = () => { const n = countFor(homeSpecs(), homeDepts()), label = seeLabel(n); setDone(hs, n); refreshCounts(hs, {specs: homeSpecs(), depts: homeDepts(), months: []}); window.LaskaMotion ? window.LaskaMotion.roll($('#home-count'), label) : $('#home-count').textContent = label; };
     hs.addEventListener('change', upd); hs.addEventListener('multichange', upd);
-    hs.addEventListener('submit', e => { e.preventDefault(); const depts = homeDepts(), specs = homeSpecs(); state.filter = countFor(specs, depts) ? {specs, depts, status:'all'} : {specs:[], depts:[], status:'all'}; const was = audience; setAudience('pro', {rerender: false}); location.hash = '/offres' + filterQuery(); if (was !== 'pro') announceSwitch('pro'); });
+    hs.addEventListener('submit', e => { e.preventDefault(); const depts = homeDepts(), specs = homeSpecs(); state.filter = {specs, depts, months: [], fav: false, status: 'all'}; location.hash = '/offres' + filterQuery(); });
   }
   bindBrief($('#main')); bindPicks($('#main')); bindEligibility($('#main')); bindAvis($('#main')); bindEspace($('#main')); ensureHelp();
   if (route === '/offres') bindOffers(); else { bindMap($('#main')); bindIndex($('#main')); }
   bindForm($('#application-form'), $('#application-form')?.dataset.kind); bindForm($('#contact-form'), 'contact');
-  $$('[data-restart]').forEach(b => b.addEventListener('click', () => transition(() => { state[b.dataset.restart] = {values:{}, success:false}; saveDraft(); render(false); }, {kind: 'form'})));
+  $$('[data-restart]').forEach(b => b.addEventListener('click', () => { const kind = b.dataset.restart; state[kind] = {values: {}, success: false}; saveDraft(); if (kind === 'contact') transition(() => render(false), {kind: 'form'}); else goStep(kind, 1, {replace: true}); }));
   $$('.field').forEach(f => { const help = f.querySelector('small[id]'); if (help) f.querySelector('input,select,textarea')?.setAttribute('aria-describedby', help.id); });
   if (scroll) window.scrollTo({top: 0, behavior: 'instant'});
   if (arrival) {
@@ -1669,9 +1719,6 @@ function render(scroll = true) {
     arrival = null;
   }
   document.dispatchEvent(new CustomEvent('laska:rendered', {detail: {route}}));
-  if (implicitFrom !== null && !(implicitFrom && formRoute)) announceSwitch(audience);
-  const formKind = {'/postuler': 'candidate', '/besoin': 'employer', '/contact': 'contact'}[route];
-  if (formKind && !state[formKind].success) offerRestore(formKind);
   const p = new URLSearchParams(query);
   if (p.has('faq')) requestAnimationFrame(() => $('#faq')?.scrollIntoView());
   if (p.has('section')) requestAnimationFrame(() => document.getElementById(p.get('section'))?.scrollIntoView());
@@ -1679,7 +1726,6 @@ function render(scroll = true) {
 
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
-  if ($('#start-menu') && !$('#start-menu').hidden) { closeMenus(); $('#start-button').focus(); }
   if ($('#navigation')?.classList.contains('open')) { $('#menu-button').click(); $('#menu-button').focus(); }
 });
 window.addEventListener('hashchange', navigate);

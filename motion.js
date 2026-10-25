@@ -1,8 +1,8 @@
-/* Laska — couche de mouvement (v4).
+/* Laska — couche de mouvement (v4, corrigée en v8 : la lecture d’abord).
    Une seule idée : la route jusqu’à la destination.
    – Les titres montent mot à mot, puis la pastille corail « atterrit » sur le point final.
    – La carte se dessine en vague depuis la Méditerranée ; les pastilles se posent quand la vague les atteint.
-   – Le parcours praticien se trace pendant le défilement ; la pastille « France » s’allume à l’arrivée.
+   – Le parcours praticien se trace pendant le défilement ; ses textes restent lisibles ; « France » s’allume à l’arrivée.
    – Les listes filtrées se réordonnent sans saut (FLIP), les compteurs changent en douceur.
    Chargé avant app.js. Rien n’est masqué si ce fichier échoue ; « réduire les animations » supprime les déplacements
    et garde les changements d’état (couleur, opacité). En Next.js : un hook useReveal + un composant <SplitTitle>. */
@@ -21,7 +21,7 @@
   /* ───────────── Titres découpés en mots ───────────── */
   const SPLIT = ['.door-title', '.section-head h2', '.missions-copy h2', '.verify h2', '.faq-layout h2', '.footer-claim', '.sub-copy h1',
     '.page-heading h1', '.engagement-hero h1', '.editorial-copy h2', '.inclusion-line h2', '.cta-inner h2', '.detail-head h1', '.form-intro h1',
-    '.success-state h2', '.not-found h1', '.offer-note h2', '.cross-inner h2', '.door-mini h2', '.etab-map-copy h2'].join(',');
+    '.success-state h2', '.not-found h1', '.offer-note h2', '.etab-map-copy h2'].join(',');
   /* Éléments qui servent de cible à une transition partagée : on ne les cache pas pendant qu’elle se joue. */
   const MORPHING = '.door, .door *, .form-card, .form-card *, .detail-num';
 
@@ -61,9 +61,9 @@
     ['.footer-grid', ':scope > *', 70], ['.journey', ':scope > .journey-step', 90], ['.etab-map-copy .promise', ':scope > li', 90], ['.mini-steps', ':scope > li', 140]
   ];
   const SINGLES = ['.section-lead', '.section-head > .text-link', '.missions-copy > .btn', '.sub-copy > .lead', '.sub-copy > .actions', '.sub-copy > .promise',
-    '.page-heading .lead', '.engagement-hero .lead', '.belief-side > p', '.belief-side > .text-link', '.cross-inner', '.offer-note', '.inclusion-line p',
+    '.page-heading .lead', '.engagement-hero .lead', '.belief-side > p', '.belief-side > .text-link', '.offer-note', '.inclusion-line p',
     '.inclusion-line > .btn', '.verify-lead', '.etab-map-copy > .btn', '.brief-card', '.apply-card', '.filter-bar', '.journey-details', '.editorial-copy p',
-    '.faq-layout .text-link', '.cta-inner p', '.cta-inner .actions', '.form-intro .lead', '.form-help', '.wrong-way', '.door-mini p', '.door-mini .btn',
+    '.faq-layout .text-link', '.cta-inner p', '.cta-inner .actions', '.form-intro .lead', '.form-help',
     '.footer-bottom', '.legal-nav', '.legal-copy', '.results-head', '.not-found .lead', '.not-found .actions'].join(',');
   const SHUTTER = '.door-photo, .sub-photo, .verify-photo, .form-photo, .belief-photo';
 
@@ -80,11 +80,15 @@
     if (el.hasAttribute('data-reveal') || el.hasAttribute('data-shutter')) {
       const d = parseFloat(el.style.getPropertyValue('--d')) || 0;
       /* Une fois arrivé, l’élément retrouve ses propres transitions (survol, appui). */
-      setTimeout(() => { el.removeAttribute('data-reveal'); el.removeAttribute('data-shutter'); el.classList.remove('is-in'); el.style.removeProperty('--d'); }, 2000 + d);
+      setTimeout(() => { el.removeAttribute('data-reveal'); el.removeAttribute('data-shutter'); el.classList.remove('is-in'); el.style.removeProperty('--d'); }, 1400 + d);
     }
   }
+  /* v8 : ce qui est déjà dans le premier écran à l’affichage n’est jamais caché pour être révélé ;
+     seuls les titres gardent leur montée (data-split-in) et la conviction son encre. */
+  const KEEP_MOTION = ['data-split-in', 'data-ink-in', 'data-map', 'data-draw'];
   function tag(el, attr, value = '1', delay = 0) {
     if (!el || el.closest(MORPHING) && html.dataset.vt || el.hasAttribute(attr)) return;
+    if (!KEEP_MOTION.includes(attr) && el.getBoundingClientRect().top < innerHeight) return;
     el.setAttribute(attr, value);
     if (delay) el.style.setProperty('--d', `${delay}ms`);
     revealIO.observe(el);
@@ -95,26 +99,29 @@
     revealIO?.disconnect(); scrubIO?.disconnect(); live.clear();
     revealIO = new IntersectionObserver(entries => {
       for (const e of entries) if (e.isIntersecting) { play(e.target); revealIO.unobserve(e.target); }
-    }, {rootMargin: '0px 0px -4% 0px'});
+    }, {rootMargin: '0px 0px 12% 0px'}); /* v8 : un peu avant l’arrivée à l’écran, jamais de zone vide en défilant vite */
     scrubIO = new IntersectionObserver(entries => {
       for (const e of entries) { const s = e.target._scrub; if (!s) continue; e.isIntersecting ? live.add(s) : live.delete(s); s(); }
     }, {rootMargin: '15% 0px'});
 
     refreshHeader();
     /* Le logo se dessine à la première visite ; le masque est retiré ensuite (aucun risque de trait coupé). */
-    if (firstRender && moving()) { const lg = $('.site-header .logo'); lg?.classList.add('is-intro'); setTimeout(() => $('.site-header .logo')?.classList.remove('is-intro'), 2600); }
+    /* v8 : une fois par visite (stockage de session), plus à chaque chargement. */
+    const once = key => { try { if (sessionStorage.getItem(key)) return false; sessionStorage.setItem(key, '1'); } catch {} return true; };
+    if (firstRender && moving() && once('laska-logo-vu')) { const lg = $('.site-header .logo'); lg?.classList.add('is-intro'); setTimeout(() => $('.site-header .logo')?.classList.remove('is-intro'), 2600); }
     if (!moving()) { firstRender = false; return; }
 
     /* Les portes d’accueil ne s’ouvrent qu’une fois par visite ; ensuite l’accueil arrive simplement. */
     const hero = $('.split-hero');
-    if (hero && firstRender) { hero.classList.add('is-opening'); hero.style.setProperty('--d0', hero.classList.contains('is-open') ? '520ms' : '260ms'); }
+    if (hero && firstRender && once('laska-portes-vues')) { hero.classList.add('is-opening'); hero.style.setProperty('--d0', '120ms'); }
 
     const task = TASK.test(location.hash);
     if (!task) $$(SPLIT, app).forEach(el => { if (!(el.closest(MORPHING) && html.dataset.vt) && !el.style.viewTransitionName) { splitWords(el, 'data-split'); tag(el, 'data-split-in'); } });
-    $$('.belief-quote', app).forEach(el => { splitWords(el, 'data-ink'); el.classList.add('is-live'); scrub(el, inkUpdate); });
+    /* Conviction : l’encre se pose en une fois quand la phrase arrive à l’écran (v8 : elle ne suit plus le défilement). */
+    $$('.belief-quote', app).forEach(el => { splitWords(el, 'data-ink'); tag(el, 'data-ink-in'); });
 
-    for (const [box, kids, step] of GROUPS) if (!task || box === '.footer-grid') $$(box, app).forEach(c => $$(kids, c).forEach((k, i) => tag(k, 'data-reveal', '1', Math.min(i * step, 400))));
-    $$(task ? '.footer-bottom' : SINGLES, app).forEach(el => tag(el, 'data-reveal', '1', 120));
+    for (const [box, kids, step] of GROUPS) if (!task || box === '.footer-grid') $$(box, app).forEach(c => $$(kids, c).forEach((k, i) => tag(k, 'data-reveal', '1', Math.min(i * Math.round(step / 2), 240))));
+    $$(task ? '.footer-bottom' : SINGLES, app).forEach(el => tag(el, 'data-reveal', '1', 60));
     if (!task) $$(SHUTTER, app).forEach(el => tag(el, 'data-shutter'));
     $$('.engagement-banner', app).forEach(el => tag(el, 'data-shutter', 'doors'));
     $$('.france-map[data-intro]', app).forEach(el => tag(el, 'data-map'));
@@ -149,13 +156,6 @@
       steps.forEach(s => { const m = $('.journey-marker', s).getBoundingClientRect(); s.classList.toggle('is-reached', m.top + m.height / 2 < vh * .74); });
       steps.forEach((s, i) => s.classList.toggle('is-done', !!steps[i + 1]?.classList.contains('is-reached')));
     }
-  }
-  /* Conviction : les mots prennent l’encre au rythme de la lecture, la pastille se pose au dernier. */
-  function inkUpdate(el) {
-    const words = el._words || (el._words = $$('.w', el)), r = el.getBoundingClientRect(), vh = innerHeight;
-    const p = clamp((vh * .86 - r.top) / (vh * .42 + r.height * .35)), n = Math.round(p * words.length);
-    words.forEach((w, i) => w.classList.toggle('is-ink', i < n));
-    el.classList.toggle('is-done', n === words.length);
   }
   /* Grand numéro de département : il dérive doucement pendant le défilement. */
   function driftUpdate(el) {

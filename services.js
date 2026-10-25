@@ -24,7 +24,7 @@ function toggleFav(id) {
   try { localStorage.setItem(FAV_KEY, JSON.stringify(next)); } catch {}
   return on;
 }
-const favButton = (o, cls = '') => `<button type="button" class="fav ${cls}" data-fav="${o.id}" aria-pressed="${isFav(o.id)}" aria-label="Garder l’offre ${esc(o.specialty)}, ${esc(o.dept)}">${icon('heart')}${cls.includes('fav-lg') ? `<span>${isFav(o.id) ? 'Gardée' : 'Garder'}</span>` : ''}</button>`;
+const favButton = (o, cls = '') => `<button type="button" class="fav ${cls}" data-fav="${o.id}" aria-pressed="${isFav(o.id)}" aria-label="Garder l’offre ${esc(o.specialty)}, ${esc(o.city)}">${icon('heart')}${cls.includes('fav-lg') ? `<span>${isFav(o.id) ? 'Gardée' : 'Garder'}</span>` : ''}</button>`;
 function syncFavButtons(id) {
   const on = isFav(id);
   $$(`[data-fav="${id}"]`).forEach(b => { b.setAttribute('aria-pressed', on); const t = $('span', b); if (t) t.textContent = on ? 'Gardée' : 'Garder'; });
@@ -33,10 +33,10 @@ function syncFavButtons(id) {
 
 /* ───────────── Partager une offre ───────────── */
 function shareOffer(o) {
-  const url = `${location.origin}${location.pathname}#/offre/${o.id}`, text = `Offre Laska Corporate : ${o.specialty}, ${o.dept} (${o.num}) — ${slotRange(o)}`;
+  const url = `${location.origin}${location.pathname}#/offre/${o.id}`, text = `Offre Laska Corporate : ${o.specialty}, ${o.place} — ${slotRange(o)}`;
   if (navigator.share && matchMedia('(pointer: coarse)').matches) { navigator.share({title: `Laska Corporate — ${o.specialty}`, text, url}).catch(() => {}); return; }
   const d = document.createElement('dialog'); d.className = 'guard share-dialog'; d.setAttribute('aria-labelledby', 'share-title');
-  d.innerHTML = `<div class="guard-body">${icon('share')}<h2 id="share-title">Partager cette offre</h2><p>${esc(o.specialty)}, ${esc(o.dept)} (${o.num})</p>
+  d.innerHTML = `<div class="guard-body">${icon('share')}<h2 id="share-title">Partager cette offre</h2><p>${esc(o.specialty)}, ${esc(o.place)}</p>
     <div class="share-list"><a class="help-item" href="https://wa.me/?text=${encodeURIComponent(`${text} ${url}`)}" target="_blank" rel="noopener">${icon('chat')}<span><strong>WhatsApp</strong>Envoyer à un collègue</span></a>
     <a class="help-item" href="mailto:?subject=${encodeURIComponent(`Offre Laska Corporate : ${o.specialty}`)}&body=${encodeURIComponent(`${text}\n${url}`)}">${icon('mail')}<span><strong>Email</strong>Ouvrir votre messagerie</span></a>
     <button type="button" class="help-item" data-copy-link>${icon('link')}<span><strong>Copier le lien</strong>Pour le coller où vous voulez</span></button></div>
@@ -54,14 +54,18 @@ function shareOffer(o) {
 /* ───────────── Aide toujours visible ───────────── */
 function waText() {
   const o = route === '/offre' ? offers.find(x => x.id === offerId) : null;
-  if (o) return `Bonjour, je vous contacte au sujet de l’offre ${o.specialty}, ${o.dept} (réf. ${o.ref}).`;
-  return audience === 'pro' ? 'Bonjour, je suis praticien et j’aimerais des informations.' : audience === 'etab' ? 'Bonjour, je recrute pour un établissement et j’aimerais vous parler d’un besoin.' : 'Bonjour, j’aimerais des informations.';
+  if (o) return `Bonjour, je vous contacte au sujet de l’offre ${o.specialty} à ${o.city}, ${o.dept} (réf. ${o.ref}).`;
+  const side = pageSide();
+  return side === 'pro' ? 'Bonjour, je suis praticien et j’aimerais des informations.' : side === 'etab' ? 'Bonjour, je recrute pour un établissement et j’aimerais vous parler d’un besoin.' : 'Bonjour, j’aimerais des informations.';
 }
 const waLink = () => `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(waText())}`;
+/* Bouton « Aide » : en bas à droite sur ordinateur (il s’efface pendant le défilement), dans l’en-tête sur téléphone. */
 function ensureHelp() {
   if (document.querySelector('.help-fab')) return;
-  document.body.insertAdjacentHTML('beforeend', `<button type="button" class="help-fab" popovertarget="help-panel" aria-haspopup="dialog">${icon('chat')}<span>Besoin d’aide ?</span></button><div class="help-panel" id="help-panel" popover role="dialog" aria-labelledby="help-title"></div>`);
-  const panel = $('#help-panel'), fab = $('.help-fab');
+  document.body.insertAdjacentHTML('beforeend', `<button type="button" class="help-fab" popovertarget="help-panel" aria-haspopup="dialog">${icon('chat')}<span>Aide</span></button><div class="help-panel" id="help-panel" popover role="dialog" aria-labelledby="help-title"></div>`);
+  const panel = $('#help-panel');
+  let still;
+  addEventListener('scroll', () => { document.body.classList.add('is-scrolling'); clearTimeout(still); still = setTimeout(() => document.body.classList.remove('is-scrolling'), 450); }, {passive: true});
   panel.addEventListener('beforetoggle', e => {
     if (e.newState !== 'open') return;
     panel.innerHTML = `<div class="help-head"><h2 id="help-title">Une question ? Nous sommes là.</h2><button type="button" class="multi-close" popovertarget="help-panel" popovertargetaction="hide" aria-label="Fermer">${icon('close')}</button></div>
@@ -71,21 +75,21 @@ function ensureHelp() {
       <button type="button" class="help-item" data-callback>${icon('phone')}<span><strong>Être rappelé</strong>Laissez votre numéro, nous vous appelons</span></button>
       <a class="help-item" href="#/contact">${icon('mail')}<span><strong>Écrire un message</strong>Réponse sous 24 h ouvrées</span></a>`;
   });
-  panel.addEventListener('toggle', e => { fab.setAttribute('aria-expanded', e.newState === 'open'); if (e.newState === 'open') $('.help-item', panel)?.focus(); });
+  panel.addEventListener('toggle', e => { $$('.help-fab, .header-help').forEach(b => b.setAttribute('aria-expanded', e.newState === 'open')); if (e.newState === 'open') $('.help-item', panel)?.focus(); });
   panel.addEventListener('click', e => { if (e.target.closest('a.help-item, [data-callback]')) panel.hidePopover(); });
 }
 
 /* ───────────── Être rappelé ───────────── */
 function callbackDialog() {
-  const o = route === '/offre' ? offers.find(x => x.id === offerId) : null, whens = ['Le matin (9 h – 12 h)', 'À midi (12 h – 14 h)', 'L’après-midi (14 h – 18 h)'];
+  const o = route === '/offre' ? offers.find(x => x.id === offerId) : null, side = pageSide(), whens = ['Le matin (9 h – 12 h)', 'À midi (12 h – 14 h)', 'L’après-midi (14 h – 18 h)'];
   const d = document.createElement('dialog'); d.className = 'guard callback-dialog'; d.setAttribute('aria-labelledby', 'cb-title');
   d.innerHTML = `<div class="guard-body">${icon('phone')}<h2 id="cb-title">Être rappelé</h2><p>Laissez votre numéro : un conseiller vous appelle au moment choisi, du lundi au vendredi.</p>
     <form class="cb-form form-grid" novalidate>
       <div class="field full"><label for="cb-name">Votre nom <span class="req" aria-hidden="true">*</span></label><input id="cb-name" name="name" autocomplete="name" required></div>
       ${phoneField('phone', 'Votre téléphone', {id: 'cb-phone'})}
       <fieldset class="field full pills-field"><legend>Quand vous rappeler ?</legend><div class="pills">${whens.map((t, i) => `<label class="pill"><input type="radio" name="when" value="${t}" ${i ? '' : 'checked'}><span>${t}</span></label>`).join('')}</div></fieldset>
-      <fieldset class="field full pills-field"><legend>Vous êtes</legend><div class="pills">${[['pro', 'Praticien'], ['etab', 'Établissement']].map(([v, t]) => `<label class="pill"><input type="radio" name="who" value="${v}" ${audience === v ? 'checked' : ''}><span>${t}</span></label>`).join('')}</div></fieldset>
-      ${o ? `<p class="cb-about field full">${icon('file')}À propos de l’offre <strong>${esc(o.specialty)}</strong>, ${esc(o.dept)} · réf. ${o.ref}</p>` : ''}
+      <fieldset class="field full pills-field"><legend>Vous êtes</legend><div class="pills">${[['pro', 'Praticien'], ['etab', 'Établissement']].map(([v, t]) => `<label class="pill"><input type="radio" name="who" value="${v}" ${side === v ? 'checked' : ''}><span>${t}</span></label>`).join('')}</div></fieldset>
+      ${o ? `<p class="cb-about field full">${icon('file')}À propos de l’offre <strong>${esc(o.specialty)}</strong>, ${esc(o.place)} · réf. ${o.ref}</p>` : ''}
       <div class="guard-actions full"><button type="submit" class="btn btn-coral">Me faire rappeler${icon('arrow')}</button></div>
     </form><button type="button" class="guard-close" aria-label="Fermer">${icon('close')}</button></div>`;
   document.body.append(d);
@@ -133,7 +137,7 @@ function eligResult(a) {
   return {title: 'Votre voie : la procédure d’autorisation d’exercice.', text: `Avec un diplôme obtenu hors de l’Union européenne, la voie habituelle comporte trois étapes. ${next}`, steps: path, at, docs: [...docs, ...extra, 'Un justificatif de niveau de français, si vous en avez un'], offers: a.stage === 'pcc' || a.stage === 'evc'};
 }
 function eligibility() {
-  return `<section class="page-heading"><div class="container">${breadcrumb([['Espace praticien', '#/praticiens'], ['Suis-je éligible ?']])}<h1>${dot('Suis-je éligible ?')}</h1><p class="lead">Trois questions pour savoir par où commencer. Gratuit.</p></div></section>
+  return `<section class="page-heading"><div class="container">${breadcrumb([['Praticiens', '#/praticiens'], ['Suis-je éligible ?']])}<h1>${dot('Suis-je éligible ?')}</h1><p class="lead">Trois questions pour savoir par où commencer. Gratuit.</p></div></section>
   <section class="elig-section"><div class="container elig-layout"><div class="form-card elig-card" id="elig">${eligStep()}</div>
     <aside class="elig-aside"><p>${icon('shield')}<span>Cette orientation est indicative. Votre conseiller vérifie votre situation exacte, gratuitement.</span></p><p>${icon('phone')}<span>Une question ? <a class="text-link" href="${TEL}">${PHONE}</a></span></p></aside></div></section>`;
 }
@@ -163,7 +167,6 @@ function bindEligibility(root = document) {
     if (e.target.closest('[data-elig-apply]')) {
       const r = eligResult(state.elig), v = state.candidate.values;
       v.stage = eligSituation(state.elig); if (r.specialty) v.specialties = [r.specialty];
-      setAudience('pro', {rerender: false});
     }
   });
 }
@@ -201,18 +204,19 @@ const STAR = 'M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9
 const STAR_WORDS = ['', 'Décevant', 'Moyen', 'Bien', 'Très bien', 'Excellent'];
 const starSVG = (cls = '') => `<svg class="star ${cls}" viewBox="0 0 24 24" aria-hidden="true"><path d="${STAR}"/></svg>`;
 const starsHTML = (n, label = true) => `<span class="stars" ${label ? `role="img" aria-label="Note : ${n} sur 5"` : 'aria-hidden="true"'}>${[1, 2, 3, 4, 5].map(i => starSVG(i <= n ? 'is-on' : '')).join('')}</span>`;
+const avisWho = r => [r.specialty, r.country].filter(Boolean).map(esc).join(' · ');
 const shortName = r => `${r.firstName} ${r.lastName ? `${r.lastName.trim()[0].toUpperCase()}.` : ''}`.trim();
 const monthYear = iso => new Intl.DateTimeFormat('fr-FR', {month: 'long', year: 'numeric'}).format(new Date(iso));
 function avisCard(r, {admin = false} = {}) {
   return `<figure class="avis-card">${starsHTML(r.stars)}<blockquote>${esc(r.text)}</blockquote>
-    <figcaption><span class="avis-avatar" aria-hidden="true">${esc((r.firstName || '?')[0].toUpperCase())}</span><span><strong>${esc(admin ? `${r.firstName} ${r.lastName}` : shortName(r))}</strong>${esc(r.specialty)} · ${esc(r.country)}<small>${admin ? `Déposé le ${new Intl.DateTimeFormat('fr-FR', {dateStyle: 'long', timeStyle: 'short'}).format(new Date(r.date))}` : monthYear(r.date)}</small></span></figcaption></figure>`;
+    <figcaption><span class="avis-avatar" aria-hidden="true">${esc((r.firstName || '?')[0].toUpperCase())}</span><span><strong>${esc(admin ? `${r.firstName} ${r.lastName}` : shortName(r))}</strong>${avisWho(r)}<small>${admin ? `Déposé le ${new Intl.DateTimeFormat('fr-FR', {dateStyle: 'long', timeStyle: 'short'}).format(new Date(r.date))}` : monthYear(r.date)}</small></span></figcaption></figure>`;
 }
 function avisSummary(list) {
   const avg = list.reduce((n, r) => n + r.stars, 0) / list.length;
   return `<p class="avis-summary">${starsHTML(Math.round(avg))}<strong>${avg.toLocaleString('fr-FR', {maximumFractionDigits: 1})} sur 5</strong><span>${list.length} avis publié${list.length > 1 ? 's' : ''}</span></p>`;
 }
 const avisEmpty = (link = true) => `<div class="avis-empty">${starsHTML(0, false)}<div><strong>Les premiers avis arrivent.</strong><p>Vous avez été accompagné par Laska Corporate ? Racontez votre parcours, il aidera d’autres praticiens.</p></div>${link ? btn('Donner mon avis', '#/avis', 'outline', '') : ''}</div>`;
-/* Bloc d’avis de l’accueil et de l’espace praticien : les trois plus récents. */
+/* Bloc d’avis de la page Praticiens : les trois plus récents. */
 function avisSection() {
   const list = publishedAvis();
   if (!list.length && !MAQUETTE) return '';
@@ -225,13 +229,13 @@ function starInput() {
 function avisForm() {
   return `<div class="form-head"><div><h2 id="avis-title">Donner mon avis</h2><p class="muted small"><span class="req">*</span> Champs obligatoires</p></div></div>
     <form id="avis-form" novalidate aria-labelledby="avis-title"><div id="form-errors"></div><div class="form-grid">
-      ${field('rvFirstName', 'Prénom', {autocomplete: 'given-name'})}${field('rvLastName', 'Nom', {autocomplete: 'family-name', help: 'Seule l’initiale est publiée.'})}
-      ${field('rvSpecialty', 'Votre spécialité', {options: allSpecialties, full: true})}
-      ${field('rvCountry', 'Pays d’exercice', {options: countries, full: true, help: 'Le pays où vous exercez aujourd’hui.'})}
-      ${when('rvCountry:Autre pays', false, field('rvCountryOther', 'Quel pays ?', {required: false, cond: true, full: true}))}
+      ${field('rvFirstName', 'Prénom', {autocomplete: 'given-name'})}${field('rvLastName', 'Nom <span class="field-note">facultatif</span>', {required: false, autocomplete: 'family-name', help: 'Seule l’initiale est publiée.'})}
       ${starInput()}
       ${field('rvText', 'Votre avis', {type: 'textarea', full: true, placeholder: 'Votre accompagnement, votre conseiller, votre prise de poste…', help: '20 caractères minimum, 500 maximum.', attrs: 'data-min="20"'})}
-      <div class="field full consent-field"><label class="choice-inline"><input type="checkbox" name="rvConsent" required data-error-label="Accord pour la publication" data-missing="Cochez cette case : sans votre accord, nous ne pouvons pas publier votre avis."><span>J’accepte que mon avis soit publié, et éventuellement repris en témoignage sur la page d’accueil, avec mon prénom, l’initiale de mon nom, ma spécialité et mon pays d’exercice.</span></label></div>
+      ${field('rvSpecialty', 'Votre spécialité <span class="field-note">facultatif</span>', {required: false, options: allSpecialties, full: true})}
+      ${field('rvCountry', 'Pays d’exercice <span class="field-note">facultatif</span>', {required: false, options: countries, full: true, help: 'Le pays où vous exercez aujourd’hui.'})}
+      ${when('rvCountry:Autre pays', false, field('rvCountryOther', 'Quel pays ?', {required: false, full: true}))}
+      <div class="field full consent-field"><label class="choice-inline"><input type="checkbox" name="rvConsent" required data-error-label="Accord pour la publication" data-missing="Cochez cette case : sans votre accord, nous ne pouvons pas publier votre avis."><span>J’accepte que mon avis soit publié avec mon prénom et, si je les indique, l’initiale de mon nom, ma spécialité et mon pays. Il peut aussi être repris sur la page d’accueil.</span></label></div>
     </div>${consentField()}
     <div class="form-actions"><button type="submit" class="btn btn-primary btn-full">Envoyer mon avis${icon('arrow')}</button></div></form>`;
 }
@@ -243,10 +247,10 @@ function avisThanks(r) {
 }
 function avisPage() {
   const list = publishedAvis();
-  return `<section class="page-heading"><div class="container">${breadcrumb([['Avis des praticiens']])}<h1>${dot('Avis des praticiens.')}</h1><p class="lead">Ils ont été accompagnés par Laska Corporate. Vous aussi ? Partagez votre expérience.</p></div></section>
+  return `<section class="page-heading"><div class="container">${breadcrumb([['Avis des praticiens']])}<h1>${dot('Avis des praticiens.')}</h1><p class="lead">Ils ont été accompagnés par Laska Corporate. Vous aussi ? Partagez votre expérience.</p><div class="actions"><button type="button" class="btn btn-coral" data-goto="donner-mon-avis">${icon('pen')}Donner mon avis</button></div></div></section>
   <div class="container avis-layout"><div class="avis-list">${list.length ? avisSummary(list) + list.map(r => avisCard(r)).join('') : avisEmpty(false)}
     ${list.some(r => r.sample) ? sampleNote('Avis d’exemple pour la maquette, à remplacer par les vrais avis.') : ''}</div>
-    <div class="form-card avis-form-card">${avisForm()}</div></div>`;
+    <div class="form-card avis-form-card" id="donner-mon-avis">${avisForm()}</div></div>`;
 }
 /* Modération (maquette) : en production, réservée à l’équipe, ou faite dans le CRM. */
 function adminAvis() {
@@ -317,7 +321,7 @@ function bindAvis(root = document) {
    ceux à « mettre en témoignage » (r.featured). Les trois plus récents s’affichent, le premier en grand.
    Sans témoignage choisi, la section n’apparaît pas. */
 const temoignages = () => publishedAvis().filter(r => r.featured);
-const temoignage = (r, i) => `<figure class="temoignage ${i === 0 ? 'is-lead' : ''}"><span class="temoignage-mark" aria-hidden="true">“</span><blockquote>${esc(r.text)}</blockquote><figcaption>${starsHTML(r.stars)}<span><strong>${esc(shortName(r))}</strong>${esc(r.specialty)} · ${esc(r.country)}</span></figcaption></figure>`;
+const temoignage = (r, i) => `<figure class="temoignage ${i === 0 ? 'is-lead' : ''}"><span class="temoignage-mark" aria-hidden="true">“</span><blockquote>${esc(r.text)}</blockquote><figcaption>${starsHTML(r.stars)}<span><strong>${esc(shortName(r))}</strong>${avisWho(r)}</span></figcaption></figure>`;
 function temoignagesSection() {
   const list = temoignages().slice(0, 3);
   if (!list.length) return '';

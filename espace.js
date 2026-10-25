@@ -32,10 +32,10 @@ const ESPACE_PROFILE = {
   civilite: 'Madame', nom: 'Mansouri', nomJeuneFille: '', prenom: 'Sarah', tel1: '06 12 34 56 78', tel2: '',
   naissance: '1989-04-12', lieuNaissance: 'Sfax', depNaissance: '99 – Étranger', paysNaissance: 'Tunisie', nationalite: 'Tunisienne', mobilite: 'Auvergne-Rhône-Alpes, Provence-Alpes-Côte d’Azur',
   app: '', bat: '', voie: '12 rue des Tilleuls', lieuDit: '', cp: '69003', ville: 'Lyon', pays: 'France',
-  paiement: 'Virement France et DOM-TOM', bic: 'BANKFRPP', iban: 'FR76 0000 0000 0000 0000 0000 123'
+  paiement: 'Virement en France ou outre-mer', bic: 'BANKFRPP', iban: 'FR76 0000 0000 0000 0000 0000 123'
 };
 const PROFILE_KEY = 'laska-espace-profil';
-const profile = () => ({...ESPACE_PROFILE, ...store(PROFILE_KEY, {})});
+const profile = () => { const p = {...ESPACE_PROFILE, ...store(PROFILE_KEY, {})}; p.paiement = {'Vir. International': 'Virement à l’étranger', 'Virement France et DOM-TOM': 'Virement en France ou outre-mer'}[p.paiement] || p.paiement; return p; };
 /* Missions et contrats datés par rapport à la semaine en cours : la démonstration reste vivante quel que soit le jour.
    [décalage depuis le lundi de cette semaine, type, spécialité, lieu, contrat] */
 const missions = lazy(() => { const base = mondayOf(TODAY); return [
@@ -103,27 +103,40 @@ const applications = lazy(() => [
 ].filter(a => offers.some(o => o.id === a.offer)));
 
 /* ───────────── Menus (repris de l’espace de référence) ─────────────
-   Les rubriques de l’espace de référence (onglets et tuiles) sont toutes là, rangées dans un menu latéral en
-   quatre groupes ; leurs sous-menus deviennent les onglets de chaque page. L’accueil ne montre plus que l’essentiel. */
+   v8 : sept entrées au lieu de treize. Les rubriques de référence sont toutes là : celles qui vont ensemble deviennent
+   les onglets d’une même page (Ma paie et mes documents, Mon dossier, Aide et infos). Les adresses ne changent pas :
+   chaque page connaît son entrée de menu (navGroupOf). [clé, libellé, icône, pages de l’entrée] */
 const SPACE_NAV = [
-  ['', [['', 'Accueil', 'home']]],
-  ['Mon activité', [['planning', 'Mon planning', 'calendar'], ['contrats', 'Mes contrats', 'file'], ['offres', 'Mes offres d’emploi', 'briefcase']]],
-  ['Ma paie et mes papiers', [['paie', 'Ma paie et mes acomptes', 'euro'], ['documents', 'Mes impressions de documents', 'print'], ['fiscal', 'Mes données fiscales', 'receipt']]],
-  ['Mon dossier', [['profil', 'Mon profil', 'user'], ['justificatifs', 'Mes justificatifs', 'badge']]],
-  ['Infos utiles', [['securite', 'Sécurité prévention', 'shield'], ['avantages', 'Mes avantages', 'gift'], ['faq', 'Questions fréquentes', 'chat']]]
+  ['', 'Accueil', 'home'],
+  ['planning', 'Mon planning', 'calendar'],
+  ['contrats', 'Mes contrats', 'file'],
+  ['offres', 'Mes offres d’emploi', 'briefcase'],
+  ['paie', 'Ma paie et mes documents', 'euro', ['paie', 'documents', 'fiscal']],
+  ['profil', 'Mon dossier', 'user', ['profil', 'justificatifs']],
+  ['faq', 'Aide et infos', 'chat', ['faq', 'securite', 'avantages']]
 ];
+const navGroupOf = sub => SPACE_NAV.find(([key, , , pages]) => key === sub || pages?.includes(sub)) || SPACE_NAV[0];
+/* Onglets des entrées qui regroupent plusieurs rubriques. */
+const GROUP_TABS = {
+  paie: [['paie', 'Bulletins et avances'], ['documents', 'Attestations'], ['fiscal', 'Données fiscales']],
+  profil: [['profil', 'Mes informations'], ['justificatifs', 'Mes justificatifs']],
+  faq: [['faq', 'Questions fréquentes'], ['securite', 'Sécurité au travail'], ['avantages', 'Mes avantages']]
+};
+/* En-tête d’une page regroupée : le nom de l’entrée du menu, puis ses onglets. */
+const groupHead = (sub, lead = '') => { const [key, title] = navGroupOf(sub), tabs = GROUP_TABS[key];
+  return spaceHead(key, title, lead) + (tabs ? segTabs(tabs.map(([k, t]) => [k, t, `#/espace/${k}`, k === 'justificatifs' ? docsToDo().length || '' : '']), sub, title) : ''); };
 /* Sous-menus de l’espace de référence (repris en onglets dans chaque page). */
 const TILES = [
-  {key: 'paie', title: 'Ma paie et mes acomptes', icon: 'euro', tone: 'teal', note: 'Votre premier bulletin de salaire en version électronique sera accessible ici.'},
+  {key: 'paie', title: 'Ma paie', icon: 'euro', tone: 'teal', note: 'Votre premier bulletin de salaire en version électronique sera accessible ici.'},
   {key: 'planning', title: 'Mon planning', icon: 'calendar', tone: 'coral', items: [['Semaine', 'planning?vue=semaine'], ['Mois', 'planning?vue=mois'], ['Mes disponibilités', 'planning?vue=dispos']]},
-  {key: 'documents', title: 'Mes impressions de documents', icon: 'print', tone: 'sand', items: [['Certificat de travail', 'documents?doc=certificat'], ['Attestation de salaire', 'documents?doc=attestation']]},
+  {key: 'documents', title: 'Mes attestations', icon: 'print', tone: 'sand', items: [['Certificat de travail', 'documents?doc=certificat'], ['Attestation de salaire', 'documents?doc=attestation']]},
   {key: 'offres', title: 'Mes offres d’emploi', icon: 'briefcase', tone: 'ink', items: [['Intérim', 'offres?type=interim'], ['CDD, CDI', 'offres?type=cdi'], ['Mes candidatures', 'offres?type=candidatures']]},
   {key: 'contrats', title: 'Mes contrats', icon: 'file', tone: 'coral', items: [['Historique de mes contrats', 'contrats?vue=historique'], ['Mes contrats de mission', 'contrats?vue=mission'], ['Mes contrats de mission – formation', 'contrats?vue=formation'], ['Signer mes contrats électroniques', 'contrats?vue=signer']]},
   {key: 'fiscal', title: 'Mes données fiscales', icon: 'receipt', tone: 'ink', note: '', year: true},
-  {key: 'securite', title: 'Sécurité prévention', icon: 'shield', tone: 'teal', items: [['Réalisez votre mission en toute sécurité', 'securite']]},
+  {key: 'securite', title: 'Sécurité au travail', icon: 'shield', tone: 'teal', items: [['Réalisez votre mission en toute sécurité', 'securite']]},
   /* Ajout (hors espace de référence) : les pièces du dossier, demandées avant chaque mission. */
   {key: 'justificatifs', title: 'Mes justificatifs', icon: 'badge', tone: 'teal', items: [['Pièces de mon dossier', 'justificatifs']]},
-  {key: 'avantages', title: 'Mes avantages', icon: 'gift', tone: 'sand', items: [['Mes avantages', 'avantages?doc=avantages'], ['Mes droits sur la prévoyance : Cadre', 'avantages?doc=prevoyance-cadre'], ['Mes droits sur la prévoyance : Non cadre', 'avantages?doc=prevoyance-non-cadre'], ['Site du FASTT', 'avantages?doc=fastt'], ['Notice information Mutuelle : Cadre', 'avantages?doc=mutuelle-cadre'], ['Notice information Mutuelle : Non cadre', 'avantages?doc=mutuelle-non-cadre'], ['Consulter le règlement intérieur', 'avantages?doc=reglement']]}
+  {key: 'avantages', title: 'Mes avantages', icon: 'gift', tone: 'sand', items: [['Mes avantages', 'avantages?doc=avantages'], ['Mes droits en cas d’arrêt de travail (prévoyance) : cadre', 'avantages?doc=prevoyance-cadre'], ['Mes droits en cas d’arrêt de travail (prévoyance) : non cadre', 'avantages?doc=prevoyance-non-cadre'], ['Aides du FASTT : logement, transport, garde d’enfants', 'avantages?doc=fastt'], ['Ma mutuelle santé : cadre', 'avantages?doc=mutuelle-cadre'], ['Ma mutuelle santé : non cadre', 'avantages?doc=mutuelle-non-cadre'], ['Le règlement intérieur', 'avantages?doc=reglement']]}
 ];
 const tileOf = key => TILES.find(t => t.key === key);
 
@@ -147,7 +160,7 @@ function espacePage() {
 /* Connexion : les liens et aides de l’espace de référence, au style du site. */
 let loginView = 'login';
 function espaceLoginPage() {
-  const intro = [['euro', 'Vos bulletins de paie et vos acomptes'], ['calendar', 'Votre planning, à la semaine ou au mois'], ['pen', 'Vos contrats, signés en ligne'], ['print', 'Vos attestations, prêtes à imprimer']];
+  const intro = [['euro', 'Vos bulletins de paie et vos avances sur paie'], ['calendar', 'Votre planning, à la semaine ou au mois'], ['pen', 'Vos contrats, signés en ligne'], ['print', 'Vos attestations, prêtes à imprimer']];
   return `<div class="container">${breadcrumb([['Espace candidat']])}</div><section class="espace-login"><div class="container espace-login-grid">
     <div class="espace-login-intro"><h1>${dot('Votre espace candidat.')}</h1><p class="lead">Bienvenue sur votre espace Laska Corporate : tout ce qui concerne vos missions, au même endroit.</p>
       <ul class="espace-login-list">${intro.map(([i, t]) => `<li>${icon(i)}<span>${t}</span></li>`).join('')}</ul>
@@ -174,9 +187,11 @@ function loginCard() {
 
 /* ───────────── Cadre de l’espace : menu latéral (ordinateur) ou menu déroulant (mobile) ───────────── */
 /* Pastilles du menu : seulement ce qui attend une action (contrats à signer, pièces à fournir). */
-const navBadge = key => { const n = key === 'contrats' ? toSign().length : key === 'justificatifs' ? docsToDo().length : 0; return n ? `<span class="seg-badge" aria-label="${n} à traiter">${n}</span>` : ''; };
-const sideNav = sub => `<nav class="side-nav" aria-label="Menu de mon espace">${SPACE_NAV.map(([group, items]) => `${group ? `<p class="side-group">${group}</p>` : ''}<ul>${items.map(([key, label, ic]) => `<li><a href="#/espace${key ? '/' + key : ''}" ${key === sub ? 'aria-current="page"' : ''}>${icon(ic)}<span>${label}</span>${navBadge(key)}</a></li>`).join('')}</ul>`).join('')}</nav>`;
-const spaceLabel = sub => SPACE_NAV.flatMap(([, items]) => items).find(([key]) => key === sub)?.[1] || 'Accueil';
+/* Les pastilles du menu viennent de la liste « À faire » : leur total est toujours celui du bouton mobile. */
+const navBadge = ([key, , , pages = [key]]) => { const n = key ? todoItems().filter(t => pages.some(p => t.href.startsWith(`#/espace/${p}`))).length : 0; return n ? `<span class="seg-badge" aria-label="${n} à traiter">${n}</span>` : ''; };
+const sideNav = sub => { const on = navGroupOf(sub)[0];
+  return `<nav class="side-nav" aria-label="Menu de mon espace"><ul>${SPACE_NAV.map(entry => { const [key, label, ic] = entry; return `<li><a href="#/espace${key ? '/' + key : ''}" ${key === on ? 'aria-current="page"' : ''}>${icon(ic)}<span>${label}</span>${navBadge(entry)}</a></li>`; }).join('')}</ul></nav>`; };
+const spaceLabel = sub => navGroupOf(sub)[1];
 const advisorCard = () => `<div class="agent-who"><span class="space-avatar" aria-hidden="true">${ADVISOR.prenom[0]}${ADVISOR.nom[0]}</span><p class="agent-name">${ADVISOR.prenom} ${ADVISOR.nom}<small>Votre conseillère</small></p></div>
   <a class="btn btn-primary" href="${TEL}">${icon('phone')}${PHONE}</a><button type="button" class="btn btn-outline" data-callback>Être rappelé</button>`;
 function spaceShell(u, sub, content) {
@@ -239,47 +254,60 @@ function espaceProfil(u) {
   const ibanMasked = p.iban.replace(/\s/g, '').replace(/^(.{4}).*(.{3})$/, '$1 •••• •••• •••• •••• •••• $2');
   const card = (key, title, view, edit) => `<section class="space-card profile-card" id="profil-${key}"><div class="space-card-head"><h2>${title}</h2>${profileEdit === key ? '' : `<button type="button" class="review-edit" data-profile-edit="${key}">${icon('pen')}Modifier</button>`}</div>${profileEdit === key ? edit : view}</section>`;
   const f = (n, l, o = {}) => field(`pf-${n}`, l, {required: false, value: p[n] || '', ...o});
-  const identityView = `<div class="profile-cols"><dl class="profile-dl">${row('Civilité', p.civilite)}${row('Nom', p.nom)}${row('Nom de jeune fille', p.nomJeuneFille)}${row('Prénom', p.prenom)}${row('Téléphone 1', p.tel1)}${row('Téléphone 2', p.tel2)}${row('Email', u.email)}${row('Né(e) le', p.naissance ? dateLabel(p.naissance) : '')}${row('Dpt naiss.', p.depNaissance)}${row('Mobilité', p.mobilite)}</dl>
-    <dl class="profile-dl">${row('N° app, étage', p.app)}${row('Bât, résidence', p.bat)}${row('N° et voie', p.voie)}${row('Lieu-dit, BP', p.lieuDit)}${row('CP – Ville', `${p.cp} ${p.ville}`.trim())}${row('Pays', p.pays)}${row('Nationalité', p.nationalite)}${row('Né(e) à', p.lieuNaissance)}${row('Pays de naissance', p.paysNaissance)}</dl></div>`;
-  const identityEdit = `<form class="profile-form" data-profile-form="identite" novalidate><div id="form-errors"></div><div class="form-grid">${f('civilite', 'Civilité', {options: ['Madame', 'Monsieur']})}${f('nomJeuneFille', 'Nom de jeune fille')}${f('tel1', 'Téléphone 1', {type: 'tel'})}${f('tel2', 'Téléphone 2', {type: 'tel'})}${f('app', 'N° app, étage')}${f('bat', 'Bât, résidence')}${f('voie', 'N° et voie', {full: true})}${f('lieuDit', 'Lieu-dit, BP')}${f('cp', 'Code postal', {attrs: 'inputmode="numeric" maxlength="5"'})}${f('ville', 'Ville')}${f('pays', 'Pays', {options: countries.filter(c => c !== 'Autre pays')})}${f('mobilite', 'Mobilité', {full: true, placeholder: 'Régions où vous acceptez des missions'})}</div>
-    <p class="muted small">Nom, prénom, date et lieu de naissance : pour les modifier, contactez votre conseiller (justificatif demandé).</p><div class="profile-actions"><button type="submit" class="btn btn-primary">Enregistrer</button><button type="button" class="reset-link" data-profile-cancel>Annuler</button></div></form>`;
-  const payView = `<div class="pay-choice" role="list">${['Chèque', 'Virement France et DOM-TOM', 'Vir. International'].map(m => `<span role="listitem" class="pay-opt ${p.paiement === m ? 'is-on' : ''}">${p.paiement === m ? icon('check') : ''}${m}</span>`).join('')}</div><dl class="profile-dl is-inline">${row('BIC', p.bic)}${row('IBAN', ibanMasked)}</dl>`;
-  const payEdit = `<form class="profile-form" data-profile-form="paiement" novalidate><div id="form-errors"></div><div class="form-grid">${pills('pf-paiement', 'Moyen de paiement', ['Chèque', 'Virement France et DOM-TOM', 'Vir. International'], p.paiement)}${f('bic', 'BIC', {attrs: 'maxlength="11" autocapitalize="characters"'})}${f('iban', 'IBAN', {full: true, value: '', placeholder: 'FR76 …', help: 'Pour votre sécurité, l’IBAN actuel n’est pas réaffiché : saisissez le nouveau en entier.'})}</div><div class="profile-actions"><button type="submit" class="btn btn-primary">Enregistrer</button><button type="button" class="reset-link" data-profile-cancel>Annuler</button></div></form>`;
-  return `<div class="space-page">${spaceHead('', 'Mon profil', 'Vos informations personnelles et votre moyen de paiement.')}
+  const identityView = `<div class="profile-cols"><dl class="profile-dl">${row('Civilité', p.civilite)}${row('Nom', p.nom)}${row('Nom de jeune fille', p.nomJeuneFille)}${row('Prénom', p.prenom)}${row('Téléphone 1', p.tel1)}${row('Téléphone 2', p.tel2)}${row('Email', u.email)}${row('Né(e) le', p.naissance ? dateLabel(p.naissance) : '')}${row('Département de naissance', p.depNaissance)}${row('Mobilité', p.mobilite)}</dl>
+    <dl class="profile-dl">${row('Appartement, étage', p.app)}${row('Bâtiment, résidence', p.bat)}${row('N° et voie', p.voie)}${row('Lieu-dit, boîte postale', p.lieuDit)}${row('Code postal et ville', `${p.cp} ${p.ville}`.trim())}${row('Pays', p.pays)}${row('Nationalité', p.nationalite)}${row('Né(e) à', p.lieuNaissance)}${row('Pays de naissance', p.paysNaissance)}</dl></div>`;
+  const identityEdit = `<form class="profile-form" data-profile-form="identite" novalidate><div id="form-errors"></div><div class="form-grid">${f('civilite', 'Civilité', {options: ['Madame', 'Monsieur']})}${f('nomJeuneFille', 'Nom de jeune fille')}${f('tel1', 'Téléphone 1', {type: 'tel'})}${f('tel2', 'Téléphone 2', {type: 'tel'})}${f('app', 'Appartement, étage')}${f('bat', 'Bâtiment, résidence')}${f('voie', 'N° et voie', {full: true})}${f('lieuDit', 'Lieu-dit, boîte postale')}${f('cp', 'Code postal', {attrs: 'inputmode="numeric" maxlength="5"'})}${f('ville', 'Ville')}${f('pays', 'Pays', {options: countries.filter(c => c !== 'Autre pays')})}${f('mobilite', 'Mobilité', {full: true, placeholder: 'Régions où vous acceptez des missions'})}</div>
+    <p class="muted small">Nom, prénom, date et lieu de naissance : pour les modifier, contactez votre conseillère (justificatif demandé).</p><div class="profile-actions"><button type="submit" class="btn btn-primary">Enregistrer</button><button type="button" class="reset-link" data-profile-cancel>Annuler</button></div></form>`;
+  const payView = `<div class="pay-choice" role="list">${['Chèque', 'Virement en France ou outre-mer', 'Virement à l’étranger'].map(m => `<span role="listitem" class="pay-opt ${p.paiement === m ? 'is-on' : ''}">${p.paiement === m ? icon('check') : ''}${m}</span>`).join('')}</div><dl class="profile-dl is-inline">${row('BIC', p.bic)}${row('IBAN', ibanMasked)}</dl>`;
+  const payEdit = `<form class="profile-form" data-profile-form="paiement" novalidate><div id="form-errors"></div><div class="form-grid">${pills('pf-paiement', 'Moyen de paiement', ['Chèque', 'Virement en France ou outre-mer', 'Virement à l’étranger'], p.paiement)}${f('bic', 'BIC', {attrs: 'maxlength="11" autocapitalize="characters"'})}${f('iban', 'IBAN', {full: true, value: '', placeholder: 'FR76 …', help: 'Pour votre sécurité, l’IBAN actuel n’est pas réaffiché : saisissez le nouveau en entier.'})}</div><div class="profile-actions"><button type="submit" class="btn btn-primary">Enregistrer</button><button type="button" class="reset-link" data-profile-cancel>Annuler</button></div></form>`;
+  return `<div class="space-page">${groupHead('profil', 'Vos informations personnelles et votre moyen de paiement.')}
     ${card('identite', 'Identité', identityView, identityEdit)}
-    ${card('paiement', 'Moyens / Types de paiement', payView, payEdit)}
-    <p class="proof-line">${icon('check')}Convention de preuve acceptée</p>
+    ${card('paiement', 'Mon moyen de paiement', payView, payEdit)}
+    <p class="proof-line">${icon('check')}Signature en ligne acceptée (convention de preuve)</p>
     ${sampleNote('Maquette : informations d’exemple, fictives.')}</div>`;
 }
 
 /* ───────────── Questions fréquentes ───────────── */
 const spaceFaq = lazy(() => [
-  ['Comment lire votre bulletin de paie', 'En haut : vos heures et le salaire de chaque mission. Au milieu : les indemnités de fin de mission et de congés payés, puis les cotisations sociales. En bas : le net à payer, le montant versé et la date du virement. Une ligne vous semble fausse ? Votre conseiller la vérifie avec vous.'],
-  ['Vous n’avez pas encaissé un chèque depuis plus de 1 an', 'Un chèque n’est plus encaissable au-delà d’un an et huit jours après sa date d’émission. Contactez votre conseiller : un nouveau paiement est émis, de préférence par virement.'],
-  ['Vous avez perdu votre chèque', 'Prévenez votre conseiller au plus vite : le chèque est bloqué, puis un nouveau paiement vous est envoyé. Pensez à passer au virement dans « Mon profil ».'],
-  ['Vous n’arrivez pas à accéder à votre coffre-fort numérique', 'Vos bulletins et contrats y sont déposés avec l’adresse email de votre espace. Vérifiez cette adresse dans « Mon profil », utilisez « J’ai oublié mon mot de passe », puis appelez votre conseiller si le problème continue.'],
+  ['Comment lire votre bulletin de paie', 'En haut : vos heures et le salaire de chaque mission. Au milieu : les indemnités de fin de mission et de congés payés, puis les cotisations sociales. En bas : le net à payer, le montant versé et la date du virement. Une ligne vous semble fausse ? Votre conseillère la vérifie avec vous.'],
+  ['Vous n’avez pas encaissé un chèque depuis plus de 1 an', 'Un chèque n’est plus encaissable au-delà d’un an et huit jours après sa date d’émission. Contactez votre conseillère : un nouveau paiement est émis, de préférence par virement.'],
+  ['Vous avez perdu votre chèque', 'Prévenez votre conseillère au plus vite : le chèque est bloqué, puis un nouveau paiement vous est envoyé. Pensez à passer au virement dans « Mon profil ».'],
+  ['Vous n’arrivez pas à ouvrir vos documents en ligne', 'Vos bulletins et contrats y sont déposés avec l’adresse email de votre espace. Vérifiez cette adresse dans « Mon profil », utilisez « J’ai oublié mon mot de passe », puis appelez votre conseillère si le problème continue.'],
   ['Questions courantes', `Démarches d’exercice, disponibilités, offres : retrouvez les réponses dans les <a class="text-link" href="#/praticiens?faq=1">questions fréquentes des praticiens</a>, ou appelez le ${PHONE}.`]
 ]);
 function espaceFaq() {
-  return `<div class="space-page">${spaceHead('', 'Questions fréquentes', 'Paie, paiements, accès : les réponses aux questions les plus posées.')}${faq(spaceFaq())}${sampleNote('Maquette : réponses proposées, à faire valider.')}</div>`;
+  return `<div class="space-page">${groupHead('faq', 'Paie, paiements, accès : les réponses aux questions les plus posées.')}${faq(spaceFaq())}${sampleNote('Maquette : réponses proposées, à faire valider.')}</div>`;
 }
 
-/* ───────────── Ma paie et mes acomptes ───────────── */
+/* ───────────── Ma paie ───────────── */
 function espacePaie() {
   const asked = store(ADVANCE_KEY, []), done = spaceContracts().filter(c => c.status !== 'sign');
-  return `<div class="space-page">${spaceHead('paie', 'Ma paie et mes acomptes')}
+  return `<div class="space-page">${groupHead('paie', 'Vos bulletins de salaire et vos demandes d’avance sur paie.')}
     <div class="space-split">
-      <section class="space-card"><h2>Mes bulletins de salaire</h2><div class="space-empty">${icon('euro')}<p><strong>Votre premier bulletin de salaire en version électronique sera accessible ici.</strong>Il arrive au début du mois qui suit votre première mission, et vous recevez un email à chaque nouveau bulletin.</p></div></section>
-      <section class="space-card"><h2>Demander un acompte</h2>
+      <section class="space-card"><h2>Mes bulletins de salaire</h2>${payslips().length ? `<ul class="pay-list">${payslips().map(b => `<li class="pay-row"><span class="space-ico tone-${b.ready ? 'teal' : 'sand'}">${icon(b.ready ? 'euro' : 'clock')}</span><div><strong>Bulletin ${b.label}</strong><small>${b.what}</small><small>${b.ready ? `Net versé : <b>${euros(b.net)}</b>, le ${dayMonth(b.paid, true)} par virement` : `Disponible le ${dayMonth(b.paid, true)} : vous recevez un email`}</small></div>${b.ready ? `<button type="button" class="btn btn-outline" data-payslip="${b.label}">${icon('file')}Voir le bulletin</button>` : '<span class="space-pill is-progress">En préparation</span>'}</li>`).join('')}</ul>${sampleNote('Maquette : bulletins d’exemple, fictifs.')}` : `<div class="space-empty">${icon('euro')}<p><strong>Votre premier bulletin de salaire en version électronique sera accessible ici.</strong>Il arrive au début du mois qui suit votre première mission, et vous recevez un email à chaque nouveau bulletin.</p></div>`}</section>
+      <section class="space-card"><h2>Demander une avance sur ma paie <small>(acompte)</small></h2>
         <form id="advance-form" novalidate><div id="form-errors"></div><div class="form-grid">
           ${field('advMission', 'Mission concernée', {options: done.map(c => `${c.title} (${c.ref})`), full: true})}
-          ${field('advAmount', 'Montant souhaité, en euros', {full: true, attrs: 'inputmode="decimal" data-amount', help: 'Jusqu’à 50 % des heures déjà réalisées sur la mission.', placeholder: 'Ex. 300'})}
+          ${field('advAmount', 'Montant souhaité, en euros', {full: true, attrs: 'inputmode="decimal" data-amount', help: 'Jusqu’à la moitié de ce que vous avez déjà gagné sur cette mission.', placeholder: 'Ex. 300'})}
         </div><p class="muted small">${icon('shield')}Versé par virement sur votre compte ${esc(profile().iban.slice(0, 4))} •••• ${esc(profile().iban.replace(/\s/g, '').slice(-3))}, sous 48 h ouvrées.</p>
         <div class="form-actions"><button type="submit" class="btn btn-primary btn-full">Envoyer ma demande${icon('arrow')}</button></div></form>
         ${asked.length ? `<h3 class="space-sub">Mes demandes</h3><ul class="space-rows">${asked.map(a => `<li><span><strong>${esc(a.amount)} €</strong>${esc(a.mission)}</span><span class="space-pill is-signed">Envoyée le ${dayMonth(a.date)}</span></li>`).join('')}</ul>` : ''}
       </section>
     </div></div>`;
 }
+
+/* Bulletins de salaire : un par mois travaillé, les deux derniers. EXEMPLES calculés sur les tarifs d’exemple (RATE),
+   net ≈ 78 % du brut, versé le 5 du mois suivant. En production : les bulletins du logiciel de paie. */
+const payslips = () => {
+  const byMonth = {};
+  missions().filter(m => m.date < TODAY).forEach(m => (byMonth[m.date.slice(0, 7)] ||= []).push(m));
+  return Object.keys(byMonth).sort().reverse().slice(0, 2).map(ym => {
+    const ms = byMonth[ym], [y, mo] = ym.split('-').map(Number), gross = ms.reduce((n, m) => n + (RATE[m.type] || 0), 0);
+    const paid = isoOf(mo === 12 ? y + 1 : y, mo % 12, 5), counts = {};
+    ms.forEach(m => counts[m.type] = (counts[m.type] || 0) + 1);
+    return {label: `${/^[aeiou]/.test(MONTHS[mo - 1]) ? 'd’' : 'de '}${MONTHS[mo - 1]} ${y}`, what: Object.entries(counts).map(([t, n]) => `${n} × ${t}`).join(' · '), net: Math.round(gross * 78) / 100, paid, ready: TODAY >= paid};
+  });
+};
 
 /* ───────────── Mon planning ───────────── */
 let planWeek = 0, planMonth = 0;
@@ -301,7 +329,7 @@ function planView(vue) {
 }
 function espacePlanning(vue) {
   const tabs = segTabs([['semaine', 'Semaine', '#/espace/planning?vue=semaine'], ['mois', 'Mois', '#/espace/planning?vue=mois'], ['dispos', 'Mes disponibilités', '#/espace/planning?vue=dispos']], vue, 'Affichage du planning');
-  if (vue === 'dispos') return `<div class="space-page">${spaceHead('planning', 'Mon planning', 'Touchez un jour pour dire si vous êtes disponible : votre conseillère vous propose des missions à ces dates.')}${tabs}
+  if (vue === 'dispos') return `<div class="space-page">${spaceHead('planning', 'Mon planning', 'Appuyez sur un jour pour dire si vous êtes disponible : votre conseillère vous propose des missions à ces dates.')}${tabs}
     <section class="space-card" id="dispo-view">${dispoView()}</section></div>`;
   return `<div class="space-page">${spaceHead('planning', 'Mon planning')}${tabs}
     <section class="space-card plan-card" id="plan-view" data-vue="${vue}">${planView(vue)}</section>
@@ -319,22 +347,22 @@ function dispoView() {
     const m = missionsOn(iso)[0];
     if (m) return `<li class="dispo-day is-mission">${head}<span class="dispo-state">${icon('calendar')}Mission</span><span class="sr-only">${dateLabel(iso)} : mission, ${m.type}</span></li>`;
     const st = d[iso] || '';
-    return `<li><button type="button" class="dispo-day is-${st || 'unset'} ${iso === TODAY ? 'is-today' : ''}" data-dispo="${iso}" aria-label="${dateLabel(iso)} : ${DISPO_LABEL[st].toLowerCase()}. Toucher pour changer.">${head}<span class="dispo-state" aria-hidden="true">${st === 'dispo' ? icon('check') : st === 'off' ? icon('close') : ''}${st ? DISPO_LABEL[st] : 'À indiquer'}</span></button></li>`;
+    return `<li><button type="button" class="dispo-day is-${st || 'unset'} ${iso === TODAY ? 'is-today' : ''}" data-dispo="${iso}" aria-label="${dateLabel(iso)} : ${DISPO_LABEL[st].toLowerCase()}. Appuyez pour changer.">${head}<span class="dispo-state" aria-hidden="true">${st === 'dispo' ? icon('check') : st === 'off' ? icon('close') : ''}${st ? DISPO_LABEL[st] : 'À indiquer'}</span></button></li>`;
   };
   return `<div class="dispo-head"><p class="dispo-count" aria-live="polite"><strong>${count('dispo')}</strong> jour${count('dispo') > 1 ? 's' : ''} disponible${count('dispo') > 1 ? 's' : ''} · <strong>${count('off')}</strong> indisponible${count('off') > 1 ? 's' : ''} · <strong>${count('')}</strong> à indiquer</p>
       <div class="dispo-quick"><button type="button" class="btn btn-outline" data-dispo-all="dispo">${icon('check')}Disponible tous les jours libres</button><button type="button" class="btn btn-outline" data-dispo-all="weekend">${icon('calendar')}Seulement les week-ends</button>${Object.keys(d).length ? `<button type="button" class="reset-link" data-dispo-all="clear">${icon('close')}Tout effacer</button>` : ''}</div></div>
+    <p class="dispo-how">${icon('help')}<span><strong>Appuyez sur un jour :</strong> 1 fois, disponible · 2 fois, indisponible · 3 fois, effacé.</span></p>
     <div class="dispo-weekdays" aria-hidden="true">${WEEKDAYS.map(([s]) => `<span>${s}</span>`).join('')}</div>
     <ol class="dispo-grid" aria-label="Mes disponibilités, du ${dayMonth(start, true)} au ${dayMonth(days.at(-1), true)}">${days.map(cell).join('')}</ol>
     <p class="plan-legend"><span class="dispo-key is-dispo">${icon('check')}Disponible</span><span class="dispo-key is-off">${icon('close')}Indisponible</span><span class="dispo-key is-mission">${icon('calendar')}Mission prévue</span><span>Vos réponses sont envoyées à votre conseillère à chaque changement.</span></p>`;
 }
 
-/* ───────────── Mes impressions de documents ───────────── */
+/* ───────────── Mes attestations ───────────── */
 function espaceDocuments(doc) {
   const ended = spaceContracts().filter(c => c.status === 'done');
   const what = doc === 'certificat' ? ['Certificat de travail', 'Il atteste des missions réalisées : dates, établissement, fonction. Utile pour un nouvel employeur ou l’Ordre.'] : ['Attestation de salaire', 'Elle récapitule les salaires d’une période : utile pour un arrêt de travail, un congé maternité ou une demande de prêt.'];
-  return `<div class="space-page">${spaceHead('documents', 'Mes impressions de documents')}
-    ${segTabs([['certificat', 'Certificat de travail', '#/espace/documents?doc=certificat'], ['attestation', 'Attestation de salaire', '#/espace/documents?doc=attestation']], doc, 'Type de document')}
-    <section class="space-card"><h2>${what[0]}</h2><p class="space-lead">${what[1]}</p>
+  return `<div class="space-page">${groupHead('documents', 'Des documents prêts à imprimer, établis à partir de vos missions.')}
+    <section class="space-card"><p class="doc-switch-label">Quel document ?</p><nav class="doc-switch" aria-label="Type de document">${[['certificat', 'Certificat de travail'], ['attestation', 'Attestation de salaire']].map(([k, t]) => `<a href="#/espace/documents?doc=${k}" ${k === doc ? 'aria-current="page"' : ''}>${t}</a>`).join('')}</nav><h2>${what[0]}</h2><p class="space-lead">${what[1]}</p>
       <form id="doc-form" data-doc="${what[0]}" novalidate><div id="form-errors"></div><div class="form-grid">
         ${doc === 'certificat' ? field('docMission', 'Mission', {options: ended.map(c => `${c.title}, ${period(c.from, c.to).toLowerCase()}`), full: true}) : field('docPeriod', 'Période', {options: [`Mois dernier`, `3 derniers mois`, `12 derniers mois`, `Année ${yearNow()}`], full: true})}
       </div><div class="form-actions"><button type="submit" class="btn btn-primary">${icon('print')}Préparer le document</button></div></form>
@@ -355,7 +383,7 @@ function espaceOffres(type) {
 /* Une candidature : l’offre, la date d’envoi et un suivi en 4 étapes (l’étape en cours est nommée en toutes lettres). */
 function appRow(a) {
   const o = offers.find(x => x.id === a.offer), last = a.step === APP_STEPS.length - 1;
-  return `<li class="app-row"><div class="app-main"><span class="row-num" aria-hidden="true">${o.num}</span><div><strong>${esc(o.specialty)}</strong><small>${esc(o.dept)} (${o.num}) · ${slotRange(o)} · réf. ${o.ref}</small><small>Envoyée le ${dateLabel(a.date).toLowerCase()}</small></div><span class="space-pill ${last ? 'is-signed' : 'is-progress'}">${APP_STEPS[a.step]}</span><a class="btn btn-outline" href="#/offre/${o.id}">Voir l’offre</a></div>
+  return `<li class="app-row"><div class="app-main"><span class="row-num" aria-hidden="true">${o.num}</span><div><strong>${esc(o.specialty)}</strong><small>${esc(o.place)} · ${slotRange(o)} · réf. ${o.ref}</small><small>Envoyée le ${dateLabel(a.date).toLowerCase()}</small></div><span class="space-pill ${last ? 'is-signed' : 'is-progress'}">${APP_STEPS[a.step]}</span><a class="btn btn-outline" href="#/offre/${o.id}">Voir l’offre</a></div>
     <ol class="app-steps" aria-label="Avancement : étape ${a.step + 1} sur ${APP_STEPS.length}, ${APP_STEPS[a.step].toLowerCase()}">${APP_STEPS.map((s, i) => `<li class="${i < a.step ? 'is-done' : i === a.step ? 'is-now' : ''}"><span aria-hidden="true">${i < a.step ? icon('check') : i + 1}</span>${s}</li>`).join('')}</ol></li>`;
 }
 
@@ -365,44 +393,74 @@ function espaceJustificatifs() {
   const docs = spaceDocs(), ok = docs.filter(d => d.status === 'ok').length, todo = docsToDo();
   const sub = d => d.status === 'review' ? `Reçu : ${esc(d.file)}. Votre conseillère le vérifie sous 48 h.` : d.status === 'missing' ? 'À fournir avant votre prochaine mission.' : d.until ? (d.status === 'expiring' ? `Expire dans ${daysUntil(d.until)} jours, le ${dateLabel(d.until).toLowerCase()}.` : `Valable jusqu’au ${dateLabel(d.until).toLowerCase()}.`) : 'Vérifié par votre conseillère.';
   const row = d => `<li class="doc-row is-${d.status}"><span class="space-ico tone-${d.status === 'ok' ? 'teal' : d.status === 'review' ? 'ink' : d.status === 'missing' ? 'coral' : 'sand'}">${icon(d.status === 'ok' ? 'check' : d.status === 'review' ? 'clock' : 'file')}</span>
-    <div><strong>${d.label}</strong><small>${sub(d)}</small></div><span class="space-pill ${DOC_STATE[d.status][1]}">${DOC_STATE[d.status][0]}</span>
-    <label class="btn ${d.status === 'missing' || d.status === 'expiring' ? 'btn-primary' : 'btn-outline'} doc-upload">${icon('file')}${d.status === 'missing' ? 'Ajouter' : d.status === 'expiring' ? 'Mettre à jour' : 'Remplacer'}<span class="sr-only"> : ${d.label}</span><input type="file" class="sr-only" data-doc-up="${d.key}" accept="application/pdf,.pdf,image/jpeg,.jpg,.jpeg,image/png,.png"></label></li>`;
-  return `<div class="space-page">${spaceHead('justificatifs', 'Mes justificatifs', 'Les pièces de votre dossier, demandées avant chaque mission. Gardez-les à jour, nous vous prévenons avant leur expiration.')}
+    <div><strong>${d.label}</strong><small>${sub(d)}</small>${d.key === 'rpps' || d.key === 'afgsu' ? explain(d.key, 'is-compact') : ''}</div><span class="space-pill ${DOC_STATE[d.status][1]}">${DOC_STATE[d.status][0]}</span>
+    <label class="btn ${d.status === 'missing' || d.status === 'expiring' ? 'btn-primary' : 'btn-outline'} doc-upload">${icon('file')}${d.status === 'missing' ? 'Ajouter' : d.status === 'expiring' ? 'Mettre à jour' : 'Remplacer'}<span class="sr-only"> : ${d.label}</span><input type="file" class="sr-only" data-doc-up="${d.key}" accept="application/pdf,.pdf,image/*"></label></li>`;
+  return `<div class="space-page">${groupHead('justificatifs', 'Les pièces de votre dossier, demandées avant chaque mission. Gardez-les à jour, nous vous prévenons avant leur expiration.')}
     <section class="space-card docs-summary"><div><strong>${ok} pièce${ok > 1 ? 's' : ''} à jour sur ${docs.length}</strong><span>${todo.length ? `${todo.length} à mettre à jour : ${todo.map(t => t.label.split(' ou ')[0]).join(', ')}.` : 'Votre dossier est complet.'}</span></div><span class="docs-bar" role="img" aria-label="Pièces à jour : ${ok} sur ${docs.length}"><span style="--p:${Math.round(ok / docs.length * 100)}%"></span></span></section>
     <section class="space-card"><ul class="doc-list">${[...todo, ...docs.filter(d => !todo.includes(d))].map(row).join('')}</ul>
-      <p class="muted small">${icon('shield')}PDF, JPG ou PNG, 10 Mo maximum. Une photo nette du document suffit.</p></section>
+      <p class="muted small">${icon('shield')}PDF ou photo, 10 Mo maximum. Une photo nette du document suffit.</p></section>
     ${sampleNote('Maquette : pièces et dates d’exemple. Les fichiers déposés ne sont pas envoyés.')}</div>`;
 }
 
 /* ───────────── Mes contrats ───────────── */
+/* Horaires et tarifs des créneaux : EXEMPLES pour la maquette (en production, ceux du contrat, lus dans le logiciel de paie). */
+const SHIFT = {'Garde 24 h': '24 heures de suite, de 8 h à 8 h le lendemain', 'Journée 12 h': '12 heures, de 8 h à 20 h', 'Journée 10 h': '10 heures, de 8 h à 18 h', 'Nuit 12 h': '12 heures de nuit, de 20 h à 8 h', 'Journée 7 h': '7 heures de formation, de 9 h à 17 h'};
+const RATE = {'Garde 24 h': 1300, 'Journée 12 h': 780, 'Journée 10 h': 650, 'Nuit 12 h': 780, 'Journée 7 h': 105};
+const euros = n => n.toLocaleString('fr-FR', {style: 'currency', currency: 'EUR', maximumFractionDigits: n % 1 ? 2 : 0});
+/* Signer en confiance : le contrat en mots simples (où, quand, horaires, combien, un exemple), le contrat complet,
+   et la conseillère à un appel. */
+function signPanel(c) {
+  const ms = missions().filter(m => m.ref === c.ref), types = [...new Set(ms.map(m => m.type))], total = ms.reduce((n, m) => n + (RATE[m.type] || 0), 0), first = ms[0];
+  return `<form class="sign-panel" data-sign="${c.ref}" novalidate><div id="form-errors"></div>
+    <h3 class="sign-title">Votre contrat en bref</h3>
+    <dl class="sign-sum">
+      <div><dt>${icon('pin')}Où</dt><dd>${esc(c.place)}</dd></div>
+      <div><dt>${icon('calendar')}Quand</dt><dd>${period(c.from, c.to)}<ul>${ms.map(m => `<li>${longDate(m.date)} · ${m.type}</li>`).join('')}</ul></dd></div>
+      <div><dt>${icon('clock')}Horaires</dt><dd><ul>${types.map(t => `<li>${t} : ${SHIFT[t] || 'horaires précisés dans le contrat'}</li>`).join('')}</ul></dd></div>
+      <div><dt>${icon('euro')}Rémunération</dt><dd><ul>${types.map(t => `<li>${euros(RATE[t])} brut par ${t.toLowerCase().startsWith('garde') ? 'garde' : t.toLowerCase().startsWith('nuit') ? 'nuit' : 'journée'} (${t})</li>`).join('')}</ul><strong>Soit ${euros(total)} brut pour ${ms.length} créneau${ms.length > 1 ? 'x' : ''}.</strong></dd></div>
+    </dl>
+    ${first ? `<p class="sign-example">${icon('help')}<span><strong>Exemple :</strong> pour ${first.type.toLowerCase().startsWith('garde') ? 'la garde' : 'le créneau'} du ${longDate(first.date)}, vous recevez ${euros(RATE[first.type])} brut, soit environ ${euros(Math.round(RATE[first.type] * .78))} net.</span></p>` : ''}
+    <div class="sign-links"><button type="button" class="text-link" data-contract-pdf="${c.ref}">${icon('file')}Lire le contrat complet (PDF, 3 pages)</button><a class="text-link" href="${TEL}">${icon('phone')}Appeler ma conseillère avant de signer</a></div>
+    <div class="field full"><label class="choice-inline"><input type="checkbox" name="signRead" required data-error-label="Lecture du contrat" data-missing="Cochez cette case pour signer : elle confirme que vous avez lu le contrat."><span>J’ai lu le contrat et j’en accepte les conditions.</span></label></div>
+    <div class="profile-actions"><button type="submit" class="btn btn-primary">${icon('pen')}Signer en ligne</button><button type="button" class="reset-link" data-sign-open="${c.ref}">Plus tard</button></div>
+    ${sampleNote('Maquette : horaires et montants d’exemple, à remplacer par ceux du contrat.')}</form>`;
+}
 function contractRow(c, open) {
   return `<li class="contract-row ${open ? 'is-open' : ''}" data-contract="${c.ref}"><div class="contract-main"><span class="space-ico tone-${c.kind === 'formation' ? 'sand' : 'coral'}">${icon(c.kind === 'formation' ? 'diploma' : 'file')}</span>
-    <div><strong>${esc(c.title)}</strong><small>${esc(c.place)} · ${period(c.from, c.to)}</small><small class="contract-ref">Réf. ${c.ref} · ${c.kind === 'formation' ? 'Contrat de mission – formation' : 'Contrat de mission'}</small></div>${statusPill(c.status)}
+    <div><strong>${esc(c.title)}</strong><small>${esc(c.place)} · ${period(c.from, c.to)}</small><small class="contract-ref">Réf. ${c.ref} · ${c.kind === 'formation' ? 'Contrat de formation' : 'Contrat de mission'}</small></div>${statusPill(c.status)}
     ${c.status === 'sign' ? `<button type="button" class="btn btn-coral" data-sign-open="${c.ref}" aria-expanded="${open}">${icon('pen')}Lire et signer</button>` : `<button type="button" class="btn btn-outline" data-download="${c.ref}">${icon('file')}PDF</button>`}</div>
-    ${c.status === 'sign' && open ? `<form class="sign-panel" data-sign="${c.ref}" novalidate><div id="form-errors"></div><dl class="profile-dl is-inline"><div><dt>Établissement</dt><dd>${esc(c.place)}</dd></div><div><dt>Dates</dt><dd>${period(c.from, c.to)}</dd></div><div><dt>Créneaux</dt><dd>${missions().filter(m => m.ref === c.ref).map(m => `${dayMonth(m.date)} · ${m.type}`).join(', ')}</dd></div><div><dt>Rémunération</dt><dd>Selon les conditions de l’offre</dd></div></dl>
-      <div class="field full"><label class="choice-inline"><input type="checkbox" name="signRead" required data-error-label="Lecture du contrat" data-missing="Cochez cette case pour signer : elle confirme que vous avez lu le contrat."><span>J’ai lu le contrat et j’en accepte les conditions.</span></label></div>
-      <div class="profile-actions"><button type="submit" class="btn btn-primary">${icon('pen')}Signer électroniquement</button><button type="button" class="reset-link" data-sign-open="${c.ref}">Plus tard</button></div></form>` : ''}</li>`;
+    ${c.status === 'sign' && open ? signPanel(c) : ''}</li>`;
 }
-let openSign = '';
+let openSign = '', justSigned = null;
+/* Après la signature : un écran de confirmation (date et heure, où trouver la copie), montré une fois. */
+function signedScreen({ref, at}) {
+  const c = spaceContracts().find(x => x.ref === ref), u = espaceUser();
+  const when = `${fmtDate(at.toISOString().slice(0, 10), {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'})} à ${at.getHours()} h ${String(at.getMinutes()).padStart(2, '0')}`;
+  return `<div class="success-state sign-done"><div class="success-symbol"><svg viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="24"/><path d="m15 27 7 7 15-16"/></svg></div>
+    <h2 tabindex="-1">${dot('Votre contrat est signé.')}</h2><p class="success-lead"><strong>${esc(c?.title || ref)}</strong>, ${esc(c?.place || '')}.</p>
+    <dl class="sign-proof"><div><dt>Signé le</dt><dd>${when}</dd></div><div><dt>Référence</dt><dd>${ref}</dd></div></dl>
+    <p>Une copie est dans « Tous mes contrats » et vous la recevez par email${u?.email ? ` à <strong>${esc(u.email)}</strong>` : ''}. Vous n’avez rien d’autre à faire.</p>
+    <div class="actions"><a class="btn btn-primary" href="#/espace/contrats?vue=historique">Voir tous mes contrats${icon('arrow')}</a><a class="btn btn-outline" href="#/espace">Retour à l’accueil</a></div></div>`;
+}
 function espaceContrats(vue) {
-  const all = spaceContracts().sort((a, b) => b.from.localeCompare(a.from));
+  const all = spaceContracts().sort((a, b) => b.from.localeCompare(a.from)), done = justSigned; justSigned = null;
   const list = {historique: all, mission: all.filter(c => c.kind === 'mission'), formation: all.filter(c => c.kind === 'formation'), signer: all.filter(c => c.status === 'sign')}[vue];
   const n = toSign().length;
   return `<div class="space-page">${spaceHead('contrats', 'Mes contrats')}
     ${segTabs([['signer', 'À signer', '#/espace/contrats?vue=signer', n || ''], ['historique', 'Tous mes contrats', '#/espace/contrats?vue=historique'], ['mission', 'Missions', '#/espace/contrats?vue=mission'], ['formation', 'Formations', '#/espace/contrats?vue=formation']], vue, 'Mes contrats')}
-    <section class="space-card" id="contract-list">${list.length ? `<ul class="contract-list">${list.map(c => contractRow(c, openSign === c.ref)).join('')}</ul>` : `<div class="space-empty">${icon('check')}<p><strong>${vue === 'signer' ? 'Aucun contrat à signer.' : 'Aucun contrat ici pour l’instant.'}</strong>${vue === 'signer' ? 'Vous recevez un message dès qu’un nouveau contrat est prêt.' : 'Vos contrats apparaissent ici dès votre première mission.'}</p></div>`}</section></div>`;
+    <section class="space-card" id="contract-list">${done ? signedScreen(done) : list.length ? `<ul class="contract-list">${list.map(c => contractRow(c, openSign === c.ref)).join('')}</ul>` : `<div class="space-empty">${icon('check')}<p><strong>${vue === 'signer' ? 'Aucun contrat à signer.' : 'Aucun contrat ici pour l’instant.'}</strong>${vue === 'signer' ? 'Vous recevez un message dès qu’un nouveau contrat est prêt.' : 'Vos contrats apparaissent ici dès votre première mission.'}</p></div>`}</section></div>`;
 }
 
 /* ───────────── Données fiscales, sécurité, avantages ───────────── */
 function espaceFiscal() {
-  return `<div class="space-page">${spaceHead('fiscal', 'Mes données fiscales')}
+  return `<div class="space-page">${groupHead('fiscal', 'Le récapitulatif de vos revenus imposables, pour votre déclaration.')}
     <section class="space-card"><div class="space-empty">${icon('receipt')}<p><strong>Aucune donnée pour l’année ${yearNow()}.</strong>Le récapitulatif de vos revenus imposables apparaît ici après votre première paie : vous pourrez le comparer avec votre déclaration de revenus.</p></div></section></div>`;
 }
 function espaceSecurite() {
-  const blocks = [['Avant la mission', ['Lisez la fiche de poste et le lieu de rendez-vous envoyés par votre conseiller.', 'Vérifiez que vos vaccinations obligatoires sont à jour.', 'Demandez l’accueil sécurité du service dès votre arrivée.']],
+  const blocks = [['Avant la mission', ['Lisez la fiche de poste et le lieu de rendez-vous envoyés par votre conseillère.', 'Vérifiez que vos vaccinations obligatoires sont à jour.', 'Demandez l’accueil sécurité du service dès votre arrivée.']],
     ['Pendant la mission', ['Portez les équipements de protection fournis par l’établissement.', 'Repérez les issues de secours et les numéros d’urgence internes.', 'Signalez toute situation à risque au cadre de santé.']],
-    ['En cas d’accident', ['Prévenez immédiatement le cadre du service.', 'Appelez votre conseiller dans les 24 heures : nous déclarons l’accident avec vous.', `Numéro direct : ${PHONE}.`]]];
-  return `<div class="space-page">${spaceHead('securite', 'Sécurité prévention', 'Réalisez votre mission en toute sécurité.')}
+    ['En cas d’accident', ['Prévenez immédiatement le cadre du service.', 'Appelez votre conseillère dans les 24 heures : nous déclarons l’accident avec vous.', `Numéro direct : ${PHONE}.`]]];
+  return `<div class="space-page">${groupHead('securite', 'Réalisez votre mission en toute sécurité.')}
     <div class="space-safety">${blocks.map(([t, list], i) => `<section class="space-card"><span class="safety-n" aria-hidden="true">${i + 1}</span><h2>${t}</h2>${checkList(list)}</section>`).join('')}</div>
     ${sampleNote('Maquette : consignes proposées, à faire valider par Laska Corporate.')}</div>`;
 }
@@ -411,7 +469,7 @@ function espaceAvantages(doc) {
   const row = ([label, href]) => { const key = href.split('doc=')[1], ext = key === 'fastt';
     return `<li class="${current[1] === href ? 'is-current' : ''}">${ext ? `<a href="https://www.fastt.org" target="_blank" rel="noopener">${icon('link')}<span>${label}<small>Site externe, nouvel onglet</small></span>${icon('arrow')}</a>` : `<a href="#/espace/${href}" ${current[1] === href ? 'aria-current="page"' : ''}>${icon('file')}<span>${label}<small>${key === 'avantages' ? 'Vos avantages Laska Corporate' : 'Document PDF'}</small></span>${icon('chevron')}</a>`}</li>`; };
   const key = current[1].split('doc=')[1];
-  return `<div class="space-page">${spaceHead('avantages', 'Mes avantages')}
+  return `<div class="space-page">${groupHead('avantages', 'Vos avantages et les documents de votre protection sociale.')}
     <div class="space-split is-nav"><nav aria-label="Mes avantages"><ul class="space-docs">${items.map(row).join('')}</ul></nav>
       <section class="space-card doc-view"><h2>${current[0]}</h2>${key === 'avantages' ? checkList(['Accompagnement gratuit dans vos démarches d’exercice', 'Logement et transport proposés selon les missions', 'Un conseiller dédié, joignable par téléphone et WhatsApp']) + todo('liste complète des avantages', 'À fournir par Laska Corporate.') : todo(`document « ${current[0]} »`, 'PDF à fournir par Laska Corporate ; il s’ouvrira ici et pourra être téléchargé.')}</section></div></div>`;
 }
@@ -433,8 +491,8 @@ function bindEspace(root = document) {
           submit.disabled = true; submit.classList.add('is-loading'); submit.innerHTML = `<span class="btn-spinner" aria-hidden="true"></span>Connexion…`;
           setTimeout(() => {
             const u = espaceLogin($('#loginEmail', form).value.trim(), form.remember.checked);
-            setAudience('pro', {rerender: false}); render(false); $('#main')?.focus({preventScroll: true});
-            toast(`Bonjour ${u.firstName}, vous êtes connectée à votre espace.`, {icon: 'user'});
+            render(false); $('#main')?.focus({preventScroll: true});
+            toast(`Bonjour ${u.firstName}, bienvenue dans votre espace.`, {icon: 'user'});
           }, 650);
           return;
         }
@@ -483,24 +541,26 @@ function bindSpacePage(page) {
     const o = e.target.closest('[data-sign-open]');
     if (o) { openSign = openSign === o.dataset.signOpen ? '' : o.dataset.signOpen; paintContracts(); $(`[data-contract="${o.dataset.signOpen}"] ${openSign ? '.sign-panel input' : '[data-sign-open]'}`)?.focus(); return; }
     const d = e.target.closest('[data-download]'); if (d) toast(`Contrat ${d.dataset.download} : téléchargement simulé, aucun fichier n’est créé.`, {icon: 'file'});
+    const pdf = e.target.closest('[data-contract-pdf]'); if (pdf) toast(`Contrat ${pdf.dataset.contractPdf} : ouverture simulée du contrat complet (PDF de 3 pages).`, {icon: 'file'});
   });
   list?.addEventListener('submit', e => {
     const form = e.target.closest('[data-sign]'); if (!form) return; e.preventDefault(); if (!validate(form)) return;
     const ref = form.dataset.sign; keep(SIGNED_KEY, [...new Set([...store(SIGNED_KEY, []), ref])]); openSign = '';
-    paintContracts(); toast(`Contrat ${ref} signé électroniquement. Une copie est déposée dans votre historique.`, {action: {label: 'Voir l’historique', run: () => { location.hash = '/espace/contrats?vue=historique'; }}});
+    /* Tout est redessiné (menu et onglets compris) : les pastilles « à signer » disparaissent avec le contrat signé. */
+    justSigned = {ref, at: new Date()}; render(false); $('.sign-done h2')?.focus();
   });
   list?.addEventListener('change', e => clearError(e.target));
-  /* Acompte. */
+  /* Avance sur paie (acompte). */
   const adv = $('#advance-form', page);
   adv?.addEventListener('input', e => clearError(e.target));
   adv?.addEventListener('submit', e => {
     e.preventDefault(); const amount = $('#advAmount', adv);
     const value = Number(amount.value.replace(',', '.').replace(/[^\d.]/g, ''));
     if (!validate(adv)) return;
-    if (!value || value < 20 || value > 2000) { amount.setAttribute('aria-invalid', 'true'); fieldHint(amount, value > 2000 ? 'Au-delà de 2 000 €, appelez votre conseiller : il étudie la demande avec vous.' : 'Indiquez un montant entre 20 € et 2 000 €.'); amount.focus(); return; }
+    if (!value || value < 20 || value > 2000) { amount.setAttribute('aria-invalid', 'true'); fieldHint(amount, value > 2000 ? 'Au-delà de 2 000 €, appelez votre conseillère : elle étudie la demande avec vous.' : 'Indiquez un montant entre 20 € et 2 000 €.'); amount.focus(); return; }
     keep(ADVANCE_KEY, [{amount: value.toLocaleString('fr-FR'), mission: $('#advMission', adv).value, date: TODAY}, ...store(ADVANCE_KEY, [])]);
     page.outerHTML = espacePaie(); again();
-    toast(`Demande d’acompte de ${value.toLocaleString('fr-FR')} € envoyée (simulation).`);
+    toast(`Demande d’avance de ${value.toLocaleString('fr-FR')} € envoyée (simulation).`);
   });
   /* Documents. */
   const docForm = $('#doc-form', page);
@@ -511,6 +571,7 @@ function bindSpacePage(page) {
     $('#doc-result [data-print-doc]', page).focus();
   });
   page.addEventListener('click', e => {
+    const slip = e.target.closest('[data-payslip]'); if (slip) toast(`Bulletin ${slip.dataset.payslip} : ouverture simulée (PDF).`, {icon: 'file'});
     if (e.target.closest('[data-print-doc]')) toast('Impression simulée : le vrai document sera généré par le logiciel de paie.', {icon: 'print'});
     const d = e.target.closest('#doc-result [data-download]'); if (d) toast(`${d.dataset.download} : téléchargement simulé, aucun fichier n’est créé.`, {icon: 'file'});
   });
@@ -532,7 +593,7 @@ function bindSpacePage(page) {
     if (form.dataset.profileForm === 'paiement' && next.paiement === undefined) next.paiement = profile().paiement;
     keep(PROFILE_KEY, next); profileEdit = '';
     page.outerHTML = espaceProfil(espaceUser()); again();
-    toast('Modifications enregistrées. Votre conseiller en est informé.');
+    toast('Modifications enregistrées. Votre conseillère en est informée.');
   });
   page.querySelectorAll('.profile-form').forEach(f => { f.addEventListener('input', e => clearError(e.target)); bindMulti(f); });
   /* Disponibilités : un appui par jour ; actions groupées avec « Annuler ». */
@@ -552,7 +613,7 @@ function bindSpacePage(page) {
   page.addEventListener('change', e => {
     const up = e.target.closest('[data-doc-up]'); if (!up) return;
     const f = up.files[0], key = up.dataset.docUp; if (!f) return;
-    const problem = fileProblem(f, ['pdf', 'jpg', 'jpeg', 'png']);
+    const problem = fileProblem(f, DOC_FILES.ext.split(','));
     if (problem) { up.value = ''; toast(problem, {icon: 'close'}); return; }
     const sent = store(DOCS_KEY, {}), prev = sent[key]; sent[key] = f.name; keep(DOCS_KEY, sent);
     page.outerHTML = espaceJustificatifs(); again(); $(`[data-doc-up="${key}"]`)?.focus();

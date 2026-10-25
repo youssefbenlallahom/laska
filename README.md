@@ -1,6 +1,148 @@
-# Laska Corporate — maquette HTML (v7.2)
+# Laska Corporate — maquette HTML (v8)
 
-Maquette navigable du futur site Laska Corporate, à porter ensuite en React / Next.js. Une copie de la v3 est gardée dans `_sauvegarde-v3/` (à supprimer une fois la v4 validée).
+Maquette navigable du futur site Laska Corporate, à porter ensuite en React / Next.js. Copies des versions précédentes : `_sauvegarde-v3/`, `_sauvegarde-v5/`, `_sauvegarde-v7/` (état v7.2, avant la v8).
+
+## Version 8 : un site facile pour tous
+
+Objectif : un site clair et peu encombré, qu’un médecin sur un téléphone Android ou une RH pressée utilisent sans aide. La v8 suit l’audit UX du 25 octobre 2026 (27/40). Elle a été faite en neuf lots, vérifiés un par un.
+
+### Ce qui change pour le visiteur
+
+- **Un seul menu, le même partout** : *Offres d’emploi · Praticiens · Établissements · Avis · Contact*.
+  - Plus d’interrupteur Praticien / Établissement, plus de « profil » qui change tout seul, plus de messages « vous êtes dans l’espace… ».
+  - Le bouton principal dépend seulement de la page : *Créer mon dossier* côté praticiens et offres, *Décrire mon besoin* côté établissements, aucun sur l’accueil. Une fois connecté à l’Espace candidat, aucun bouton orange : « Mon espace » le remplace sur toutes les pages.
+  - Le mot « espace » ne désigne plus que l’Espace candidat.
+- **Bouton « Aide »** :
+  - dans l’en-tête sur téléphone et tablette ;
+  - en bas à droite sur ordinateur, en blanc, et il s’efface pendant le défilement.
+- **Rien de bloquant au premier contact** :
+  - CV et copies facultatifs ;
+  - photos acceptées (l’appareil photo s’ouvre sur téléphone), plusieurs photos possibles pour le CV ;
+  - « Envoyez-le plus tard, par WhatsApp ou par email ».
+- **Formulaires en étapes**, une par écran : « Étape 2 sur 5 », une barre d’avancement, *Continuer* et *Retour*.
+  - L’étape est dans l’adresse (`?etape=2`), donc le bouton Retour du téléphone fonctionne.
+  - *Continuer* reste visible en bas de l’écran sur téléphone.
+  - Le dossier praticien compte 5 étapes ; la 5ᵉ, *Pour aller plus loin*, est facultative, avec *Passer cette étape*. La demande de renfort en compte 3.
+  - Un récapitulatif vient ensuite : chaque *Modifier* ramène à la bonne étape, et *Revenir au récapitulatif* y retourne directement.
+  - Avant le récapitulatif, toutes les étapes sont revérifiées.
+- **Un mot par chose** :
+  - *Créer mon dossier* → *Envoyer mon dossier* → « Votre dossier est envoyé » ;
+  - *Je postule* → *Envoyer ma candidature* → « Votre candidature est envoyée » ;
+  - *Décrire mon besoin* ou *Être informé* → *Envoyer ma demande* → « Votre demande est envoyée ».
+  - Le bouton du formulaire dit ce qu’il fait : *Vérifier avant d’envoyer*.
+- **« C’est quoi ? »** : une explication d’une ligne qui s’ouvre au toucher, sur :
+  - EVC et autorisation d’exercice ;
+  - intérim, vacation, CDD et CDI (dans les deux formulaires et sur chaque fiche d’offre) ;
+  - RPPS et AFGSU (Mes justificatifs).
+- **Recherche** :
+  - chaque département affiche sa préfecture (« Rhône (69) · Lyon ») et chaque offre son lieu (« Lyon · Rhône (69) ») ;
+  - les compteurs des listes suivent les autres choix, et les options à 0 sont grisées ;
+  - la recherche de l’accueil garde les critères, même sans résultat : la page Offres propose alors des solutions ;
+  - sur téléphone, les résultats viennent d’abord et *Filtrer les offres (n)* ouvre les filtres.
+- **Fiche d’offre** : en tête, Lieu, Contrat, Rémunération et Dates ; la référence passe en bas de page.
+- **Établissements** :
+  - téléphone *conseillé* dans la demande ;
+  - délai annoncé « sous 24 h ouvrées » ;
+  - tarifs repliés tant qu’ils ne sont pas renseignés.
+- **Avis** :
+  - bouton *Donner mon avis* sous le titre ;
+  - seuls le prénom, la note, l’avis et l’accord sont obligatoires.
+- **Messages éphémères** : seulement en réponse à une action (*Annuler*…), fermés au changement de page. Sur téléphone, ils sont en pleine largeur. La saisie retrouvée après un rechargement est dite dans le formulaire, avec *Tout effacer*.
+
+### Espace candidat
+
+- **Menu** : 7 entrées au lieu de 13 :
+  - Accueil, Mon planning, Mes contrats, Mes offres d’emploi ;
+  - *Ma paie et mes documents* (onglets : Bulletins et avances, Attestations, Données fiscales) ;
+  - *Mon dossier* (Mes informations, Mes justificatifs) ;
+  - *Aide et infos* (Questions fréquentes, Sécurité au travail, Mes avantages).
+  - Les adresses ne changent pas.
+- **Signer en confiance** :
+  - « Votre contrat en bref » : où, quand, horaires, rémunération en euros, un exemple ;
+  - *Lire le contrat complet (PDF, 3 pages)* et *Appeler ma conseillère avant de signer* ;
+  - après la signature, un écran de confirmation (date, heure, référence, où trouver la copie).
+- **Ma paie** : deux bulletins d’exemple, l’un versé et l’autre en préparation.
+- **Disponibilités** : la consigne est au-dessus de la grille (« 1 fois, disponible · 2 fois, indisponible · 3 fois, effacé »).
+- **Mots courants** :
+  - « Mes droits en cas d’arrêt de travail (prévoyance) » ;
+  - « Aides du FASTT : logement, transport, garde d’enfants » ;
+  - « Ma mutuelle santé » ;
+  - « Demander une avance sur ma paie (acompte) » ;
+  - « Signature en ligne acceptée (convention de preuve) » ;
+  - « vos documents en ligne ».
+  - Dans tout l’espace, on parle d’« Inès Martin, votre conseillère ».
+
+### Lisibilité et mouvement
+
+- **Textes** : aucun texte sous 13 px. Dans l’espace candidat, 14 px au moins, et 15 px pour les lignes de texte.
+- **Contrastes à 4,5:1** : textes d’exemple des champs, astérisques des champs obligatoires, libellés de la fiche d’offre.
+- **Zones tactiles de 44 px** : menus, pied de page, fil d’Ariane, puces, cœurs, petits boutons.
+- **Téléphone** :
+  - la carte de France laisse la place à la liste des spécialités et à *Voir les offres par département* ;
+  - accueil plus court (deux témoignages, la citation sans photo).
+- **Mouvement, même style mais la lecture d’abord** :
+  - ce qui est déjà à l’écran n’est plus caché pour être révélé ;
+  - les portes de l’accueil s’ouvrent plus vite, depuis une porte entrouverte, et une seule fois par visite (le logo aussi) ;
+  - les textes du parcours restent lisibles ;
+  - la citation prend l’encre en une fois, sans suivre le défilement ;
+  - les apparitions arrivent un peu avant l’écran, et plus vite.
+
+### Mesures (mêmes scripts sur la v7.2 et sur la v8)
+
+20 pages mesurées, chacune sur ordinateur (1440 px) et sur téléphone (390 px).
+
+| Mesure | Avant (v7.2) | Après (v8) |
+|---|---|---|
+| Bouton *Continuer* ou *Envoyer* visible à l’arrivée de chaque étape, téléphone | non (envoi à 4,8 écrans) | oui, 5 étapes sur 5 |
+| Textes sous 13 px | 45 | 0 |
+| Textes sous 14 px dans l’espace candidat | 17 % (ordinateur), 15 % (téléphone) | 2 %, 5 % |
+| Textes sous 4,5:1 de contraste | 57 | 0 |
+| Zones tactiles d’au moins 44 px | 42 % (ordinateur), 36 % (téléphone) | 99 %, 100 % |
+| Messages éphémères pendant la navigation (8 changements de page) | 8 sur 8 | 0 |
+| Texte du premier écran lisible à 0,3 s (accueil, praticiens, établissements, engagement, offres) | 9 à 85 % | 93 à 100 % |
+
+La seule zone tactile restante sous 44 px est la pastille de la carte de France sur ordinateur, où la liste des départements sert d’alternative.
+
+### Nouvel audit : 32/40 (27/40 avant)
+
+Le nouvel audit a été fait par un relecteur indépendant, avec la même méthode (10 critères notés de 0 à 4).
+- **Note : 32/40.** L’aide et la récupération après une erreur sont à 4 ; tout le reste est à 3.
+- **Corrigé après l’audit :**
+  - la grille des disponibilités débordait sur téléphone ;
+  - « Garder » chevauchait « Partager » sur la fiche d’offre ;
+  - une faute dans l’adresse email est redite au récapitulatif ;
+  - une demande de renfort sans téléphone n’annonce plus un rappel, mais une réponse par email ;
+  - le lieu tient sur une ligne dans la liste des offres ;
+  - « Touchez » devient « Appuyez ».
+- **Proposé, pas encore fait :**
+  - choisir « Disponible / Pas disponible / Effacer » dans un petit menu, au lieu de toucher 1, 2 ou 3 fois ;
+  - raccourcir la candidature à une offre (les créneaux dans le récapitulatif, *Pour aller plus loin* après l’envoi) ;
+  - demande de renfort, période : l’ordre Du, Au, Créneau, aucun jour coché au départ, des raccourcis Week-ends et Semaine ;
+  - numéros de téléphone : le nôtre au format international, les numéros étrangers découpés selon le pays ;
+  - page Offres sur téléphone : Trier et Liste/Carte dans le panneau des filtres ;
+  - une fois connecté, garder « Menu » et « Mon espace » écrits dans l’en-tête.
+- **À trancher avec Laska Corporate :**
+  - l’audit propose de dire « publié après relecture » quand un avis est envoyé. C’est contraire à la consigne actuelle : le visiteur ne voit rien de la modération ;
+  - libellés de situation fournis par Laska : « Sans EVC », et « docteur en médecine » dans la carte « Diplôme français ou européen », alors que les autres métiers peuvent aussi la choisir.
+
+### À faire valider par Laska Corporate
+
+- Les définitions des « C’est quoi ? » (`EXPLAIN` et `CONTRACT_DEFS` dans app.js) : EVC, autorisation d’exercice, intérim, vacation, CDD, CDI, RPPS, AFGSU.
+- Le délai « sous 24 h ouvrées » pour rappeler un établissement.
+- Données d’exemple de la maquette :
+  - **villes des offres** : la préfecture du département ; en production, la ville réelle lue dans le CRM ;
+  - **horaires et tarifs** des créneaux dans le résumé du contrat (`SHIFT` et `RATE` dans espace.js) ;
+  - **bulletins de salaire** : montants calculés sur ces tarifs, net à environ 78 % du brut.
+
+### Vérifier
+
+Serveur local `node server.cjs`, puis http://127.0.0.1:4173.
+
+Les vérifications automatiques ont tourné avec Chrome sans interface, sur ordinateur et sur téléphone. Elles ont trouvé zéro erreur JavaScript et zéro défilement horizontal. Elles couvraient :
+- le balayage de 17 routes ;
+- l’en-tête à 17 largeurs ;
+- les parcours complets (dossier, candidature, renfort, avis et modération, espace candidat) ;
+- la lisibilité et le mouvement.
 
 ## Espace candidat (v7)
 
