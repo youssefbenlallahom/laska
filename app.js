@@ -636,7 +636,7 @@ function updateResults(writeURL = true) {
     if (f.fav && !favList().length) alts.length = 0;
   }
   $('#fav-filter')?.setAttribute('aria-pressed', f.fav);
-  const paint = () => $('#offer-results').innerHTML = list.length ? `<div class="offer-list">${list.map(offerRow).join('')}</div>` : `<div class="empty-state">${icon('search')}<h2>${f.fav && !favList().length ? 'Vous n’avez pas encore gardé d’offre.' : 'Aucune offre pour ces critères.'}</h2>${f.fav && !favList().length ? `<p>Touchez ${icon('heart')} sur une offre pour la retrouver ici, dans ce navigateur.</p>` : ''}${alts.length ? `<div class="empty-alts">${alts.map(([k, l]) => `<button type="button" class="btn btn-outline" data-alt="${k}">${l}${icon('arrow')}</button>`).join('')}</div>` : ''}<p>Essayez un autre département ou retirez un filtre. Vous pouvez aussi créer votre dossier : nous vous prévenons dès qu’une offre correspond.</p><div class="actions"><button type="button" class="btn btn-outline" id="empty-reset">Voir toutes les offres${icon('arrow')}</button>${btn('Créer mon dossier','#/postuler','coral','')}</div></div>`;
+  const paint = () => $('#offer-results').innerHTML = list.length ? `<div class="offer-list">${list.map(offerRow).join('')}</div>` : `<div class="empty-state">${icon('search')}<h2>${f.fav && !favList().length ? 'Vous n’avez pas encore gardé d’offre.' : 'Aucune offre pour ces critères.'}</h2>${f.fav && !favList().length ? `<p>Appuyez sur le ${icon('heart')} d’une offre pour la retrouver ici, dans ce navigateur.</p>` : ''}${alts.length ? `<div class="empty-alts">${alts.map(([k, l]) => `<button type="button" class="btn btn-outline" data-alt="${k}">${l}${icon('arrow')}</button>`).join('')}</div>` : ''}${f.fav && !favList().length ? '' : '<p>Essayez un autre département ou retirez un filtre. Vous pouvez aussi créer votre dossier : nous vous prévenons dès qu’une offre correspond.</p>'}<div class="actions"><button type="button" class="btn btn-outline" id="empty-reset">Voir toutes les offres${icon('arrow')}</button>${btn('Créer mon dossier','#/postuler','coral','')}</div></div>`;
   M ? M.flip($('#offer-results'), paint) : paint();
   $('#empty-reset')?.addEventListener('click', resetFilters);
   const fig = $('#map-slot .france-map');
@@ -1088,7 +1088,7 @@ function review(kind, o, {readonly = false} = {}) {
   if (readonly) return `<div class="review is-readonly">${blocks}</div>`;
   /* Lexique : Créer mon dossier → Envoyer mon dossier ; Je postule → Envoyer ma candidature ; Décrire mon besoin ou Être informé → Envoyer ma demande. */
   const send = kind === 'employer' || o?.soon ? 'Envoyer ma demande' : o ? 'Envoyer ma candidature' : 'Envoyer mon dossier';
-  return `<div class="review" data-review="${kind}"><h2 tabindex="-1">${dot('Vérifiez avant d’envoyer.')}</h2><p class="review-lead">Tout est juste ? Envoyez. Sinon, touchez « Modifier » à côté de la partie à corriger.</p>${blocks}
+  return `<div class="review" data-review="${kind}"><h2 tabindex="-1">${dot('Vérifiez avant d’envoyer.')}</h2><p class="review-lead">Tout est juste ? Envoyez. Sinon, appuyez sur « Modifier » à côté de la partie à corriger.</p>${blocks}
     <div class="review-actions"><button type="button" class="btn btn-coral btn-full" data-send="${kind}">${send}${icon('arrow')}</button><button type="button" class="reset-link" data-edit="last">${icon('back')}Revenir au formulaire</button></div></div>`;
 }
 /* Confirmation : c’est envoyé, ce qui se passe ensuite, et rien d’autre à faire. */

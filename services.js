@@ -224,7 +224,7 @@ function avisSection() {
     ${list.length ? `<div class="avis-grid">${list.slice(0, 3).map(r => avisCard(r)).join('')}</div>` : avisEmpty()}${list.some(r => r.sample) ? sampleNote('Avis d’exemple pour la maquette, à remplacer par les vrais avis.') : ''}</div></section>`;
 }
 function starInput() {
-  return `<fieldset class="field full star-field" id="rvStars-group"><legend>Votre note <span class="req" aria-hidden="true">*</span></legend><div class="star-row"><div class="star-input">${[1, 2, 3, 4, 5].map(i => `<label class="star-pick"><input type="radio" name="rvStars" value="${i}" required data-group-msg="Choisissez une note, de 1 à 5 étoiles.">${starSVG()}<span class="sr-only">${i} sur 5 : ${STAR_WORDS[i]}</span></label>`).join('')}</div><span class="star-say" aria-hidden="true">Touchez une étoile</span></div></fieldset>`;
+  return `<fieldset class="field full star-field" id="rvStars-group"><legend>Votre note <span class="req" aria-hidden="true">*</span></legend><div class="star-row"><div class="star-input">${[1, 2, 3, 4, 5].map(i => `<label class="star-pick"><input type="radio" name="rvStars" value="${i}" required data-group-msg="Choisissez une note, de 1 à 5 étoiles.">${starSVG()}<span class="sr-only">${i} sur 5 : ${STAR_WORDS[i]}</span></label>`).join('')}</div><span class="star-say" aria-hidden="true">Appuyez sur une étoile</span></div></fieldset>`;
 }
 function avisForm() {
   return `<div class="form-head"><div><h2 id="avis-title">Donner mon avis</h2><p class="muted small"><span class="req">*</span> Champs obligatoires</p></div></div>
