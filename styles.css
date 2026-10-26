@@ -34,8 +34,8 @@ button,summary{cursor:pointer}
 button,a,summary,label{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 p{margin:0}
 h1,h2,h3,h4{font-family:var(--font-display);font-weight:800;line-height:1.08;letter-spacing:-.04em;margin:0;text-wrap:balance}
-h1{font-size:clamp(40px,5vw,72px)}
-h2{font-size:clamp(30px,3.3vw,46px)}
+h1{font-size:clamp(32px,3.9vw,56px)}
+h2{font-size:clamp(26px,2.6vw,36px)}
 h3{font-size:20px;letter-spacing:-.025em;line-height:1.2}
 em{font-style:normal}
 img{max-width:100%;height:auto;display:block}
@@ -53,7 +53,7 @@ main{outline:none}
 .skip-link:focus{top:12px}
 
 /* Repères typographiques */
-.lead{font-size:clamp(17px,1.4vw,20px);line-height:1.6;color:var(--muted);max-width:52ch;margin-top:20px}
+.lead{font-size:clamp(16px,1.25vw,18px);line-height:1.6;color:var(--muted);max-width:52ch;margin-top:20px}
 .section{padding-block:clamp(64px,8vw,112px)}
 .section-paper{background:var(--paper)}
 .section-mint{background:var(--mint-100)}
@@ -127,7 +127,7 @@ main{outline:none}
 .door-etab{background:var(--teal-900);color:#fff}
 .door-etab::before{content:'';position:absolute;z-index:-1;width:520px;height:520px;right:-220px;top:-240px;border-radius:50%;border:70px solid rgba(157,222,214,.09)}
 .door-pro::before{content:'';position:absolute;z-index:-1;width:420px;height:420px;right:-200px;bottom:-230px;border-radius:50%;background:var(--sand-100)}
-.door-title{font-size:clamp(36px,4.2vw,60px);letter-spacing:-.05em;line-height:1.02}
+.door-title{font-size:clamp(30px,3.3vw,46px);letter-spacing:-.05em;line-height:1.02}
 .door-title em{white-space:nowrap}
 /* Surlignage menthe : un vrai bloc sous les mots, qui se pose après eux (motion.css). */
 .door-pro .door-title em{position:relative;z-index:0}
@@ -140,7 +140,7 @@ main{outline:none}
 .door-avatar{position:absolute;top:clamp(22px,3vw,40px);right:clamp(22px,3vw,40px);width:76px;height:76px;border-radius:50%;object-fit:cover;object-position:50% 25%;outline:2px solid var(--mint);outline-offset:5px}
 .door-etab .door-avatar{outline-color:var(--coral)}
 .door-half .door-body{padding-right:72px}
-.door-half .door-title{font-size:clamp(36px,4.2vw,60px);margin-right:-72px}
+.door-half .door-title{font-size:clamp(30px,3.3vw,46px);margin-right:-72px}
 .door-half .door-body>form,.door-half .door-body>.promise,.door-half .door-body>.urgent{margin-right:-72px}
 
 /* Recherche */
@@ -173,7 +173,7 @@ main{outline:none}
 .offer-stack{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-block:32px 28px}
 .missions-copy .count{font-variant-numeric:tabular-nums}
 .sp-index{display:grid;margin-block:26px 32px}
-.sp-index a{position:relative;display:flex;align-items:center;gap:14px;min-height:48px;padding:4px 0;font-family:var(--font-display);font-weight:800;font-size:clamp(22px,2.4vw,34px);line-height:1.15;letter-spacing:-.035em;color:var(--teal-900);transition:color .2s,opacity .25s}
+.sp-index a{position:relative;display:flex;align-items:center;gap:14px;min-height:48px;padding:4px 0;font-family:var(--font-display);font-weight:800;font-size:clamp(20px,2vw,28px);line-height:1.15;letter-spacing:-.035em;color:var(--teal-900);transition:color .2s,opacity .25s}
 .sp-index a::after{content:'';order:1;flex:1;min-width:28px;border-top:2px dashed var(--line-strong);transition:border-color .2s}
 .sp-n{order:2;display:inline-grid;place-items:center;min-width:32px;height:32px;padding:0 9px;border-radius:var(--pill);background:var(--coral);color:var(--ink);font:700 15px/1 var(--font-body);letter-spacing:0;font-variant-numeric:tabular-nums;transition:transform .25s var(--ease)}
 .sp-index a.is-dim{opacity:.26}
@@ -190,7 +190,7 @@ main{outline:none}
 .offer-meta{display:grid;gap:4px;font-size:14px;color:var(--muted);position:relative;z-index:1}
 .offer-meta span{display:flex;align-items:center;gap:7px}
 .offer-meta .icon{width:16px;height:16px}
-.dept-num{font-family:var(--font-display);font-weight:800;font-size:52px;letter-spacing:-.06em;line-height:.8;color:transparent;-webkit-text-stroke:1.5px var(--line-strong);transition:-webkit-text-stroke-color .25s,transform .4s var(--ease);pointer-events:none}
+.dept-num{font-family:var(--font-display);font-weight:800;font-size:42px;letter-spacing:-.06em;line-height:.8;color:transparent;-webkit-text-stroke:1.5px var(--line-strong);transition:-webkit-text-stroke-color .25s,transform .4s var(--ease);pointer-events:none}
 .card-go{position:absolute;right:16px;bottom:16px;display:grid;place-items:center;width:38px;height:38px;border-radius:50%;background:var(--bg);color:var(--teal-900);opacity:0;transform:translateX(-6px);transition:opacity .25s,transform .25s var(--ease)}
 .card-go .icon{width:18px;height:18px}
 .offer-card:hover,.offer-card:focus-within,.offer-card.is-linked{transform:translateY(-3px);box-shadow:inset 0 0 0 1.5px var(--teal),var(--shadow)}
@@ -261,7 +261,7 @@ main{outline:none}
 
 /* Étapes établissement */
 .steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(28px,4vw,64px)}
-.steps li{position:relative;--n-size:clamp(72px,7vw,108px)}
+.steps li{position:relative;--n-size:clamp(56px,5.4vw,84px)}
 .steps li:not(:last-child)::after{content:'';position:absolute;left:calc(var(--n-size) * .85);right:-8px;top:calc(var(--n-size) * .4);border-top:2px dashed var(--line-strong)}
 .step-n{position:relative;display:block;width:fit-content;margin-bottom:26px;font-family:var(--font-display);font-weight:800;font-size:var(--n-size);line-height:.82;letter-spacing:-.06em;color:transparent;-webkit-text-stroke:1.5px var(--teal)}
 .step-n::after{content:attr(data-n);position:absolute;inset:0;color:var(--mint);-webkit-text-stroke:1.5px var(--teal)}
@@ -289,7 +289,7 @@ main{outline:none}
 .contract{padding:clamp(28px,4vw,48px);border-radius:var(--r-xl);background:var(--bg)}
 .contract-dark{background:var(--teal-900);color:#fff;border-color:transparent}
 .contract.contract-dark p{color:var(--on-dark-muted)}
-.contract-tag{display:inline-block;font-family:var(--font-display);font-weight:800;font-size:clamp(24px,2.4vw,32px);letter-spacing:-.05em;line-height:1;color:transparent;-webkit-text-stroke:1.5px var(--teal);margin-bottom:22px}
+.contract-tag{display:inline-block;font-family:var(--font-display);font-weight:800;font-size:clamp(22px,2vw,28px);letter-spacing:-.05em;line-height:1;color:transparent;-webkit-text-stroke:1.5px var(--teal);margin-bottom:22px}
 .contract-dark .contract-tag{-webkit-text-stroke-color:var(--mint)}
 .contract h3{font-size:24px;margin-bottom:12px}
 .contract p{color:var(--muted);max-width:44ch}
@@ -301,7 +301,7 @@ main{outline:none}
 
 .belief{padding-block:clamp(64px,8vw,120px)}
 .belief-inner{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,.7fr);gap:40px;align-items:end}
-.belief-quote{font-family:var(--font-display);font-weight:800;font-size:clamp(36px,5vw,72px);line-height:1;letter-spacing:-.05em;color:var(--teal-900);text-wrap:balance}
+.belief-quote{font-family:var(--font-display);font-weight:800;font-size:clamp(30px,3.9vw,56px);line-height:1;letter-spacing:-.05em;color:var(--teal-900);text-wrap:balance}
 .belief-inner p:not(.belief-quote){color:var(--muted);margin-bottom:10px}
 .belief-side{display:grid;justify-items:start;align-content:end}
 .belief-photo{width:min(100%,280px);aspect-ratio:4/5;margin:0 0 24px;overflow:hidden;border-radius:160px 18px 18px 18px}
@@ -332,7 +332,7 @@ main{outline:none}
 .brief-card-title .icon{color:var(--coral)}
 .brief-card .quick-brief{margin-top:24px}
 .page-heading{padding-block:clamp(4px,1.4vw,20px) clamp(24px,3vw,40px)}
-.page-heading h1{max-width:18ch;font-size:clamp(36px,4.2vw,60px)}
+.page-heading h1{max-width:18ch;font-size:clamp(30px,3.3vw,46px)}
 .faq-layout{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:clamp(32px,6vw,96px);align-items:start}
 .faq-layout h2{margin-bottom:18px}
 .faq-list{display:grid;gap:8px}
@@ -346,7 +346,7 @@ main{outline:none}
 /* Engagement */
 .engagement-hero{padding-block:clamp(4px,1.4vw,20px) clamp(40px,5vw,64px)}
 .engagement-hero .breadcrumb{margin-bottom:clamp(24px,4vw,56px)}
-.engagement-hero h1{font-size:clamp(38px,6vw,88px);letter-spacing:-.06em;line-height:.98}
+.engagement-hero h1{font-size:clamp(32px,3.9vw,56px);letter-spacing:-.06em;line-height:.98}
 .engagement-hero h1 em{color:var(--teal)}
 .engagement-banner{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);border-radius:var(--r-xl);overflow:hidden;background:var(--teal-900);color:#fff}
 .engagement-banner img{width:100%;height:100%;min-height:360px;object-fit:cover;object-position:62% 30%}
@@ -354,8 +354,8 @@ main{outline:none}
 .editorial-copy p{color:var(--on-dark-muted);margin-top:16px}
 .principle-list{display:grid;gap:clamp(8px,1.5vw,16px)}
 .principle{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:clamp(16px,4vw,64px);align-items:center;padding:clamp(26px,3.4vw,44px) clamp(24px,3.4vw,48px);border-radius:var(--r-xl);background:var(--paper)}
-.principle h2{font-size:clamp(32px,4.2vw,60px);letter-spacing:-.05em;line-height:1}
-.principle p{color:var(--muted);font-size:clamp(17px,1.4vw,20px);max-width:38ch}
+.principle h2{font-size:clamp(28px,3.3vw,46px);letter-spacing:-.05em;line-height:1}
+.principle p{color:var(--muted);font-size:clamp(16px,1.25vw,18px);max-width:38ch}
 .inclusion-line{display:flex;justify-content:space-between;align-items:center;gap:32px;flex-wrap:wrap}
 .inclusion-line p{color:var(--muted);max-width:60ch;margin-top:12px}
 
@@ -383,7 +383,7 @@ main{outline:none}
 .offers-map{position:sticky;top:calc(var(--header-h) + 120px)}
 .offer-list{display:grid;gap:10px}
 .offer-row{position:relative;display:grid;grid-template-columns:76px minmax(0,1fr) 210px auto 40px 40px;align-items:center;gap:18px;padding:16px 20px 16px 16px;border-radius:var(--r-lg);background:var(--paper);transition:transform .25s var(--ease),scale .14s var(--ease),box-shadow .25s}
-.row-num{display:grid;place-items:center;height:60px;border-radius:var(--r-md);background:var(--bg);font-family:var(--font-display);font-weight:800;font-size:30px;letter-spacing:-.04em;color:transparent;-webkit-text-stroke:1.4px var(--teal);transition:background-color .25s,color .25s}
+.row-num{display:grid;place-items:center;height:60px;border-radius:var(--r-md);background:var(--bg);font-family:var(--font-display);font-weight:800;font-size:26px;letter-spacing:-.04em;color:transparent;-webkit-text-stroke:1.4px var(--teal);transition:background-color .25s,color .25s}
 .row-main h2{font-size:20px;letter-spacing:-.025em}
 .row-main p{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:6px;font-size:15px;color:var(--muted)}
 .row-main p .icon{width:16px;height:16px;color:var(--teal)}
@@ -398,21 +398,21 @@ main{outline:none}
 .offer-row:hover .row-go,.offer-row:focus-within .row-go,.offer-row.is-linked .row-go{background:var(--coral);color:var(--ink)}
 .empty-state{padding:48px 32px;border-radius:var(--r-xl);background:var(--paper);border:1.5px dashed var(--line-strong)}
 .empty-state>.icon{width:52px;height:52px;padding:12px;border-radius:50%;background:var(--sand-100);color:var(--sand-700);margin-bottom:20px}
-.empty-state h2{font-size:clamp(26px,2.6vw,34px)}
+.empty-state h2{font-size:clamp(22px,2.1vw,28px)}
 .empty-state p{color:var(--muted);margin-top:10px;max-width:56ch}
 .offer-note{display:flex;justify-content:space-between;align-items:center;gap:24px;flex-wrap:wrap;margin-top:40px;padding:28px 32px;border-radius:var(--r-xl);background:var(--sand-100)}
-.offer-note h2{font-size:clamp(26px,2.6vw,34px)}
+.offer-note h2{font-size:clamp(22px,2.1vw,28px)}
 .offer-note p{color:var(--muted);margin-top:6px}
 
 /* Fiche d’offre */
 .detail-hero{position:relative;overflow:hidden;background:var(--teal-900);color:#fff;padding-bottom:clamp(96px,10vw,140px)}
-.detail-num{position:absolute;right:-2vw;top:50%;transform:translateY(-46%);font-family:var(--font-display);font-weight:800;font-size:clamp(220px,32vw,460px);line-height:.8;letter-spacing:-.07em;color:transparent;-webkit-text-stroke:2px rgba(157,222,214,.28);pointer-events:none}
+.detail-num{position:absolute;right:-2vw;top:50%;transform:translateY(-46%);font-family:var(--font-display);font-weight:800;font-size:clamp(170px,24vw,340px);line-height:.8;letter-spacing:-.07em;color:transparent;-webkit-text-stroke:2px rgba(157,222,214,.28);pointer-events:none}
 .detail-hero .breadcrumb{color:var(--on-dark-muted)}
 .detail-hero .breadcrumb a:hover{color:#fff}
 .detail-head{position:relative;margin-top:18px}
 .detail-head .card-top{display:flex;align-items:center;gap:14px}
 .detail-head .ref{color:var(--on-dark-muted)}
-.detail-head h1{font-size:clamp(40px,5vw,72px);letter-spacing:-.055em;margin-top:18px;max-width:14ch}
+.detail-head h1{font-size:clamp(32px,3.9vw,56px);letter-spacing:-.055em;margin-top:18px;max-width:14ch}
 .detail-place{display:flex;align-items:center;gap:8px;margin-top:14px;font-size:20px;color:var(--mint)}
 .detail-facts{position:relative;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:36px 0 0;max-width:calc(100% - 420px)}
 .detail-facts>div{display:grid;grid-template-columns:auto 1fr;align-content:start;column-gap:10px;padding:16px;border-radius:var(--r-md);background:rgba(255,255,255,.07)}
@@ -421,7 +421,7 @@ main{outline:none}
 .detail-facts dd{margin:0;font-weight:700;font-size:15px}
 .detail-layout{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:clamp(32px,5vw,72px);align-items:start;padding-bottom:clamp(64px,8vw,112px)}
 .detail-copy{padding-top:56px}
-.detail-copy h2{font-size:clamp(26px,2.6vw,34px);margin-bottom:12px}
+.detail-copy h2{font-size:clamp(22px,2.1vw,28px);margin-bottom:12px}
 .detail-copy h2:not(:first-child){margin-top:48px}
 .detail-copy>p{color:var(--muted);max-width:58ch}
 .unknowns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:22px}
@@ -435,7 +435,7 @@ main{outline:none}
 .mini-steps li:last-child::before{border-color:var(--coral);background:var(--coral)}
 .mini-steps strong{display:block;color:var(--ink);font-family:var(--font-display);font-size:17px}
 .apply-card{position:sticky;top:calc(var(--header-h) + 20px);margin-top:-110px;padding:30px;border-radius:var(--r-xl);background:var(--paper);box-shadow:var(--shadow),0 40px 60px -40px rgba(15,92,89,.45)}
-.apply-card h2{font-size:clamp(26px,2.6vw,34px);margin-top:10px}
+.apply-card h2{font-size:clamp(22px,2.1vw,28px);margin-top:10px}
 .apply-card>p{color:var(--muted);margin:12px 0 22px;font-size:16px}
 .apply-card .btn{width:100%}
 .apply-card .promise{margin-top:16px;justify-content:center}
@@ -451,7 +451,7 @@ main{outline:none}
 .form-page{padding-bottom:clamp(64px,8vw,112px)}
 .form-layout{display:grid;grid-template-columns:minmax(0,.82fr) minmax(0,1.18fr);gap:clamp(32px,5vw,80px);align-items:start}
 .form-intro{position:sticky;top:calc(var(--header-h) + 24px);padding-top:12px}
-.form-intro h1{font-size:clamp(38px,4.2vw,60px)}
+.form-intro h1{font-size:clamp(30px,3.3vw,46px)}
 .form-photo{position:relative;margin:28px 0 0;overflow:hidden;border-radius:var(--r-lg) 120px var(--r-lg) var(--r-lg)}
 .form-photo img{width:100%;aspect-ratio:16/10;object-fit:cover;object-position:50% 30%;border-radius:var(--r-lg) 120px var(--r-lg) var(--r-lg)}
 .form-photo figcaption{position:absolute;left:14px;bottom:14px;display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:var(--r-md);background:var(--paper);box-shadow:var(--shadow);font-size:14px;color:var(--muted);max-width:calc(100% - 28px)}
@@ -461,7 +461,7 @@ main{outline:none}
 
 .form-card{padding:clamp(22px,4vw,48px);border-radius:var(--r-xl);background:var(--paper)}
 .form-head{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:26px}
-.form-head h2{font-size:clamp(26px,2.6vw,34px)}
+.form-head h2{font-size:clamp(22px,2.1vw,28px)}
 .form-head .small{margin-top:6px}
 .progress{display:flex;align-items:center;gap:10px;flex-direction:row-reverse}
 .progress svg{width:46px;height:46px;transform:rotate(-90deg)}
@@ -473,7 +473,7 @@ main{outline:none}
 .progress.is-done .progress-text{display:flex;align-items:center;gap:4px;font-weight:700;color:var(--teal-900);font-size:15px}
 .progress.is-done .progress-text .icon{width:18px;height:18px}
 .application-offer{display:flex;align-items:center;gap:14px;margin-bottom:24px;padding:12px 16px 12px 12px;border-radius:var(--r-md);background:var(--mint-100)}
-.application-offer .row-num{width:56px;height:52px;background:var(--paper);font-size:26px;flex-shrink:0}
+.application-offer .row-num{width:56px;height:52px;background:var(--paper);font-size:24px;flex-shrink:0}
 .application-offer p{flex:1;min-width:0;font-size:14px;color:var(--muted)}
 .application-offer strong{display:block;color:var(--ink);font-size:16px}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px 14px}
@@ -540,7 +540,7 @@ main{outline:none}
 .success-symbol circle{fill:var(--mint-100);stroke:var(--teal);stroke-width:2.5}
 .success-symbol path{fill:none;stroke:var(--teal-900);stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:40;animation:draw .6s .2s var(--ease) backwards}
 @keyframes draw{from{stroke-dashoffset:40}}
-.success-state h2{font-size:clamp(26px,2.6vw,34px);outline:none}
+.success-state h2{font-size:clamp(22px,2.1vw,28px);outline:none}
 .success-state .mini-steps{margin-block:26px}
 .notice{display:flex;gap:12px;padding:16px 18px;border-radius:var(--r-md);background:var(--sand-100);font-size:15px}
 .notice .icon{color:var(--sand-700);margin-top:2px}
@@ -566,7 +566,7 @@ a.channel:hover{box-shadow:inset 0 0 0 1.5px var(--teal)}
 .legal-nav a{padding:8px 10px;border-radius:var(--r-sm)}
 .legal-nav a:hover{background:var(--mint-100)}
 .legal-copy{max-width:72ch}
-.legal-copy h2{font-size:clamp(26px,2.6vw,34px);margin:48px 0 16px}
+.legal-copy h2{font-size:clamp(22px,2.1vw,28px);margin:48px 0 16px}
 .legal-copy h2:first-child{margin-top:0}
 .legal-copy h3{font-size:20px;margin:28px 0 8px}
 .legal-copy p{color:#3e4845;margin-bottom:12px}
@@ -575,11 +575,11 @@ a.channel:hover{box-shadow:inset 0 0 0 1.5px var(--teal)}
 
 /* 404 */
 .not-found{padding-block:clamp(64px,10vw,140px)}
-.nf-num{font-family:var(--font-display);font-weight:800;font-size:clamp(120px,20vw,240px);line-height:.85;letter-spacing:-.07em;color:transparent;-webkit-text-stroke:2px var(--mint);margin-bottom:20px}
+.nf-num{font-family:var(--font-display);font-weight:800;font-size:clamp(96px,15vw,180px);line-height:.85;letter-spacing:-.07em;color:transparent;-webkit-text-stroke:2px var(--mint);margin-bottom:20px}
 
 /* ───────────── Pied de page ───────────── */
 .site-footer{background:var(--teal-950);color:var(--on-dark-muted);padding-block:clamp(56px,7vw,96px) 96px;font-size:15px}
-.footer-claim{font-family:var(--font-display);font-weight:800;font-size:clamp(38px,6vw,88px);line-height:.98;letter-spacing:-.055em;color:#fff;max-width:12ch;margin-bottom:clamp(32px,4vw,56px)}
+.footer-claim{font-family:var(--font-display);font-weight:800;font-size:clamp(32px,3.9vw,56px);line-height:.98;letter-spacing:-.055em;color:#fff;max-width:12ch;margin-bottom:clamp(32px,4vw,56px)}
 .footer-route{position:relative;height:16px;margin-bottom:clamp(40px,5vw,64px)}
 .footer-route::before{content:'';position:absolute;left:0;right:22px;top:7px;border-top:2px dashed rgba(157,222,214,.32)}
 .footer-route span{position:absolute;right:0;top:0;width:16px;height:16px;border-radius:50%;background:var(--coral)}
@@ -912,7 +912,7 @@ a.channel:hover{box-shadow:inset 0 0 0 1.5px var(--teal)}
 .elig-progress .is-done{background:var(--teal)}
 .elig-progress .is-on{background:var(--coral)}
 .elig-count{font-size:14px;font-weight:600;color:var(--muted)}
-.elig-card h2{margin:6px 0 22px;font-size:clamp(26px,2.6vw,34px);outline:none}
+.elig-card h2{margin:6px 0 22px;font-size:clamp(22px,2.1vw,28px);outline:none}
 .elig-options{display:grid;gap:10px}
 .elig-option{display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%;min-height:64px;padding:14px 18px;border:1.5px solid var(--line-strong);border-radius:var(--r-md);background:var(--paper);color:var(--ink);font-size:17px;font-weight:600;text-align:left;transition:border-color .2s,background-color .2s,scale .14s var(--ease)}
 .elig-option .icon{flex-shrink:0;width:20px;height:20px;color:var(--teal);transition:translate .2s var(--ease)}
@@ -1000,7 +1000,7 @@ a.channel:hover{box-shadow:inset 0 0 0 1.5px var(--teal)}
 .day-pick input:focus-visible+span{outline:3px solid var(--teal);outline-offset:2px}
 .range-days.has-error .day-pick>span{border-color:var(--error)}
 .range-count{margin-top:8px;font-size:14px;font-weight:600;color:var(--teal-900)}
-.review h2{outline:none;font-size:clamp(26px,2.6vw,34px)}
+.review h2{outline:none;font-size:clamp(22px,2.1vw,28px)}
 .review-lead{margin:8px 0 22px;color:var(--muted)}
 .review-block{padding:16px 18px;border-radius:var(--r-md);background:var(--bg)}
 .review-block+.review-block{margin-top:10px}
@@ -1022,13 +1022,6 @@ a.channel:hover{box-shadow:inset 0 0 0 1.5px var(--teal)}
 .motion-ok .review .review-block{animation:chip-in .4s var(--ease-out,cubic-bezier(.22,1,.36,1)) backwards}
 .motion-ok .review .review-block:nth-of-type(2){animation-delay:.05s}.motion-ok .review .review-block:nth-of-type(3){animation-delay:.1s}.motion-ok .review .review-block:nth-of-type(4){animation-delay:.15s}.motion-ok .review .review-block:nth-of-type(5){animation-delay:.2s}
 .review.is-readonly .review-block{background:var(--paper);box-shadow:inset 0 0 0 1px var(--line)}
-.success-ref{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:18px 0 6px;padding:14px 16px;border-radius:var(--r-md);background:var(--mint-100)}
-.success-ref>.icon{flex-shrink:0;width:22px;height:22px;color:var(--teal-900)}
-.success-ref p{flex:1;font-size:15px}
-.success-ref strong{font-family:var(--font-display);font-size:20px;letter-spacing:.02em;font-variant-numeric:tabular-nums;white-space:nowrap}
-/* Sur téléphone, la référence reste sur une ligne (on la recopie ou la dicte) et « Copier » passe dessous. */
-.success-ref .reset-link{margin-left:auto}
-.success-ref small{display:block;font-size:14px;color:var(--muted)}
 .sent-recap{margin-bottom:20px;border-radius:var(--r-lg);background:var(--bg)}
 .sent-recap summary{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:56px;padding:12px 18px;font-weight:700;list-style:none;cursor:pointer}
 .sent-recap summary::-webkit-details-marker{display:none}
@@ -1109,7 +1102,7 @@ a.channel:hover{box-shadow:inset 0 0 0 1.5px var(--teal)}
   .sub-photo img{aspect-ratio:16/10}
   .steps,.contract-grid,.offer-grid,.principle{grid-template-columns:1fr}
   .steps li:not(:last-child)::after{display:none}
-  .steps li{display:grid;grid-template-columns:auto 1fr;column-gap:22px;--n-size:76px}
+  .steps li{display:grid;grid-template-columns:auto 1fr;column-gap:22px;--n-size:60px}
   .steps .step-n{grid-row:span 2;margin:0}
   .belief-photo{width:min(100%,220px)}
   .engagement-banner{grid-template-columns:1fr}
@@ -1117,7 +1110,7 @@ a.channel:hover{box-shadow:inset 0 0 0 1.5px var(--teal)}
   .filter-bar{position:static;grid-template-columns:1fr;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--paper)}
   .filter-status{width:fit-content;max-width:100%;overflow-x:auto}
   .offer-row{grid-template-columns:60px minmax(0,1fr) 40px;grid-template-areas:"num main fav" "num when when" "num status go";row-gap:10px;padding:16px}
-  .row-num{grid-area:num;height:56px;font-size:26px;align-self:start}
+  .row-num{grid-area:num;height:56px;font-size:24px;align-self:start}
   .offer-row .fav{grid-area:fav;align-self:start}
   .row-main{grid-area:main}.row-when{grid-area:when}.offer-row>.status{grid-area:status;justify-self:start}.row-go{grid-area:go;align-self:start;width:36px;height:36px}
   .cta-inner{grid-template-columns:1fr;gap:0}
@@ -1266,7 +1259,7 @@ a.channel:hover{box-shadow:inset 0 0 0 1.5px var(--teal)}
 
 /* Modération des avis (maquette) */
 .avis-admin{display:grid;gap:clamp(28px,3vw,44px);padding-bottom:clamp(64px,8vw,112px)}
-.admin-group h2{display:flex;align-items:center;gap:10px;margin-bottom:14px;font-size:clamp(26px,2.6vw,34px);outline:none}
+.admin-group h2{display:flex;align-items:center;gap:10px;margin-bottom:14px;font-size:clamp(22px,2.1vw,28px);outline:none}
 .admin-n{display:inline-grid;place-items:center;min-width:34px;height:34px;padding:0 10px;border-radius:var(--pill);background:var(--mint-100);color:var(--teal-900);font-family:var(--font-body);font-size:15px;letter-spacing:0}
 .admin-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr));gap:12px;margin:0;padding:0;list-style:none}
 .admin-item{display:grid;align-content:space-between;border-radius:var(--r-lg);background:var(--paper)}
@@ -1280,8 +1273,8 @@ a.channel:hover{box-shadow:inset 0 0 0 1.5px var(--teal)}
 .temoignages.is-1{grid-template-columns:minmax(0,1fr)}
 .temoignages.is-3 .is-lead{grid-row:span 2}
 .temoignage{position:relative;display:grid;align-content:start;grid-template-rows:auto 1fr auto;gap:18px;margin:0;padding:clamp(24px,3vw,36px);border-radius:var(--r-xl);background:var(--paper);overflow:hidden}
-.temoignage-mark{display:block;height:34px;margin-bottom:-14px;font-family:var(--font-display);font-weight:800;font-size:76px;line-height:.82;color:var(--coral)}
-.temoignage blockquote{position:relative;margin:0;font-family:var(--font-display);font-size:clamp(17px,1.4vw,20px);font-weight:600;letter-spacing:-.015em;line-height:1.45;overflow-wrap:anywhere}
+.temoignage-mark{display:block;height:34px;margin-bottom:-14px;font-family:var(--font-display);font-weight:800;font-size:60px;line-height:.82;color:var(--coral)}
+.temoignage blockquote{position:relative;margin:0;font-family:var(--font-display);font-size:clamp(16px,1.25vw,18px);font-weight:600;letter-spacing:-.015em;line-height:1.45;overflow-wrap:anywhere}
 .temoignage figcaption{position:relative;display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px;font-size:15px;line-height:1.4;color:var(--muted)}
 .temoignage figcaption strong{display:block;font-size:16px;color:var(--ink)}
 .temoignage.is-lead{background:var(--teal-900);color:#fff}
@@ -1298,7 +1291,7 @@ a.channel:hover{box-shadow:inset 0 0 0 1.5px var(--teal)}
 .admin-actions .btn .icon{width:16px;height:16px}
 
 /* Contrats côté établissements */
-.contract-grid .contract-tag{font-size:clamp(24px,2.4vw,32px)}
+.contract-grid .contract-tag{font-size:clamp(22px,2vw,28px)}
 .start-group .date-field{clear:both}
 
 @media (max-width:1100px){
@@ -1382,7 +1375,7 @@ a.channel:hover{box-shadow:inset 0 0 0 1.5px var(--teal)}
 .espace-login{padding-bottom:clamp(64px,8vw,112px)}
 .espace-login-grid{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:clamp(24px,4vw,56px);align-items:start}
 .espace-login-intro{padding:clamp(28px,4vw,48px);border-radius:var(--r-xl);background:var(--teal-900);color:#fff}
-.espace-login-intro h1{font-size:clamp(36px,4.2vw,60px);color:#fff}
+.espace-login-intro h1{font-size:clamp(30px,3.3vw,46px);color:#fff}
 .espace-login-intro .lead{margin-top:14px;color:var(--on-dark-muted)}
 .espace-login-list{display:grid;gap:12px;margin:26px 0 0;padding:0;list-style:none}
 .espace-login-list li{display:flex;align-items:center;gap:12px;font-weight:600}
@@ -1391,7 +1384,7 @@ a.channel:hover{box-shadow:inset 0 0 0 1.5px var(--teal)}
 .espace-login-links p{display:flex;align-items:flex-start;gap:10px;margin-bottom:6px}
 .espace-login-links .icon{flex-shrink:0;width:18px;height:18px;margin-top:3px;color:var(--mint)}
 .espace-login-links .text-link{min-height:36px;color:var(--mint)}
-.espace-login-card h2{font-size:clamp(26px,2.6vw,34px);outline:none}
+.espace-login-card h2{font-size:clamp(22px,2.1vw,28px);outline:none}
 .espace-login-card>.reset-link{margin-top:14px}
 .password-row{position:relative}
 .password-row input{padding-right:56px!important}
@@ -1436,7 +1429,7 @@ a.channel:hover{box-shadow:inset 0 0 0 1.5px var(--teal)}
 .tone-ink{background:#e8ecea;color:var(--ink)}
 /* Écrans des tuiles */
 .space-head{display:flex;align-items:center;gap:16px;margin:6px 0 22px}
-.space-head h1{font-size:clamp(28px,2.8vw,40px)}
+.space-head h1{font-size:clamp(26px,2.3vw,32px)}
 .space-head p{margin-top:4px;color:var(--muted)}
 .space-head .space-ico{width:56px;height:56px;border-radius:16px}
 .space-head .space-ico .icon{width:26px;height:26px}
@@ -1743,7 +1736,7 @@ button.dispo-day:active{scale:.96}
 .space-main .space-head p{max-width:70ch}
 /* Accueil */
 .space-hello{margin:2px 0 18px}
-.space-hello h1{font-size:clamp(28px,2.8vw,40px)}
+.space-hello h1{font-size:clamp(26px,2.3vw,32px)}
 .space-hello p{margin-top:4px;font-size:17px;color:var(--muted)}
 .space-home .space-card>h2,.space-home .space-card-head h2{font-size:20px;margin-bottom:12px}
 .space-home .space-card-head{margin-bottom:0}
@@ -1787,7 +1780,7 @@ button.dispo-day:active{scale:.96}
 @media (max-width:620px){
   .todo-row{grid-template-columns:auto minmax(0,1fr)}
   .todo-row .btn{grid-column:1/-1;width:100%}
-  .space-hello h1{font-size:28px}
+  .space-hello h1{font-size:26px}
 }
 /* Menu latéral : il tient dans la hauteur de l’écran (défilement propre en dernier recours) ; conseillère sur l’accueil. */
 .space-shell{grid-template-columns:288px minmax(0,1fr)}
@@ -1902,7 +1895,7 @@ a[href^="tel:"]{white-space:nowrap}
 .form-card{--card-pad:clamp(22px,4vw,48px);padding:var(--card-pad)}
 .wizard-head{display:grid;gap:4px;margin-bottom:24px}
 .wizard-count{font-size:14px;font-weight:700;letter-spacing:.02em;color:var(--teal)}
-.wizard-head h2{font-size:clamp(26px,2.6vw,34px);letter-spacing:-.03em;line-height:1.1}
+.wizard-head h2{font-size:clamp(22px,2.1vw,28px);letter-spacing:-.03em;line-height:1.1}
 .wizard-head h2:focus{outline:none}
 .wizard-bar{height:6px;margin:10px 0 4px;border-radius:var(--pill);background:var(--sand-100);overflow:hidden}
 .wizard-bar span{display:block;width:var(--p);height:100%;border-radius:inherit;background:var(--teal);transition:width .5s var(--ease)}
@@ -1926,7 +1919,7 @@ a[href^="tel:"]{white-space:nowrap}
 .form-after{display:none}
 @media (max-width:1100px){
   .form-layout{row-gap:20px}
-  .form-intro h1{font-size:clamp(32px,7vw,48px)}
+  .form-intro h1{font-size:clamp(28px,6vw,38px)}
   .form-intro .lead{margin-top:6px;font-size:16px}
   .form-intro>.form-help{display:none}
   .form-after{display:grid;gap:4px}
@@ -2104,7 +2097,7 @@ p,li,dd,blockquote,figcaption{text-wrap:pretty}
 /* Sous 460 px, « Être rappelé » passe à la ligne : le point séparateur ne reste pas seul en fin de ligne. */
 @media (max-width:460px){.urgent>span[aria-hidden]{display:none}}
 /* Très petits écrans (320 px) : le titre des portes tient en trois lignes au lieu de quatre. */
-@media (max-width:360px){.door-half .door-title{font-size:32px}}
+@media (max-width:360px){.door-half .door-title{font-size:28px}}
 /* Pied de page sur téléphone : deux colonnes de liens, puis Laska Corporate et le contact en pleine largeur. */
 @media (max-width:620px){
   .footer-grid{grid-template-columns:1fr 1fr;gap:28px 16px}
@@ -2124,19 +2117,19 @@ p,li,dd,blockquote,figcaption{text-wrap:pretty}
 /* Carte « Délais » (fond turquoise foncé) : son texte reste clair sur le foncé. */
 .price-card.price-delay p{color:var(--on-dark-muted)}
 /* Deux tailles de moins : libellés de contrat au niveau des titres de carte, phrase du pied de page au niveau des grands titres. */
-.contract-tag,.contract-grid .contract-tag{font-size:clamp(26px,2.6vw,34px)}
-.footer-claim{font-size:clamp(38px,5vw,72px)}
+.contract-tag,.contract-grid .contract-tag{font-size:clamp(22px,2.1vw,28px)}
+.footer-claim{font-size:clamp(32px,3.9vw,56px)}
 
 /* ───────────── v8.2 : formulaires plus compacts ─────────────
    Les formulaires défilaient trop : titres, phrase d’accroche, choix et boutons descendent d’un cran, et les champs
    perdent l’interligne de 1,6 du corps de page. Textes jamais sous 14 px ; champs à 16 px (iOS zoome sur un champ
    plus petit) ; libellés à 15 px. Seuls les formulaires (.form-card) changent : la recherche de l’accueil et le reste
    du site ne bougent pas. */
-.form-intro h1{font-size:clamp(34px,3.4vw,48px)}
+.form-intro h1{font-size:clamp(30px,2.9vw,40px)}
 .form-intro .lead{font-size:17px}
 .form-card{--card-pad:clamp(20px,3vw,36px)}
 .form-card .wizard-head{margin-bottom:18px}
-.form-card .wizard-head h2,.form-card .form-head h2{font-size:clamp(24px,2.3vw,30px)}
+.form-card .wizard-head h2,.form-card .form-head h2{font-size:clamp(22px,2vw,26px)}
 .form-card .form-grid{gap:12px 14px}
 .form-card .field{gap:6px}
 .form-card .field label,.form-card .field legend{line-height:1.35}
@@ -2149,6 +2142,304 @@ p,li,dd,blockquote,figcaption{text-wrap:pretty}
 .form-card .slot-day{width:48px;height:48px}
 .form-card .wizard-actions .btn,.form-card .form-actions .btn{min-height:52px;font-size:16px}
 @media (max-width:1100px){
-  .form-intro h1{font-size:clamp(30px,6.4vw,42px)}
+  .form-intro h1{font-size:clamp(28px,6vw,36px)}
   .form-intro .lead{font-size:16px}
 }
+
+/* ───────────── v8.3 : date de naissance, pièces jointes, aperçu ─────────────
+   Les grandes tailles de texte sont aussi réduites d’un cran dans tout le site (voir README, « v8.3 »). */
+/* Date de naissance : trois cases sur une ligne (jour, mois en toutes lettres, année). */
+.birth-field{border:0;margin:0;padding:0;min-width:0}
+.birth-field>legend{padding:0}
+.birth-parts{margin-top:4px;display:grid;grid-template-columns:minmax(60px,80px) minmax(60px,80px) minmax(84px,112px);gap:10px}
+.birth-part{display:grid;gap:4px;min-width:0}
+.birth-part label{font-size:14px;font-weight:500;color:var(--muted)}
+.birth-field:has(#birthDate[aria-invalid="true"]) .birth-part :is(input,select){border-color:var(--error);background-color:var(--error-100)}
+/* Récapitulatif : chaque pièce jointe en vignette (type, nom, poids) avec « Voir ». */
+.file-list{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.file-chip{display:flex;align-items:center;gap:12px;min-width:0;padding:8px 8px 8px 10px;border-radius:var(--r-md);background:var(--paper)}
+.file-ico{display:grid;place-items:center;flex-shrink:0;width:40px;height:40px;border-radius:10px;background:var(--mint-100);color:var(--teal-900)}
+.file-ico .icon{width:20px;height:20px}
+.file-meta{display:grid;flex:1;min-width:0}
+.file-meta strong{font-size:15px;font-weight:600;color:var(--ink);overflow-wrap:anywhere}
+.file-meta small{font-size:13px;color:var(--muted)}
+.file-view{display:inline-flex;align-items:center;gap:6px;flex-shrink:0;min-height:44px;padding:8px 16px;border:0;border-radius:var(--pill);background:var(--teal-900);color:#fff;font-size:14px;font-weight:700;cursor:pointer;transition:background-color .2s,scale .14s var(--ease)}
+.file-view:hover{background:var(--teal)}
+.file-view:active{scale:.97}
+.file-view .icon{width:17px;height:17px;color:var(--mint)}
+/* Menu à six entrées (« Notre engagement ») : entre 1101 et 1199 px, liens un peu plus serrés pour laisser de l’air au logo. */
+@media (min-width:1101px) and (max-width:1199px){.nav>a{padding-inline:6px}}
+/* Aperçu d’une pièce jointe, dans une fenêtre au-dessus de la page. */
+.file-viewer{width:min(920px,calc(100vw - 24px));height:min(86vh,1000px);max-width:none;max-height:none;margin:auto;padding:0;border:0;border-radius:var(--r-lg);background:var(--paper);color:var(--ink);box-shadow:0 30px 80px -30px rgba(11,68,66,.6);overflow:hidden;overscroll-behavior:contain}
+.file-viewer[open]{display:grid;grid-template-rows:auto minmax(0,1fr)}
+.file-viewer::backdrop{background:rgba(15,32,30,.6)}
+.viewer-head{display:flex;align-items:center;gap:10px;padding:8px 8px 8px 16px;background:var(--bg)}
+.viewer-head>.icon{flex-shrink:0;width:20px;height:20px;color:var(--teal)}
+.viewer-head strong{flex:1;min-width:0;font-size:15px;overflow-wrap:anywhere}
+.viewer-head .text-link{font-size:14px;white-space:nowrap}
+.viewer-close{display:grid;place-items:center;flex-shrink:0;width:44px;height:44px;border:0;border-radius:50%;background:var(--paper);color:var(--ink);cursor:pointer}
+.viewer-close:hover{background:var(--mint-100)}
+.viewer-body{display:grid;place-items:center;min-height:0;background:#2b3130}
+.viewer-body img{max-width:100%;max-height:100%;object-fit:contain}
+.viewer-body iframe{width:100%;height:100%;border:0;background:#fff}
+@media (max-width:620px){
+  /* Téléphone : « Voir » passe sous le nom du fichier, aligné sur le texte. */
+  .file-chip{flex-wrap:wrap}
+  .file-meta{flex-basis:calc(100% - 52px)}
+  .file-view{margin-left:52px}
+  .viewer-head .text-link{display:none}
+}
+
+/* ───────────── v8.4 : formulaires moins longs à faire défiler ─────────────
+   Aucune question retirée : en-tête d’étape sur moins de lignes, cartes de situation plus compactes (les autres
+   cartes se replient une fois la situation choisie), justificatifs et dépôts de fichier plus serrés, Prénom et Nom
+   côte à côte sur téléphone, barre d’actions plus fine. */
+.wizard-top{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.wizard-req{margin:0;font-size:14px;color:var(--muted);white-space:nowrap}
+.form-card .wizard-head{gap:2px;margin-bottom:16px}
+.form-card .wizard-bar{margin:8px 0 0}
+/* Cartes de situation : texte un cran plus petit. Une situation choisie, les autres n’affichent plus que leur titre. */
+.form-card .field .choice-card{gap:12px;padding:12px 14px}
+.form-card .choice-body strong{font-size:16px}
+.form-card .choice-body>span{font-size:14px;line-height:1.45}
+.form-card .choice-body em{margin-top:4px;font-size:13px}
+.choice-cards:has(input:checked) .choice-body>span{display:none}
+.choice-cards:has(input:checked) .choice-card{align-items:center}
+.choice-cards:has(input:checked) .choice-mark{margin-top:0}
+.choice-cards:has(input:checked){align-items:start}
+/* Justificatifs : bloc plus serré ; sur ordinateur, les deux dépôts côte à côte. */
+.form-card .auth-title{align-items:center;margin-bottom:10px;font-size:14px}
+.form-card .auth-title strong{display:none}
+.form-card .auth-title .icon{width:32px;height:32px;padding:7px}
+.form-card .upload-area{gap:12px;padding:10px 12px}
+.form-card .upload-area .icon{width:36px;height:36px;padding:8px;border-radius:10px}
+.form-card .privacy-note{margin-top:14px}
+@media (min-width:621px){
+  .form-card .auth-block .form-grid:has(.upload-field + .upload-field)>.upload-field{grid-column:auto;align-content:end}
+}
+@media (max-width:1100px){
+  /* Formulaire sous le titre : à partir de l’étape 2, la phrase d’introduction s’efface. */
+  .form-layout:has(#application-form:not([data-step="1"])) .form-intro .lead{display:none}
+}
+@media (max-width:620px){.form-layout:has(#application-form) .form-intro .lead{display:none}}
+@media (max-width:620px){
+  /* Téléphone : Prénom et Nom côte à côte. */
+  #application-form[data-kind="candidate"] .form-grid:has(>.field #firstName){grid-template-columns:1fr 1fr}
+  #application-form[data-kind="candidate"] .form-grid:has(>.field #firstName)>*{grid-column:1/-1}
+  #application-form[data-kind="candidate"] .form-grid:has(>.field #firstName)>.field:has(#firstName),
+  #application-form[data-kind="candidate"] .form-grid:has(>.field #firstName)>.field:has(#lastName){grid-column:auto}
+  /* Barre d’actions plus fine ; à l’étape facultative, Retour et « Passer cette étape » sur la même ligne. */
+  .form-card .wizard-actions{padding-block:10px calc(10px + env(safe-area-inset-bottom,0px))}
+  .form-card .wizard-actions .btn{min-height:48px}
+  .form-card .wizard-actions .wizard-skip{order:2;flex-basis:auto;margin-left:auto}
+  .form-card .wizard-actions:has(.wizard-skip) .wizard-next{order:3;flex-basis:100%}
+}
+
+/* ───────────── v8.5 : formulaires plus denses ─────────────
+   Moins de défilement, sans retirer de question ni descendre sous les seuils du site : champs de 46 px de haut
+   (cible tactile ≥ 44 px), 16 px de texte dans les champs (pas de zoom sur iPhone), libellés à 15 px, aides à 14 px. */
+.form-card .form-grid{gap:10px 12px}
+.form-card .field{gap:5px}
+.form-card .field input:not([type=checkbox]):not([type=radio]),.form-card .field select,.form-card .date-btn{min-height:46px;padding-block:10px}
+.form-card .field textarea{min-height:104px;padding-block:10px}
+.form-card .pills{gap:6px}
+.form-card .pill span{min-height:44px;padding:8px 14px}
+.form-card .pills-field legend,.form-card .picker legend,.form-card .choice-field legend{margin-bottom:6px}
+.form-card .birth-parts{margin-top:2px}
+.form-card .birth-part{gap:2px}
+/* En-tête d’étape : le titre à gauche, « Étape 2 sur 5 » et « * obligatoire » à droite, sur la même ligne. */
+.form-card .wizard-head{grid-template-columns:minmax(0,1fr) auto;column-gap:12px;row-gap:0;margin-bottom:14px}
+.form-card .wizard-head h2{grid-column:1;grid-row:1;align-self:center}
+.form-card .wizard-top{grid-column:2;grid-row:1;display:grid;justify-items:end;align-self:center;gap:0;text-align:right}
+.form-card .wizard-count,.form-card .wizard-req{line-height:1.35}
+.form-card .wizard-bar,.form-card .wizard-lead{grid-column:1/-1}
+.form-card .wizard-bar{margin-top:10px}
+.form-card .wizard-lead{margin-top:8px;font-size:15px;line-height:1.45}
+.form-card .form-head{margin-bottom:16px}
+.form-card .wizard-actions{margin-top:18px;padding-block:12px calc(12px + env(safe-area-inset-bottom,0px))}
+.form-card .wizard-actions .btn,.form-card .form-actions .btn{min-height:48px}
+.form-card .form-actions{margin-top:16px}
+.form-card .privacy-note{margin-top:12px}
+.form-card .draft-note{margin-bottom:14px}
+/* Offre rappelée en tête de la candidature. */
+.form-card .application-offer{margin-bottom:14px;padding:8px 12px 8px 8px}
+.form-card .application-offer .row-num{width:48px;height:44px;font-size:20px}
+/* Situation : « C’est quoi ? » et cartes plus serrées. */
+.form-card .explain-row{margin:-6px 0 4px}
+.form-card .explain-btn{font-size:14px}
+.form-card .choice-cards{gap:8px}
+.form-card .field .choice-card{padding:10px 12px}
+.form-card .choice-body{gap:2px}
+.form-card .choice-body>span{line-height:1.4}
+.form-card .cond-panel{padding:12px}
+/* Contact : Nom et Email côte à côte quand la place le permet. */
+@media (min-width:621px){
+  #contact-form .field:has(#contactName),#contact-form .field:has(#email){grid-column:auto}
+}
+
+/* ───────────── v8.5 : téléphone, comme une application ─────────────
+   Jusqu’à 760 px : en-tête d’application (logo, ou flèche de retour et titre sur les pages « poussées »), barre
+   d’onglets en bas (Accueil, Offres, Recruter, Espace, Menu), fil d’Ariane retiré (la flèche et l’onglet allumé situent
+   la page), cartes de formulaire bord à bord, titre de la page de formulaire réservé aux lecteurs d’écran. */
+.tabbar,.app-back,.app-title{display:none}
+@media (max-width:760px){
+  :root{--header-h:58px;--tabbar-h:62px}
+  a,button,label,summary{-webkit-tap-highlight-color:transparent}
+  .menu-button,.header-inner>.espace-btn,.header-inner>.espace-btn.is-in{display:none!important}
+  .logo-mark{height:36px}
+  .logo-text,.header-inner:has(.espace-btn.is-in) .logo-text{display:block;height:25px}
+  body[data-depth="push"] .header-inner>.logo{display:none}
+  body[data-depth="push"] .app-back{display:grid;place-items:center;flex-shrink:0;width:44px;height:44px;margin-left:-8px;border-radius:50%;color:var(--teal-900);transition:background-color .15s}
+  .app-back .icon{width:22px;height:22px;stroke-width:2.2}
+  .app-back:active{background:var(--sand-100)}
+  body[data-depth="push"] .app-title{display:block;flex:1;min-width:0;margin:0;font-family:var(--font-display);font-size:18px;font-weight:800;letter-spacing:-.02em;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
+  .breadcrumb{display:none}
+  .page-heading,.sub-hero,.engagement-hero{padding-top:16px}
+  main>.container:has(>.breadcrumb:only-child){display:none}
+  .espace-login{padding-top:12px}
+
+  /* Barre d’onglets : icône dans une pastille menthe quand l’onglet est actif. */
+  .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:60;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:3px max(4px,env(safe-area-inset-right,0px)) env(safe-area-inset-bottom,0px) max(4px,env(safe-area-inset-left,0px));background:rgba(255,255,255,.96);backdrop-filter:saturate(1.4) blur(14px);-webkit-backdrop-filter:saturate(1.4) blur(14px);box-shadow:0 -1px 0 var(--line),0 -12px 30px -26px rgba(15,92,89,.6);transition:translate .25s var(--ease);user-select:none;-webkit-user-select:none}
+  .tabbar>a,.tab-menu{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:0;height:calc(var(--tabbar-h) - 3px);padding:0;border:0;background:none;color:var(--muted);font:inherit;font-size:13px;font-weight:600;line-height:1.2;cursor:pointer}
+  .tab-label{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tab-ico{position:relative;display:grid;place-items:center;width:54px;height:30px;border-radius:var(--pill);transition:background-color .2s,scale .14s var(--ease)}
+  .tab-ico .icon{width:22px;height:22px}
+  .tabbar>a:active .tab-ico,.tab-menu:active .tab-ico{scale:.9}
+  .tabbar>a[aria-current],.tab-menu.is-here,.tab-menu[aria-expanded="true"]{color:var(--teal-900);font-weight:700}
+  .tabbar>a[aria-current] .tab-ico,.tab-menu.is-here .tab-ico,.tab-menu[aria-expanded="true"] .tab-ico{background:var(--mint)}
+  .tab-badge{position:absolute;top:-3px;right:6px;display:grid;place-items:center;min-width:18px;height:18px;padding:0 5px;border-radius:var(--pill);background:var(--coral);color:var(--ink);font-size:13px;font-weight:700;line-height:1}
+  .no-tabbar .tabbar{display:none}
+  /* Place pour la barre : sous le pied de page, les messages et le menu. */
+  body:not(.no-tabbar) .site-footer{padding-bottom:calc(var(--tabbar-h) + 32px + env(safe-area-inset-bottom,0px))}
+  body:not(.no-tabbar) .toast-zone{bottom:calc(var(--tabbar-h) + 8px + env(safe-area-inset-bottom,0px))}
+  .nav{inset:var(--header-h) 0 calc(var(--tabbar-h) + env(safe-area-inset-bottom,0px)) 0;padding-bottom:24px}
+  .nav>a{font-size:22px}
+
+  /* Formulaires en étapes : la carte commence sous l’en-tête ; le titre de la page reste lu par les lecteurs d’écran. */
+  .form-page{padding-top:10px}
+  .form-layout:has(#application-form) .form-intro{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+}
+/* Clavier ouvert (écran tactile) : la barre d’onglets descend. */
+@media (max-width:760px) and (pointer:coarse){
+  .is-typing .tabbar{translate:0 110%}
+}
+@media (max-width:620px){
+  /* Cartes de formulaire bord à bord, marges intérieures de 16 px. */
+  .form-card{--card-pad:16px;margin-inline:calc(-1 * var(--gutter));border-radius:24px}
+  .form-card .wizard-head h2,.form-card .form-head h2{font-size:22px}
+  .form-card .choice-body strong{font-size:15px}
+  .form-card .wizard-actions{padding-block:10px calc(10px + env(safe-area-inset-bottom,0px));border-radius:0 0 24px 24px}
+}
+/* Contact : en-tête de page plus court, le formulaire remonte. */
+.page-heading:has(+ .contact-layout){padding-bottom:clamp(16px,2vw,24px)}
+.page-heading:has(+ .contact-layout) .lead{margin-top:8px}
+
+/* ───────────── v8.6 : téléphone plus confortable ─────────────
+   Même contenu, mise en page d’application : rythme vertical resserré, boutons d’action sur toute la largeur (à portée
+   du pouce), Menu et Aide en panneaux qui montent du bas, lignes d’offres en cartes lisibles, rangées d’onglets qui
+   défilent sur une ligne, pied de page compact, retour visuel à l’appui. Ordinateur et tablette ne changent pas. */
+.results-tools{display:contents}
+.nav-chev{display:none}
+@media (max-width:760px){
+  /* Rythme : des sections d’application, pas des bandes de site. */
+  .section,.belief{padding-block:40px}
+  .split-hero+.section{padding-top:40px}
+  .section-head{gap:8px 16px;margin-bottom:20px}
+  .cta-band{padding-bottom:40px}
+  .section+.cta-band,.section-paper+.cta-band{padding-top:40px}
+  .sub-hero{padding-bottom:36px}
+  .engagement-hero{padding-bottom:28px}
+  .detail-hero{padding-bottom:96px}
+  .offers-section,.detail-layout,.form-page,.contact-layout,.legal-layout,.elig-section,.avis-layout,.avis-admin,.espace-login,.space-home,.space-page,.space-shell{padding-bottom:40px}
+  .not-found{padding-block:48px}
+
+  /* Boutons d’action : toute la largeur, l’un sous l’autre ; les liens texte restent des liens. */
+  .actions,.door-actions{flex-direction:column;align-items:stretch;gap:10px}
+  .actions>.btn,.door-actions>.btn,.offer-note>.btn,.empty-alts .btn{width:100%}
+  .actions>.text-link,.door-actions>.text-link,.actions>.reset-link{align-self:flex-start}
+  .door-actions{margin-top:22px}
+  .cta-inner{padding:28px 20px;gap:20px;border-radius:24px}
+  .cta-inner .actions{margin:0}
+  .cta-inner .tel-link{align-self:flex-start}
+  .offer-note{flex-direction:column;align-items:stretch;gap:16px;margin-top:28px;padding:22px 20px;border-radius:24px}
+
+  /* Appui : un léger enfoncement sur ce qui se touche (pas de survol sur téléphone). */
+  .offer-row,.offer-card,.faq-list summary,.channel,.help-item,.sp-index a,.elig-option,.slot-pick,.choice-card,.todo-row{-webkit-tap-highlight-color:transparent}
+  .offer-row:active,.offer-card:active{scale:.985}
+  .faq-list summary:active,.sp-index a:active,.channel:active{opacity:.75}
+
+  /* Menu : panneau qui monte au-dessus de la barre d’onglets, page voilée derrière. */
+  .nav{inset:auto 0 calc(var(--tabbar-h) + env(safe-area-inset-bottom,0px)) 0;max-height:calc(100dvh - var(--header-h) - var(--tabbar-h) - env(safe-area-inset-bottom,0px) - 12px);gap:2px;padding:8px 16px 18px;border-radius:24px 24px 0 0;background:var(--paper);box-shadow:0 -24px 48px -28px rgba(11,68,66,.55)}
+  .nav.open{animation:none}
+  .motion-ok .nav.open{animation:sheet-up .32s var(--ease-drawer,cubic-bezier(.32,.72,0,1))}
+  html.motion-ok .nav.open>*{animation:none}
+  .nav::before{content:'';flex-shrink:0;align-self:center;width:40px;height:4px;margin:2px 0 10px;border-radius:var(--pill);background:var(--line-strong)}
+  .nav>a:not(.nav-espace):not(.nav-phone){display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:52px;padding:8px 12px;border-radius:var(--r-md);font-size:19px}
+  .nav>a .nav-chev{display:block;flex-shrink:0;width:18px;height:18px;color:var(--teal)}
+  .nav>a[aria-current]{background:var(--mint-100)}
+  .nav>a:active{background:var(--sand-100)}
+  .nav-dot{display:none}
+  .nav-actions{margin-top:14px;gap:8px}
+  .nav-actions .btn{min-height:52px}
+  .nav>a.nav-espace{margin-top:10px;padding:8px 12px;font-size:18px}
+  .nav>a.nav-phone{margin-top:0;padding:8px 12px;font-size:18px}
+  body.menu-open{overflow:hidden}
+  body.menu-open::after{content:'';position:fixed;inset:0;z-index:39;background:rgba(11,68,66,.35)}
+  .motion-ok body.menu-open::after{animation:fade-in .25s ease}
+
+  /* Aide : même panneau au bas de l’écran, voile derrière, fermé d’un appui à côté. */
+  .help-panel,.has-mobile-action .help-panel{inset:auto 0 0 0;width:auto;max-width:none;max-height:85dvh;overflow-y:auto;padding:8px 16px calc(18px + env(safe-area-inset-bottom,0px));border-radius:24px 24px 0 0}
+  .help-panel::before{content:'';justify-self:center;width:40px;height:4px;margin:2px 0 6px;border-radius:var(--pill);background:var(--line-strong)}
+  .help-panel::backdrop{background:rgba(11,68,66,.35)}
+  .motion-ok .help-panel:popover-open{animation:sheet-up .32s var(--ease-drawer,cubic-bezier(.32,.72,0,1));transform-origin:bottom center}
+  .help-item{min-height:64px}
+
+  /* Offres : la ligne devient une carte ; titre sur toute la largeur, dates dessous, état et flèche en pied. */
+  .offer-row{grid-template-columns:48px minmax(0,1fr) 44px;grid-template-areas:"num main fav" "when when when" "status status go";gap:12px;padding:14px 14px 12px;border-radius:20px}
+  .offer-row .row-num{width:48px;height:48px;font-size:20px}
+  .row-main h2{font-size:18px;line-height:1.2}
+  .row-main p{gap:2px 6px;margin-top:4px;font-size:14px}
+  .row-when{font-size:15px}
+  .offer-row>.status{align-self:center}
+  .row-go{align-self:center;width:40px;height:40px}
+  .offer-list{gap:10px}
+  /* Résultats : le nombre et Liste / Carte sur une ligne ; gardées, tri et « Tout effacer » sur une rangée qui défile. */
+  .results-head{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px 12px;margin:14px 0 12px}
+  .results-head>#results-count{grid-column:1;grid-row:1}
+  .results-head>.view-toggle{grid-column:2;grid-row:1}
+  .results-tools{grid-column:1/-1;display:flex;align-items:center;gap:8px;margin-inline:calc(-1 * var(--gutter));padding:2px var(--gutter);overflow-x:auto;scrollbar-width:none;overscroll-behavior-x:contain}
+  .results-tools::-webkit-scrollbar{display:none}
+  .results-tools>*{flex-shrink:0}
+  .results-tools .sort-field{margin-left:0}
+  .filter-open{margin-bottom:0}
+
+  /* Rangées d’onglets (espace candidat, attestations, état des offres) : une seule ligne qui défile au doigt. */
+  .space-seg,.doc-switch{flex-wrap:nowrap;margin-inline:calc(-1 * var(--gutter));padding:2px var(--gutter);overflow-x:auto;scrollbar-width:none;overscroll-behavior-x:contain}
+  .space-seg::-webkit-scrollbar,.doc-switch::-webkit-scrollbar{display:none}
+  .space-seg a,.doc-switch a{flex-shrink:0;white-space:nowrap}
+
+  /* Pied de page compact : mêmes liens, deux colonnes. */
+  .site-footer{padding-top:36px;font-size:15px}
+  .footer-claim{max-width:none;margin-bottom:18px;font-size:26px}
+  .footer-route{margin-bottom:24px}
+  .footer-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px 16px;padding-bottom:24px}
+  .footer-col h3{margin-bottom:2px;font-size:16px}
+  .footer-col a{padding-block:6px;overflow-wrap:anywhere}
+  .footer-tel{font-size:20px}
+  .footer-contact address{font-style:normal}
+  .footer-bottom{gap:8px 16px;padding-top:16px}
+}
+@keyframes fade-in{from{opacity:0}}
+@media (max-width:760px){
+  /* Ligne d’offre : la référence passe à la ligne, sans point séparateur orphelin. */
+  .row-main p .sep:has(+ .ref){display:none}
+  .row-main p .ref{flex-basis:100%}
+}
+
+/* ───────────── v8.7 : espace candidat pas encore ouvert ─────────────
+   Seule la connexion est montrée ; après une tentative, « Votre espace arrive bientôt. » avec le conseiller en recours. */
+.soon-symbol{display:grid;place-items:center;width:72px;height:72px;margin-bottom:22px;border-radius:50%;background:var(--mint-100);box-shadow:inset 0 0 0 2.5px var(--teal);color:var(--teal-900)}
+.soon-symbol .icon{width:32px;height:32px;stroke-width:2.2}
+.login-soon .space-lead{margin:0 0 10px;color:var(--text)}
+.login-soon .actions{margin-top:20px}
+.login-soon h2{margin-bottom:10px}

@@ -1,6 +1,121 @@
-# Laska Corporate — maquette HTML (v8.2)
+# Laska Corporate — maquette HTML (v8.7)
 
-Maquette navigable du futur site Laska Corporate, à porter ensuite en React / Next.js. Copies des versions précédentes : `_sauvegarde-v3/`, `_sauvegarde-v5/`, `_sauvegarde-v7/` (état v7.2, avant la v8), `_sauvegarde-v8/` (état v8, avant la passe de finition).
+Maquette navigable du futur site Laska Corporate, à porter ensuite en React / Next.js. Les versions précédentes sont dans le dépôt Git : branches `v7.2`, `v8` et `v8.1` ; la dernière version est sur `dev`.
+
+## Passe v8.7 : espace candidat fermé, connexion seule
+
+L’espace candidat sera développé plus tard : la maquette n’en montre que la page de connexion.
+
+- **Page de connexion inchangée** : présentation de l’espace, formulaire *Connexion*, *J’ai oublié mon mot de passe*, *Autres options* (changer de mot de passe ou d’adresse) et *Créer mon dossier*.
+- **Pas d’accès à l’espace** : une tentative de connexion affiche « Votre espace arrive bientôt. », avec le numéro du conseiller et *Retour à la connexion*. Personne n’est jamais connecté ; une session gardée par une version précédente de la maquette est effacée.
+- **Adresses de l’espace** (`#/espace/planning`, `#/espace/paie`…) : elles montrent la page de connexion.
+- **Partout ailleurs** : plus de « Mon espace » avec initiales dans l’en-tête, plus de pastille sur l’onglet *Espace* ; le bouton principal (*Créer mon dossier*, *Décrire mon besoin*) reste affiché.
+- **Pour rouvrir l’espace** : passer `ESPACE_OUVERT` à `true` en tête de `espace.js`. Les écrans de la v7 et de la v8 y sont gardés tels quels.
+
+## Passe v8.6 : téléphone plus confortable
+
+Même contenu, mot pour mot ; seule la mise en page du téléphone change (jusqu’à 760 px, règles « v8.6 » à la fin de `styles.css`). Ordinateur et tablette ne bougent pas.
+
+- **Rythme d’application** : 40 px entre les sections au lieu de 64 à 110 px, titres de section plus près de leur contenu, fin de page plus courte. Les pages raccourcissent d’environ 300 à 550 px (accueil 5 328 → 4 901 px, Praticiens 5 126 → 4 676, Établissements 5 970 → 5 426, fiche d’offre 4 775 → 4 458).
+- **Boutons à portée du pouce** : les boutons d’action prennent toute la largeur et s’empilent (accueil, Praticiens, bandeaux d’appel, avis, confirmations) ; les liens texte restent des liens.
+- **Menu en panneau** : l’onglet *Menu* ouvre un panneau qui monte du bas, au-dessus de la barre d’onglets, page voilée derrière ; une rangée par rubrique avec une flèche, rubrique en cours sur fond menthe. Un appui sur la page voilée, l’onglet *Fermer* ou Échap le referme.
+- **Aide en panneau** : *Aide* ouvre le même genre de panneau au bas de l’écran (Appeler, WhatsApp, Être rappelé, Écrire), fermé d’un appui à côté.
+- **Offres** : chaque ligne devient une carte ; le titre tient sur une ligne, la référence passe dessous, les dates sur toute la largeur, l’état et la flèche en pied. Au-dessus de la liste : le nombre d’offres et *Liste / Carte* sur une ligne, puis *Offres gardées*, *Trier* et *Tout effacer* sur une rangée qui défile au doigt.
+- **Rangées d’onglets** (espace candidat, attestations) : une seule ligne qui défile au doigt au lieu de passer sur deux lignes.
+- **Pied de page compact** : les mêmes liens sur deux colonnes, phrase et numéro plus petits, moins d’espace entre les blocs.
+- **Appui** : léger enfoncement des cartes d’offres, rangées de questions et canaux de contact quand on les touche.
+- **Transitions** : une transition de page interrompue (deux onglets touchés coup sur coup) ne laisse plus d’erreur dans la console.
+
+Vérifié à 360 et 390 px (13 pages, aucun débordement horizontal, libellés d’onglets entiers), et à 1366 px (mise en page d’ordinateur inchangée).
+
+## Passe v8.5 : formulaires plus denses, téléphone comme une application
+
+Toujours aucune question retirée. Règles « v8.5 » à la fin de `styles.css` ; `header()`, `appBack()` et `tabBar()` dans `app.js`.
+
+**Formulaires (toutes tailles d’écran)**
+- Champs de 46 px de haut au lieu de 50 px (cible tactile toujours ≥ 44 px), texte des champs toujours à 16 px (pas de zoom sur iPhone), espaces entre les lignes resserrés.
+- En-tête d’étape sur une ligne : le titre à gauche, « Étape 2 sur 5 » et « * obligatoire » (ou « facultative ») à droite.
+- Situation : liens « C’est quoi ? » et cartes plus serrés. Barre Retour / Continuer plus fine.
+- Contact : *Votre nom* et *Email* côte à côte à partir de 621 px, message sur quatre lignes, en-tête de page plus court.
+
+**Téléphone (jusqu’à 760 px) : comme une application**
+- **Barre d’onglets en bas** : Accueil, Offres, Recruter (établissements), Espace, Menu. Onglet actif : icône dans une pastille menthe. L’onglet *Menu* ouvre le menu complet au-dessus de la barre et reste allumé sur les pages qui n’ont pas d’onglet (Praticiens, Avis, Contact…). L’onglet de la page en cours ramène en haut de la page. Pastille corail sur *Espace* quand des choses sont à faire.
+- **En-tête d’application** de 58 px : le logo et *Aide* ; le bouton *Menu* et l’avatar de l’espace passent dans la barre du bas.
+- **Pages « poussées »** (fiche d’offre, formulaires, *Suis-je éligible ?*) : une flèche de retour vers la page parente et un titre court à la place du logo.
+- **Fil d’Ariane retiré** : la flèche et l’onglet allumé situent la page.
+- **Formulaires en étapes et fiche d’offre** : pas de barre d’onglets, ils ont leur propre barre d’action en bas. Le titre de la page du formulaire est réservé aux lecteurs d’écran : la carte commence juste sous l’en-tête (68 px du haut au lieu de 190 px). Cartes de formulaire bord à bord.
+- **Clavier ouvert** (écran tactile) : la barre d’onglets descend pour laisser la place.
+- **Ajout à l’écran d’accueil** : `manifest.webmanifest` (ouverture sans barre de navigateur) et `viewport-fit=cover` pour respecter la barre d’accueil de l’iPhone. `server.cjs` sert le manifeste avec son type : relancer `node server.cjs` pour en profiter.
+
+Défilement nécessaire pour atteindre le bas de l’étape (au-dessus de la barre « Continuer »), avant → après :
+
+| Formulaire | Téléphone 390 × 844 | Ordinateur 1366 × 768 |
+|---|---|---|
+| Dossier · 1 Vous (hors de France) | 48 → 0 px (375 × 812, sans le pays) | 64 → 0 px |
+| Dossier · 3 Situation | 475 → 102 px (375 × 812 avant) | 111 → 50 px |
+| Dossier · 3 Situation choisie | — → 184 px | 191 → 120 px |
+| Dossier · 5 Pour aller plus loin | 337 → 132 px (375 × 812 avant) | 68 → 15 px |
+| Demande · 1 Votre besoin | 93 → 0 px | 0 px |
+| Demande · 2 Vos dates (deux spécialités) | — → 226 px | 125 → 90 px |
+| Demande · 3 Vos coordonnées | 88 → 0 px | 0 px |
+| Contact | 246 → 34 px | 331 → 172 px |
+
+Vérifié à 360, 390, 768, 1366 et 1440 px : aucun débordement horizontal, aucune erreur console, libellés des onglets entiers à 360 px, pied de page au-dessus de la barre d’onglets.
+
+## Passe v8.4 : formulaires moins longs à faire défiler
+
+Aucune question retirée ; seule la présentation change (règles « v8.4 » à la fin de `styles.css`).
+
+- **Confirmation** : la référence (« Votre référence… Notez-la… ») n’est plus affichée.
+- **En-tête d’étape** : « * obligatoire » sur la même ligne que « Étape 2 sur 5 ».
+- **Situation (étape 3)** : cartes plus compactes. Une fois la situation choisie, les autres cartes n’affichent plus que leur titre ; elles se déplient si on les choisit.
+- **Justificatifs** : bloc et zones de dépôt plus serrés. Sur ordinateur, les deux dépôts sont côte à côte.
+- **Téléphone** : Prénom et Nom côte à côte ; la phrase d’introduction de la page n’est plus affichée ; barre d’actions plus fine ; à l’étape facultative, *Retour* et *Passer cette étape* sur la même ligne.
+- **Ordinateur** :
+  - le fil d’Ariane passe en tête de la colonne de gauche, et la carte du formulaire commence juste sous l’en-tête ;
+  - étape 1 sur deux colonnes : Prénom | Nom, Date de naissance | Où vivez-vous ?, puis le pays (si hors de France), Email et Téléphone ;
+  - une fois la situation choisie (étape 3), toutes les cartes se replient sur leur titre, et la carte choisie reste mise en évidence.
+
+Tout visible sans défiler, au-dessus de la barre « Continuer » (fenêtre en pixels CSS, barre du navigateur déduite) :
+
+| Fenêtre | Étape 1 | 2 | 3 | 4 | 5 |
+|---|---|---|---|---|---|
+| 1920 × 960 | oui | oui | oui, à 1 px près | oui | oui |
+| 1536 × 736 (écran 1920 × 1080 affiché à 125 %) | oui | oui | non, 225 px de plus | oui | non, 99 px |
+| 1366 × 650 | non, 61 px | oui | non, 311 px | oui | non, 185 px |
+
+L’étape 3 garde la plus grande hauteur : quatre situations, une date et jusqu’à trois documents (deux copies facultatives et le CV).
+
+Hauteur du formulaire (carte), avant → après :
+
+| Étape | Téléphone 390 px | Ordinateur 1366 px |
+|---|---|---|
+| 1 · Vous | 927 → 779 px | 796 → 744 px |
+| 2 · Votre métier | 661 → 609 px | 536 → 491 px |
+| 3 · Votre situation (situation choisie) | 1838 → 1300 px (2,5 → 1,8 écran) | 1385 → 987 px (2 → 1,5 écran) |
+| 4 · Disponibilités | 379 → 327 px | 350 → 305 px |
+| 5 · Pour aller plus loin | 1064 → 986 px | 757 → 743 px |
+
+## Passe v8.3 : menu, dossier praticien, pièces jointes, tailles de texte
+
+- **Menu** : six entrées, avec *Notre engagement* entre *Établissements* et *Avis*. Entre 1101 et 1199 px, les liens sont un peu resserrés pour garder de l’air autour du logo.
+- **Dossier praticien, étape « Vous »** :
+  - *Date de naissance* à côté du nom : trois cases courtes, jour, mois et année en chiffres (clavier numérique sur téléphone). Messages : date incomplète, date qui n’existe pas, âge hors de 18 à 80 ans. Le récapitulatif la redonne en toutes lettres (« 12 mars 1985 ») ;
+  - *Hors de France* : « Dans quel pays ? » devient obligatoire, avec un champ libre si « Autre pays ».
+- **CV obligatoire** (dossier et candidature à une offre). Les copies d’autorisation ou de diplôme et les preuves restent facultatives.
+- **Champs de pièce jointe réduits** : « Joindre mon CV » et « PDF ou photo · 10 Mo max. ». Plus de phrase « Envoyez-le plus tard ». Une fois le fichier choisi : « Fichier prêt (poids). »
+- **Récapitulatif « Vérifiez avant d’envoyer »** : chaque pièce jointe en vignette (icône PDF ou photo, nom, « Pièce jointe · type · poids ») avec un bouton *Voir*. La photo s’ouvre dans une fenêtre d’aperçu, comme le PDF sur ordinateur ; sur téléphone, le PDF s’ouvre dans un nouvel onglet. Après un rechargement de la page, le fichier n’est plus en mémoire : la vignette reste, sans *Voir*.
+- **Grandes tailles de texte réduites d’un cran dans tout le site** :
+
+| Rôle | Avant | Après (ordinateur, téléphone) |
+|---|---|---|
+| Titres d’affichage (page Praticiens, fiche d’offre, engagement, conviction) | 72 à 88 px | 56 px, 32 px |
+| Titres de page et des portes de l’accueil | 60 px | 46 px, 30 px |
+| Titres de section | 46 px | 36 px, 26 px |
+| Titres de carte | 34 px | 28 px, 22 px |
+| Formulaires : titre de page, titre d’étape | 48 px, 30 px | 40 px, 26 px |
+| Phrase d’accroche | 20 px | 18 px |
+| Chiffres décoratifs (étapes, « 69 » de la fiche, 404) | — | environ un quart plus petits |
 
 ## Passe de finition v8.1 : même identité, mêmes parcours
 
@@ -239,6 +354,8 @@ Les vérifications automatiques ont tourné avec Chrome sans interface, sur ordi
 - la lisibilité et le mouvement.
 
 ## Espace candidat (v7)
+
+> Depuis la v8.7, l’espace est fermé : seule la page de connexion est montrée (voir « Passe v8.7 »). Cette partie décrit les écrans gardés dans `espace.js` pour la suite.
 
 **Espace candidat** en haut à droite, dans la barre de services (horaires, téléphone) au-dessus de l’en-tête, sur ordinateur. La barre s’efface au défilement. Une fois connecté, « Mon espace » (avec les initiales) remplace « Créer mon dossier » comme bouton principal de l’en-tête. Sur téléphone : lien dans le menu, avatar dans l’en-tête une fois connecté. Code : `espace.js` (chargé avant app.js) et la section « v7 : espace candidat » de styles.css.
 
@@ -496,9 +613,10 @@ Il est aussi **déduit de la page** : /praticiens et /postuler fixent « pratici
 ## Fichiers
 
 - `index.html` — point d’entrée.
+- `manifest.webmanifest` — ajout à l’écran d’accueil du téléphone (ouverture comme une application, v8.5).
 - `app.js` — données, routes et rendu. Chaque fonction de rendu (`header`, `doorPro`, `quickBrief`, `franceMap`, `offerRow`, `application`…) correspond à un futur composant.
 - `styles.css` — composants (tokens en tête, puis composants, puis responsive 1100 / 860 / 620 px).
-- `espace.js` — espace candidat : connexion simulée, accueil, profil, questions, et les écrans des huit tuiles (chargé avant app.js).
+- `espace.js` — espace candidat : page de connexion (seule ouverte depuis la v8.7, `ESPACE_OUVERT`), et les écrans de l’espace gardés pour la suite : accueil, profil, questions, huit tuiles (chargé avant app.js).
 - `crm.js` — référentiels du CRM (spécialités, départements, pays), export simulé pour la maquette (chargé en premier).
 - `services.js` — garder et partager une offre, aide et « Être rappelé », « Suis-je éligible ? », avis des praticiens et modération, emplacements de contenu à fournir (chargé avant app.js).
 - `motion.js` / `motion.css` — couche de mouvement (apparitions, titres, carte, parcours, FLIP, transitions de vue). En Next.js : un hook `useReveal`, un composant `SplitTitle`, et les transitions de vue du routeur.

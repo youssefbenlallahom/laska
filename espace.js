@@ -9,7 +9,12 @@
 
 /* ───────────── Session (simulée) ───────────── */
 const SESSION_KEY = 'laska-session';
+/* v8.7 : l’espace n’est pas encore ouvert. Seule la page de connexion est montrée ; une tentative de connexion explique
+   que l’espace arrive bientôt, et personne n’est jamais connecté. Les écrans de l’espace restent dans ce fichier pour la
+   suite : passer ESPACE_OUVERT à true les rend de nouveau accessibles. */
+const ESPACE_OUVERT = false;
 function espaceUser() {
+  if (!ESPACE_OUVERT) return null;
   try { return JSON.parse(localStorage.getItem(SESSION_KEY) || sessionStorage.getItem(SESSION_KEY) || 'null'); } catch { return null; }
 }
 function espaceLogin(email, remember) {
@@ -18,6 +23,8 @@ function espaceLogin(email, remember) {
   return user;
 }
 function espaceLogout() { try { localStorage.removeItem(SESSION_KEY); sessionStorage.removeItem(SESSION_KEY); } catch {} }
+/* Espace fermé : une session gardée d’une version précédente de la maquette est effacée. */
+if (!ESPACE_OUVERT) espaceLogout();
 const initials = u => `${(u.firstName || '?')[0]}${(u.lastName || '')[0] || ''}`.toUpperCase();
 const store = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key) || 'null') ?? fallback; } catch { return fallback; } };
 const keep = (key, value) => { try { localStorage.setItem(key, JSON.stringify(value)); } catch {} };
@@ -182,8 +189,13 @@ function loginCard() {
       + `<div class="field full login-options"><label class="choice-inline"><input type="checkbox" name="remember" checked><span>Rester connecté sur cet appareil</span></label><button type="button" class="text-link" data-login-view="forgot">J’ai oublié mon mot de passe</button></div>`, 'Connexion')
     + `<details class="login-more"><summary>${icon('plus')}Autres options</summary><div><button type="button" class="text-link" data-login-view="password">Je souhaite changer mon mot de passe</button><button type="button" class="text-link" data-login-view="email">Je souhaite changer mon adresse email</button></div></details>
     <p class="login-new">${icon('file')}<span>Pas encore de dossier chez Laska Corporate ? <a class="text-link" href="#/postuler">Créer mon dossier</a></span></p>
-    ${MAQUETTE ? sampleNote('Maquette : saisissez n’importe quelle adresse email et un mot de passe de 6 caractères ou plus. Rien n’est envoyé ni gardé.') : ''}`;
+    ${MAQUETTE ? sampleNote(ESPACE_OUVERT ? 'Maquette : saisissez n’importe quelle adresse email et un mot de passe de 6 caractères ou plus. Rien n’est envoyé ni gardé.' : 'Maquette : l’espace candidat n’est pas encore ouvert. Rien n’est envoyé ni gardé.') : ''}`;
 }
+/* Tentative de connexion tant que l’espace n’est pas ouvert : on le dit simplement, avec le conseiller en recours. */
+const loginSoon = () => `<div class="success-state login-soon"><span class="soon-symbol" aria-hidden="true">${icon('clock')}</span><h2 tabindex="-1">${dot('Votre espace arrive bientôt.')}</h2>
+  <p class="space-lead">La connexion à l’espace candidat n’est pas encore ouverte. Vous pourrez vous connecter ici dès son lancement.</p>
+  <p class="space-lead">En attendant, votre conseiller répond à vos questions.</p>
+  <div class="actions"><a class="btn btn-primary" href="${TEL}">${icon('phone')}${PHONE}</a><button type="button" class="reset-link" data-login-view="login">${icon('back')}Retour à la connexion</button></div></div>`;
 
 /* ───────────── Cadre de l’espace : menu latéral (ordinateur) ou menu déroulant (mobile) ───────────── */
 /* Pastilles du menu : seulement ce qui attend une action (contrats à signer, pièces à fournir). */
@@ -490,6 +502,7 @@ function bindEspace(root = document) {
         if (form.id === 'login-form') {
           submit.disabled = true; submit.classList.add('is-loading'); submit.innerHTML = `<span class="btn-spinner" aria-hidden="true"></span>Connexion…`;
           setTimeout(() => {
+            if (!ESPACE_OUVERT) { card.innerHTML = loginSoon(); $('h2', card).focus(); return; }
             const u = espaceLogin($('#loginEmail', form).value.trim(), form.remember.checked);
             render(false); $('#main')?.focus({preventScroll: true});
             toast(`Bonjour ${u.firstName}, bienvenue dans votre espace.`, {icon: 'user'});

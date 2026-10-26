@@ -40,6 +40,7 @@ const icons = {
   /* Espace candidat */
   user:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
   home:'<path d="M3 11 12 4l9 7"/><path d="M5 10v10h5v-6h4v6h5V10"/>',
+  image:'<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-10 9"/>',
   eye:'<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>',
   eyeOff:'<path d="m3 3 18 18M10.6 5.1A10 10 0 0 1 12 5c6 0 10 7 10 7a17 17 0 0 1-3.2 3.9M6.6 6.6C3.8 8.4 2 12 2 12s4 7 10 7a9.7 9.7 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
   logout:'<path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 17l5-5-5-5M15 12H3"/>',
@@ -186,6 +187,8 @@ function transition(fn, {kind = 'route'} = {}) {
   if (!document.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) { fn(); clearShared(); return; }
   html.dataset.vt = kind;
   const vt = document.startViewTransition(fn);
+  /* Transition interrompue (deux onglets touchés coup sur coup, onglet en arrière-plan) : la page change quand même. */
+  vt.ready.catch(() => {});
   vt.finished.finally(() => { delete html.dataset.vt; clearShared(); });
 }
 /* Éléments partagés entre deux pages (numéro et titre d’une offre). Posés au clic, retirés après la transition. */
@@ -254,7 +257,7 @@ function bindMap(root = document, onPick) {
 
 /* ───────────── En-tête, menu, pied de page ─────────────
    Un seul menu, le même pour tous et sur toutes les pages : plus d’interrupteur de profil ni de changement automatique. */
-const NAV = [['Offres d’emploi', '/offres'], ['Praticiens', '/praticiens'], ['Établissements', '/etablissements'], ['Avis', '/avis'], ['Contact', '/contact']];
+const NAV = [['Offres d’emploi', '/offres'], ['Praticiens', '/praticiens'], ['Établissements', '/etablissements'], ['Notre engagement', '/engagement'], ['Avis', '/avis'], ['Contact', '/contact']];
 /* Bouton principal selon la page, jamais selon un mode : pages praticiens et offres → Créer mon dossier ; pages établissements
    → Décrire mon besoin ; accueil et pages neutres → aucun (les deux portes suffisent).
    Candidat connecté : aucun bouton orange, sur aucune page ; « Mon espace » (espaceButton) en tient lieu partout. */
@@ -271,9 +274,9 @@ function header() {
   /* Barre de services (ordinateur) : téléphone et Espace candidat, en haut à droite (les horaires sont dans l’Aide et au survol du numéro). Elle s’efface au défilement :
      seule la ligne principale reste collée en haut. Sur téléphone : menu, bouton « Aide » et avatar une fois connecté. */
   const top = `<div class="header-top"><div class="container header-top-inner"><a class="top-link" href="${TEL}" title="Du lundi au vendredi, de 9 h à 18 h" aria-label="Appeler Laska Corporate au ${PHONE}, du lundi au vendredi de 9 h à 18 h">${icon('phone')}${PHONE}</a>${espaceButton()}</div></div>`;
-  return `<header class="site-header">${top}<div class="container header-inner">${logo()}
+  return `<header class="site-header">${top}<div class="container header-inner">${appBack()}${logo()}
     <nav class="nav" id="navigation" aria-label="Navigation principale">
-      ${NAV.map(([n,p], k) => `<a href="#${p}" style="--n:${k + 1}" ${active === p ? 'aria-current="page"' : ''}>${n}${active === p ? '<span class="nav-dot" aria-hidden="true"></span>' : ''}</a>`).join('')}
+      ${NAV.map(([n,p], k) => `<a href="#${p}" style="--n:${k + 1}" ${active === p ? 'aria-current="page"' : ''}>${n}${active === p ? '<span class="nav-dot" aria-hidden="true"></span>' : ''}${icon('chevron', 'nav-chev')}</a>`).join('')}
       <div class="nav-actions" style="--n:${NAV.length + 1}"><a class="btn btn-coral" href="#/postuler">${icon('file')}Je suis praticien : créer mon dossier</a><a class="btn btn-outline" href="#/besoin">${icon('people')}Je recrute : décrire mon besoin</a></div>
       <a class="nav-espace" href="#/espace" style="--n:${NAV.length + 2}" ${route === '/espace' ? 'aria-current="page"' : ''}>${icon('user')}${espaceUser() ? 'Mon espace candidat' : 'Espace candidat'}</a>
       <a class="nav-phone" href="${TEL}" style="--n:${NAV.length + 3}">${icon('phone')}${PHONE}</a>
@@ -282,6 +285,28 @@ function header() {
     <button type="button" class="header-help" popovertarget="help-panel" aria-haspopup="dialog">${icon('chat')}<span>Aide</span></button>
     <button class="menu-button" aria-expanded="false" aria-controls="navigation" id="menu-button"><span>Menu</span>${icon('menu')}</button>
   </div></header>`;
+}
+/* ───────────── Téléphone : comme une application (v8.5) ─────────────
+   Pages « poussées » (fiche d’offre, formulaires, éligibilité) : l’en-tête montre une flèche vers la page parente et un
+   titre court, à la place du logo. Les autres pages gardent le logo. La barre d’onglets du bas remplace le bouton
+   Menu ; elle s’efface dans les formulaires en étapes et sur la fiche d’offre, qui ont leur propre barre d’action. */
+const PUSH_ROUTES = ['/offre', '/postuler', '/besoin', '/eligibilite'];
+const NO_TABBAR = ['/offre', '/postuler', '/besoin'];
+function appBack() {
+  const o = offers.find(x => x.id === offerId);
+  const up = {
+    '/offre': ['#/offres' + filterQuery(), 'Offres d’emploi', o?.specialty || 'Offre'],
+    '/postuler': o ? [`#/offre/${o.id}`, o.specialty, o.soon ? 'Être informé' : 'Je postule'] : ['#/praticiens', 'Praticiens', 'Créer mon dossier'],
+    '/besoin': ['#/etablissements', 'Établissements', 'Décrire mon besoin'],
+    '/eligibilite': ['#/praticiens', 'Praticiens', 'Suis-je éligible ?']
+  }[route];
+  return up ? `<a class="app-back" href="${up[0]}" aria-label="Retour : ${esc(up[1])}">${icon('back')}</a><p class="app-title" aria-hidden="true">${esc(up[2])}</p>` : '';
+}
+const TABS = [['Accueil', '/', 'home'], ['Offres', '/offres', 'search'], ['Recruter', '/etablissements', 'hospital'], ['Espace', '/espace', 'user']];
+function tabBar() {
+  const on = {'/offre': '/offres', '/besoin': '/etablissements'}[route] || route, inMenu = !TABS.some(([, p]) => p === on);
+  const todo = espaceUser() && typeof todoItems === 'function' ? todoItems().length : 0;
+  return `<nav class="tabbar" aria-label="Raccourcis">${TABS.map(([label, p, ic]) => `<a href="#${p}" ${on === p ? 'aria-current="page"' : ''}><span class="tab-ico">${icon(ic)}${p === '/espace' && todo ? `<span class="tab-badge" aria-hidden="true">${todo}</span>` : ''}</span><span class="tab-label">${label}</span>${p === '/espace' && todo ? `<span class="sr-only">, ${todo} à traiter</span>` : ''}</a>`).join('')}<button type="button" class="tab-menu ${inMenu ? 'is-here' : ''}" aria-controls="navigation" aria-expanded="false"><span class="tab-ico">${icon('menu')}</span><span class="tab-label">Menu</span></button></nav>`;
 }
 
 function footer() {
@@ -596,9 +621,9 @@ function offersPage() {
     <form class="filter-bar" id="filter-form" role="search" aria-label="Rechercher une offre"><div class="filter-fields">${searchFields('filter')}${multiSelect({id: 'filter-month', name: 'months', label: 'Période', icon: 'calendar', options: periodOptions(), selected: state.filter.months, placeholder: 'Toutes les périodes', noun: ['mois', 'mois']})}</div>
       <div class="filter-status" role="group" aria-label="Disponibilité des offres"><span class="filter-thumb" aria-hidden="true"></span>${[['all','Toutes'],['open','Disponibles'],['soon','À venir']].map(([v,t]) => `<button type="button" class="filter-chip" data-status="${v}" aria-pressed="false">${t}<span data-count="${v}"></span></button>`).join('')}</div>
       <button type="button" class="btn btn-primary filter-apply" data-filter-close>Voir les offres</button></form>
-    <div class="results-head"><p id="results-count" role="status" aria-live="polite"></p><button type="button" class="reset-link" id="reset-filters">${icon('close')}Tout effacer</button>
+    <div class="results-head"><p id="results-count" role="status" aria-live="polite"></p><div class="results-tools"><button type="button" class="reset-link" id="reset-filters">${icon('close')}Tout effacer</button>
       <button type="button" class="fav-filter" id="fav-filter" aria-pressed="${state.filter.fav}">${icon('heart')}Offres gardées <span data-fav-count>${favList().length}</span></button>
-      <label class="sort-field" for="sort">Trier<select id="sort"><option value="date" ${state.sort === 'date' ? 'selected' : ''}>Dates les plus proches</option><option value="dept" ${state.sort === 'dept' ? 'selected' : ''}>Par département</option><option value="spec" ${state.sort === 'spec' ? 'selected' : ''}>Par spécialité</option></select></label>
+      <label class="sort-field" for="sort">Trier<select id="sort"><option value="date" ${state.sort === 'date' ? 'selected' : ''}>Dates les plus proches</option><option value="dept" ${state.sort === 'dept' ? 'selected' : ''}>Par département</option><option value="spec" ${state.sort === 'spec' ? 'selected' : ''}>Par spécialité</option></select></label></div>
       <div class="view-toggle" role="group" aria-label="Affichage"><button type="button" data-view="list" aria-pressed="${state.view === 'list'}">${icon('list')}Liste</button><button type="button" data-view="map" aria-pressed="${state.view === 'map'}">${icon('map')}Carte</button></div></div>
     <div class="offers-layout view-${state.view}"><div id="offer-results"></div><aside class="offers-map" aria-label="Carte des résultats"><div id="map-slot"></div></aside></div>
     <div class="offer-note"><div><h2>${dot('Pas encore la bonne offre ?')}</h2><p>Confiez-nous votre projet : nous vous prévenons dès qu’une offre vous correspond.</p></div>${btn('Créer mon dossier','#/postuler','coral')}</div>
@@ -853,12 +878,75 @@ function pills(name, label, options, value = '', {required = true, full = true} 
 /* Bloc affiché selon une réponse ; rule = « nom:valeur ». */
 const when = (rule, on, content, cls = '') => `<div class="cond-block ${cls}" data-when="${esc(rule)}" ${on ? '' : 'hidden'}>${content}</div>`;
 /* Dépôt de fichier (CV, justificatif) : on clique ou on glisse. Le fichier reste dans le navigateur (simulation). */
-/* Pièces : PDF ou photo (sur téléphone, le choix propose l’appareil photo). Rien n’est obligatoire au premier contact. */
+/* Pièces : PDF ou photo (sur téléphone, le choix propose l’appareil photo). Le CV est obligatoire ; les copies
+   (autorisation, diplôme, preuves) restent facultatives au premier contact. Le texte du champ est réduit au minimum. */
 const DOC_FILES = {ext: 'pdf,jpg,jpeg,png,heic,heif,webp', accept: 'application/pdf,.pdf,image/*'};
-const LATER = 'Pas de fichier sous la main ? Envoyez-le plus tard, par WhatsApp ou par email.';
+const FILE_HINT = 'PDF ou photo · 10 Mo max.';
+/* Fichiers choisis, gardés en mémoire le temps de la visite pour l’aperçu du récapitulatif (« Voir »).
+   Après un rechargement, seul le nom reste : la vignette s’affiche sans « Voir ». */
+const FILE_STORE = {};
+const fileKey = (kind, id) => `${kind}:${id}`;
+const sizeText = n => n < 102400 ? 'moins de 0,1 Mo' : `${(n / 1048576).toLocaleString('fr-FR', {maximumFractionDigits: 1})} Mo`;
+const isImageName = name => /\.(jpe?g|png|webp|heic|heif|gif)$/i.test(name);
+function fileList(kind, id, names) {
+  const files = FILE_STORE[fileKey(kind, id)] || [];
+  const items = files.length
+    ? files.map((f, i) => ({name: f.name, size: f.size, img: f.type.startsWith('image/') || isImageName(f.name), i}))
+    : String(names || '').split(', ').filter(Boolean).map(name => ({name, img: isImageName(name)}));
+  return `<ul class="file-list">${items.map(x => `<li class="file-chip"><span class="file-ico">${icon(x.img ? 'image' : 'file')}</span><span class="file-meta"><strong>${esc(x.name)}</strong><small>Pièce jointe · ${x.img ? 'photo' : 'PDF'}${x.size ? ` · ${sizeText(x.size)}` : ''}</small></span>${x.i !== undefined ? `<button type="button" class="file-view" data-view-file="${fileKey(kind, id)}" data-file-index="${x.i}">${icon('eye')}Voir<span class="sr-only"> ${esc(x.name)}</span></button>` : ''}</li>`).join('')}</ul>`;
+}
+/* Aperçu d’une pièce jointe : une photo s’affiche dans une fenêtre, un PDF aussi sur ordinateur. Sur téléphone,
+   le PDF s’ouvre dans un nouvel onglet (les navigateurs mobiles n’affichent pas un PDF intégré à une page). */
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-view-file]'); if (!b) return;
+  const f = (FILE_STORE[b.dataset.viewFile] || [])[Number(b.dataset.fileIndex)]; if (!f) return;
+  const url = URL.createObjectURL(f), img = f.type.startsWith('image/');
+  if (!img && matchMedia('(pointer: coarse)').matches) { window.open(url, '_blank', 'noopener'); return; }
+  const d = document.createElement('dialog');
+  d.className = 'file-viewer'; d.setAttribute('aria-label', `Aperçu : ${f.name}`);
+  d.innerHTML = `<div class="viewer-head">${icon(img ? 'image' : 'file')}<strong>${esc(f.name)}</strong><a class="text-link" href="${url}" target="_blank" rel="noopener">Ouvrir dans un onglet</a><button type="button" class="viewer-close" aria-label="Fermer l’aperçu" autofocus>${icon('close')}</button></div><div class="viewer-body">${img ? `<img src="${url}" alt="${esc(f.name)}">` : `<iframe src="${url}" title="${esc(f.name)}"></iframe>`}</div>`;
+  document.body.append(d);
+  d.addEventListener('close', () => { d.remove(); URL.revokeObjectURL(url); b.focus(); });
+  d.querySelector('.viewer-close').addEventListener('click', () => d.close());
+  d.addEventListener('click', ev => { if (ev.target === d) d.close(); });
+  d.showModal();
+});
+/* Date de naissance : jour, mois et année en chiffres, dans trois cases courtes (clavier numérique sur téléphone) :
+   plus simple qu’un calendrier pour une date ancienne. Le récapitulatif la redonne en toutes lettres. La date complète (AAAA-MM-JJ) est dans un champ masqué : c’est elle qui est vérifiée et gardée. */
+function birthProblem(value) {
+  const [y = '', m = '', d = ''] = String(value || '').split('-');
+  if (!y || !m || !d) return 'Indiquez le jour, le mois et l’année.';
+  if (!/^\d{4}$/.test(y)) return 'Indiquez l’année en 4 chiffres, par exemple 1985.';
+  const date = new Date(Number(y), Number(m) - 1, Number(d));
+  if (!/^\d{1,2}$/.test(d) || date.getMonth() !== Number(m) - 1 || date.getDate() !== Number(d)) return 'Cette date n’existe pas : vérifiez le jour et le mois.';
+  const age = (new Date(TODAY) - date) / (365.25 * 864e5);
+  if (age < 18 || age > 80) return 'Vérifiez l’année de naissance.';
+  return '';
+}
+const birthText = iso => { if (!iso || birthProblem(iso)) return ''; const [y, m, d] = iso.split('-').map(Number); return `${d === 1 ? '1er' : d} ${MONTHS[m - 1]} ${y}`; };
+function birthField(value = '') {
+  const [y = '', m = '', d = ''] = String(value).split('-');
+  return `<fieldset class="field birth-field" id="birth-group"><legend>Date de naissance <span class="req" aria-hidden="true">*</span></legend>
+    <div class="birth-parts">
+      <div class="birth-part"><label for="birthDay">Jour</label><input id="birthDay" type="text" inputmode="numeric" maxlength="2" autocomplete="bday-day" placeholder="JJ" value="${esc(d)}" data-birth-part="d"></div>
+      <div class="birth-part"><label for="birthMonth">Mois</label><input id="birthMonth" type="text" inputmode="numeric" maxlength="2" autocomplete="bday-month" placeholder="MM" value="${esc(m)}" data-birth-part="m"></div>
+      <div class="birth-part"><label for="birthYear">Année</label><input id="birthYear" type="text" inputmode="numeric" maxlength="4" autocomplete="bday-year" placeholder="AAAA" value="${esc(y)}" data-birth-part="y"></div>
+    </div>
+    <input type="text" class="sr-only" id="birthDate" name="birthDate" value="${esc(value)}" required tabindex="-1" aria-hidden="true" aria-label="Date de naissance" data-birth-value data-picker="birthDay"></fieldset>`;
+}
+function bindBirth(form) {
+  const out = $('#birthDate', form); if (!out) return;
+  const part = k => $(`[data-birth-part="${k}"]`, form);
+  const sync = () => {
+    const [d, m, y] = ['d', 'm', 'y'].map(k => { const el = part(k), v = el.value.replace(/\D/g, ''); if (el.value !== v) el.value = v; return v; });
+    out.value = d || m || y ? `${y}-${m ? m.padStart(2, '0') : ''}-${d ? d.padStart(2, '0') : ''}` : '';
+    out.dispatchEvent(new Event('input', {bubbles: true}));
+  };
+  ['d', 'm', 'y'].forEach(k => part(k).addEventListener('input', sync));
+}
 function uploadField(id, label, v, {help, ext = 'pdf', accept = 'application/pdf,.pdf', required = false, cond = false, requiredWhen = '', multiple = false, empty = 'Choisir un fichier', missing = 'Ajoutez ce document.'} = {}) {
   const name = v[`${id}Name`], error = v[`${id}Error`];
-  return `<div class="field full upload-field"><label for="${id}">${label}${required || cond || requiredWhen ? ' <span class="req" aria-hidden="true">*</span>' : ''}</label><label class="upload-area" for="${id}">${icon('file')}<span><strong id="${id}-name" data-empty="${esc(empty)}">${name ? esc(name) : error ? 'Fichier refusé' : esc(empty)}</strong><small id="${id}-help" data-help="${esc(help)}">${name ? 'Fichier prêt. Il ne sera pas envoyé (simulation).' : esc(help)}</small></span></label><input id="${id}" name="${id}" type="file" accept="${accept}" ${multiple ? 'multiple' : ''} class="sr-only" data-ext="${ext}" data-missing="${esc(missing)}" ${required ? 'required' : ''} ${cond ? 'data-cond-required' : ''} ${requiredWhen ? `data-required-when="${esc(requiredWhen)}"` : ''} ${error ? 'data-invalid-file="true"' : ''}><button class="reset-link" data-clear="${id}" type="button" ${name || error ? '' : 'hidden'}>Retirer le fichier</button></div>`;
+  return `<div class="field full upload-field"><label for="${id}">${label}${required || cond || requiredWhen ? ' <span class="req" aria-hidden="true">*</span>' : ''}</label><label class="upload-area" for="${id}">${icon('file')}<span><strong id="${id}-name" data-empty="${esc(empty)}">${name ? esc(name) : error ? 'Fichier refusé' : esc(empty)}</strong><small id="${id}-help" data-help="${esc(help)}">${name ? 'Fichier prêt.' : esc(help)}</small></span></label><input id="${id}" name="${id}" type="file" accept="${accept}" ${multiple ? 'multiple' : ''} class="sr-only" data-ext="${ext}" data-missing="${esc(missing)}" ${required ? 'required' : ''} ${cond ? 'data-cond-required' : ''} ${requiredWhen ? `data-required-when="${esc(requiredWhen)}"` : ''} ${error ? 'data-invalid-file="true"' : ''}><button class="reset-link" data-clear="${id}" type="button" ${name || error ? '' : 'hidden'}>Retirer le fichier</button></div>`;
 }
 /* Choix long (situation) : des cartes à bouton radio, avec un titre et une phrase d’explication.
    « needs » annonce ce qui sera demandé ensuite (date, copie), pour qu’il n’y ait pas de surprise. */
@@ -917,8 +1005,8 @@ function slotChoice(o) {
   const picked = state.picks[o.id] || [];
   return `<fieldset class="field full slot-choice" id="slotChoice-group"><legend>Vos créneaux pour cette offre <span class="req" aria-hidden="true">*</span></legend><small id="slotChoice-help">Cochez au moins un créneau.</small><div class="slot-picks is-compact">${o.slots.map(s => slotTile(o, s, {name: 'slotChoice', attrs: 'data-multi data-required-group', checked: picked.includes(slotKey(s))})).join('')}</div></fieldset>`;
 }
-/* Dossier praticien : cinq étapes, une par écran (v8), dans l’ordre du traitement. Les pièces et les souhaits
-   sont facultatifs. Quand le praticien postule à une offre, ses disponibilités sont les créneaux cochés : on ne lui
+/* Dossier praticien : cinq étapes, une par écran (v8), dans l’ordre du traitement. Le CV est obligatoire ; les copies
+   et les souhaits sont facultatifs. Quand le praticien postule à une offre, ses disponibilités sont les créneaux cochés : on ne lui
    redemande pas « Dès maintenant / À partir d’une date ». Chaque étape : {title, html, optional, lead}. */
 const REGIONS = ['Partout en France', 'Île-de-France', 'Auvergne-Rhône-Alpes', 'Provence-Alpes-Côte d’Azur', 'Occitanie', 'Nouvelle-Aquitaine', 'Grand Est', 'Hauts-de-France', 'Bretagne', 'Pays de la Loire', 'Normandie', 'Bourgogne-Franche-Comté', 'Centre-Val de Loire', 'Corse', 'Outre-mer'];
 const LANGUAGES = ['Français', 'Anglais', 'Arabe', 'Espagnol', 'Portugais', 'Allemand', 'Italien', 'Autre langue'];
@@ -932,14 +1020,16 @@ function candidateStages(s, o) {
   const withSlots = !!o?.slots.length;
   const proof = sit => {
     const {date, doc, extra} = SIT_PROOF[sit], files = DOC_FILES;
-    return when(`stage:${sit}`, v.stage === sit, `<div class="auth-block is-required"><p class="auth-title">${icon(doc ? 'badge' : 'calendar')}<span><strong>${esc(sit)}</strong>${doc ? 'Indiquez la date. Les copies sont facultatives : joignez-les maintenant ou plus tard.' : 'Indiquez la date de réussite. La preuve est facultative.'}</span></p><div class="form-grid">${f(date[0], date[1], {type:'date', required:false, cond:true, full:true, attrs:`max="${TODAY}"`, help:date[2]})}${doc ? uploadField(doc[0], `${doc[1]} <span class="field-note">facultatif</span>`, v, {...files, help:`PDF ou photo, 10 Mo maximum. ${LATER}`, empty:doc[2]}) : ''}${uploadField(extra[0], `${extra[1]} <span class="field-note">facultatif</span>`, v, {...files, help:extra[3].replace('PDF, JPG ou PNG', 'PDF ou photo'), empty:extra[2]})}</div></div>`, 'cond-panel');
+    return when(`stage:${sit}`, v.stage === sit, `<div class="auth-block is-required"><p class="auth-title">${icon(doc ? 'badge' : 'calendar')}<span><strong>${esc(sit)}</strong>${doc ? 'Indiquez la date. Les copies sont facultatives : joignez-les maintenant ou plus tard.' : 'Indiquez la date de réussite. La preuve est facultative.'}</span></p><div class="form-grid">${f(date[0], date[1], {type:'date', required:false, cond:true, full:true, attrs:`max="${TODAY}"`, help:date[2]})}${doc ? uploadField(doc[0], `${doc[1]} <span class="field-note">facultatif</span>`, v, {...files, help:FILE_HINT, empty:doc[2]}) : ''}${uploadField(extra[0], `${extra[1]} <span class="field-note">facultatif</span>`, v, {...files, help:FILE_HINT, empty:extra[2]})}</div></div>`, 'cond-panel');
   };
   return [
     {title: 'Vous', html: `
       ${f('firstName','Prénom',{autocomplete:'given-name'})}${f('lastName','Nom',{autocomplete:'family-name'})}
+      ${birthField(v.birthDate)}
+      ${pills('residence','Où vivez-vous aujourd’hui ?',['En France','Hors de France'],v.residence,{full:false})}
+      ${when('residence:Hors de France', v.residence === 'Hors de France', `<div class="form-grid">${f('residenceCountry','Dans quel pays ?',{options:countries.filter(c => c !== 'France'),required:false,cond:true,full:true})}${when('residenceCountry:Autre pays', v.residenceCountry === 'Autre pays', f('residenceOther','Quel pays ?',{required:false,cond:true,full:true}))}</div>`, 'cond-panel')}
       ${f('email','Email',{type:'email',autocomplete:'email',full:true,placeholder:'nom@exemple.com'})}
-      ${f('phone','Téléphone',{type:'tel',full:true,code:v.phoneCode,help:'Votre conseiller vous appelle à ce numéro sous 48 h.'})}
-      ${pills('residence','Où vivez-vous aujourd’hui ?',['En France','Hors de France'],v.residence)}`},
+      ${f('phone','Téléphone',{type:'tel',full:true,code:v.phoneCode,help:'Votre conseiller vous appelle à ce numéro sous 48 h.'})}`},
     {title: 'Votre métier', html: `
       ${chipPicker({name: 'specialties', legend: 'Vos spécialités', options: specialtyChoices(), selected: v.specialties, top: 9, required: true})}
       ${when('specialties:Autre spécialité', v.specialties.includes('Autre spécialité'), f('specialtyOther','Quelle autre spécialité ?',{required:false,cond:true,full:true}))}
@@ -948,7 +1038,7 @@ function candidateStages(s, o) {
     {title: 'Votre situation', html: `
       ${choiceCards('stage', 'Votre situation aujourd’hui', SITUATIONS, v.stage, {msg: 'Choisissez votre situation.', intro: `<div class="explain-row">${explain('evc')}${explain('autorisation')}</div>`})}
       ${proof(SIT_EVC)}${proof(SIT_AUTH)}${proof(SIT_EU)}
-      ${uploadField('cv','Votre CV <span class="field-note">facultatif</span>', v, {...DOC_FILES, multiple:true, help:`PDF ou photos (plusieurs possibles), 10 Mo maximum. ${LATER}`, empty:'Joindre mon CV ou le prendre en photo'})}`},
+      ${uploadField('cv','Votre CV', v, {...DOC_FILES, multiple:true, required:true, help:FILE_HINT, empty:'Joindre mon CV', missing:'Ajoutez votre CV.'})}`},
     {title: withSlots ? 'Vos créneaux' : 'Vos disponibilités', html: withSlots
       ? slotChoice(o) + `<p class="slots-sync">${icon('calendar')}<span>Vos disponibilités sont les créneaux cochés : ce sont ceux de la fiche de l’offre, et ce que vous changez ici y est aussi changé.</span></p>`
       : pills('availability','Quand pouvez-vous commencer ?',['Dès maintenant',FROM_DATE],v.availability) + when(`availability:${FROM_DATE}`, v.availability === FROM_DATE, f('availableFrom','Disponible à partir du',{type:'date',required:false,cond:true,full:true,attrs:`min="${TODAY}"`}), 'cond-panel')},
@@ -1077,9 +1167,10 @@ function review(kind, o, {readonly = false} = {}) {
     const picks = o ? (state.picks[o.id] || []).slice().sort().map(k => { const [date, type] = k.split('|'); return `<li>${dateLabel(date)} · ${esc(type)}</li>`; }).join('') : '';
     const offerLine = o ? `${esc(o.specialty)}, ${esc(o.place)} · réf. ${o.ref}` : '';
     const proof = SIT_PROOF[v.stage] || {}, sitDate = proof.date && v[proof.date[0]], sitDoc = proof.doc && v[`${proof.doc[0]}Name`], sitExtra = proof.extra && v[`${proof.extra[0]}Name`];
-    blocks = block('Vous', [1, 'firstName'], [['Nom', esc(`${v.firstName || ''} ${v.lastName || ''}`.trim())], ['Email', mailCheck(v.email)], ['Téléphone', esc(phoneText(v.phone, v.phoneCode))], ['Lieu de vie', esc(v.residence || '')]])
+    const abroad = v.residence === 'Hors de France' ? (v.residenceCountry === 'Autre pays' ? v.residenceOther : v.residenceCountry) : '';
+    blocks = block('Vous', [1, 'firstName'], [['Nom', esc(`${v.firstName || ''} ${v.lastName || ''}`.trim())], ['Date de naissance', birthText(v.birthDate)], ['Email', mailCheck(v.email)], ['Téléphone', esc(phoneText(v.phone, v.phoneCode))], ['Lieu de vie', esc(abroad ? `${v.residence} (${abroad})` : v.residence || '')]])
       + block('Votre métier', [2, 'specialties-group'], [['Spécialités', specs], ['Pays du diplôme', esc(v.country === 'Autre pays' ? (v.countryOther || '') : (v.country || ''))]])
-      + block('Votre situation', [3, 'stage-group'], [['Situation', esc(v.stage || '')], [proof.date?.[1] || '', sitDate ? dateLabel(sitDate) : ''], [proof.doc?.[1] || '', sitDoc ? esc(sitDoc) : proof.doc ? 'À envoyer plus tard' : ''], [proof.extra?.[1] || '', sitExtra ? esc(sitExtra) : ''], ['CV', v.cvName ? esc(v.cvName) : 'À envoyer plus tard']])
+      + block('Votre situation', [3, 'stage-group'], [['Situation', esc(v.stage || '')], [proof.date?.[1] || '', sitDate ? dateLabel(sitDate) : ''], [proof.doc?.[1] || '', sitDoc ? fileList(kind, proof.doc[0], sitDoc) : proof.doc ? 'À envoyer plus tard' : ''], [proof.extra?.[1] || '', sitExtra ? fileList(kind, proof.extra[0], sitExtra) : ''], ['CV', v.cvName ? fileList(kind, 'cv', v.cvName) : '']])
       + (o?.slots.length
         ? block('Vos créneaux', [4, 'slotChoice-group'], [['Offre', offerLine], ['Créneaux', picks ? `<ul class="review-list">${picks}</ul>` : '']])
         : block('Vos disponibilités', [4, 'availability-group'], [['Début', v.availability === FROM_DATE && v.availableFrom ? `À partir du ${dateLabel(v.availableFrom).toLowerCase()}` : esc(v.availability || '')], ['Offre', offerLine]]))
@@ -1097,11 +1188,8 @@ function success(kind) {
   const heading = kind === 'contact' ? 'Votre message est envoyé.' : kind === 'employer' || o?.soon ? 'Votre demande est envoyée.' : o ? 'Votre candidature est envoyée.' : 'Votre dossier est envoyé.';
   const lead = kind === 'contact' ? 'Notre équipe vous répond par email sous 24 h ouvrées.' : kind === 'employer' ? (call ? `Un conseiller vous rappelle sous 24 h ouvrées au ${esc(call)}.` : `Un conseiller vous répond par email sous 24 h ouvrées, à ${esc(v.email || 'votre adresse')}.`) : `${o?.soon ? 'Nous vous prévenons dès que cette offre ouvre. ' : ''}Votre conseiller vous appelle sous 48 h${call ? ` au ${esc(call)}` : ''}.`;
   const next = kind === 'employer' ? [['Sous 24 h ouvrées', `Un conseiller vous ${call ? 'rappelle' : 'écrit'} pour préciser le besoin et les dates.`],['Ensuite','Vous recevez des profils vérifiés.'],['Enfin','Nous organisons la rencontre.']] : kind === 'contact' ? [] : [['Sous 48 h','Votre conseiller vous appelle.'],['Ensemble','Vous complétez votre dossier : pièces et démarches.'],['Ensuite','Vous recevez des offres qui vous correspondent.']];
-  const what = kind === 'employer' || o?.soon ? 'demande' : kind === 'contact' ? 'message' : o ? 'candidature' : 'dossier';
-  const docsLater = kind === 'candidate' && !v.cvName ? `<p class="success-later">${icon('file')}<span>Votre CV n’est pas encore joint : envoyez-le quand vous voulez, <a class="text-link" href="${waLink()}" target="_blank" rel="noopener">par WhatsApp</a> ou <a class="text-link" href="mailto:${MAIL}">par email</a>. Votre conseiller le rattache à votre ${what}.</span></p>` : '';
   return `<div class="success-state"><div class="success-symbol"><svg viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="24"/><path d="m15 27 7 7 15-16"/></svg></div><h2 tabindex="-1">${dot(heading)}</h2>
-    <p class="success-lead"><strong>${lead}</strong> Vous n’avez rien d’autre à faire.</p>${docsLater}
-    ${s.ref ? `<div class="success-ref">${icon('file')}<p>Votre référence : <strong>${s.ref}</strong><small>Notez-la : elle figure aussi dans l’email de confirmation.</small></p><button type="button" class="reset-link" data-copy="${s.ref}">${icon('link')}Copier</button></div>` : ''}
+    <p class="success-lead"><strong>${lead}</strong> Vous n’avez rien d’autre à faire.</p>
     ${next.length ? `<ol class="mini-steps">${next.map(([a,b], k) => `<li style="--k:${k}"><strong>${a}</strong>${b}</li>`).join('')}</ol>` : ''}
     ${kind !== 'contact' ? `<details class="sent-recap"><summary>Revoir ce que vous avez envoyé ${icon('plus')}</summary><div class="details-body">${review(kind, o, {readonly: true})}</div></details>` : ''}
     ${sampleNote(`Maquette : rien n’est réellement envoyé. En service réel, un email de confirmation part à ${v.email ? esc(v.email) : 'votre adresse'}.`)}
@@ -1149,9 +1237,9 @@ function wizard(kind, stages, n, o) {
   const next = seen ? 'Revenir au récapitulatif' : n === total ? 'Vérifier avant d’envoyer' : 'Continuer';
   return `${draftNote(kind)}
     ${o && n === 1 ? `<div class="application-offer"><span class="row-num" aria-hidden="true">${o.num}</span><p><strong>${o.specialty}</strong>${o.place} · ${slotRange(o)}</p><a class="text-link" href="#/offre/${o.id}">Voir l’offre</a></div>` : ''}
-    <div class="wizard-head"><p class="wizard-count">Étape ${n} sur ${total}${st.optional ? ' · facultative' : ''}</p><h2 id="form-title" tabindex="-1">${st.title}</h2>
+    <div class="wizard-head"><div class="wizard-top"><p class="wizard-count">Étape ${n} sur ${total}</p>${st.optional ? '<p class="wizard-req">facultative</p>' : '<p class="wizard-req"><span class="req">*</span> obligatoire</p>'}</div><h2 id="form-title" tabindex="-1">${st.title}</h2>
       <div class="wizard-bar" role="progressbar" aria-label="Avancement" aria-valuemin="1" aria-valuemax="${total}" aria-valuenow="${n}" aria-valuetext="Étape ${n} sur ${total}"><span style="--p:${Math.round(n / total * 100)}%"></span></div>
-      ${st.lead ? `<p class="wizard-lead">${st.lead}</p>` : `<p class="muted small"><span class="req">*</span> obligatoire</p>`}</div>
+      ${st.lead ? `<p class="wizard-lead">${st.lead}</p>` : ''}</div>
     <form id="application-form" novalidate data-kind="${kind}" data-step="${n}" data-steps="${total}" aria-labelledby="form-title"><div id="form-errors"></div>
       ${stages.map((x, i) => `<section class="form-stage" data-stage="${i + 1}" ${i + 1 === n ? '' : 'hidden'}><div class="form-grid">${x.html}</div></section>`).join('')}
       ${n === 1 ? consentField() : ''}
@@ -1177,8 +1265,9 @@ function application(employer = false) {
   /* Aides : à gauche sur ordinateur, sous la carte sur téléphone (form-after). */
   const helps = `<div class="form-help"><span>Vous préférez appeler ?</span><a class="text-link" href="${TEL}">${icon('phone')}${PHONE}</a></div>${employer ? `<div class="form-help"><span>Ou écrire :</span><a class="text-link" href="mailto:${MAIL_ETAB}">${icon('mail')}${MAIL_ETAB}</a></div>` : ''}${o ? '' : otherWay}`;
   const lead = employer ? 'Trois étapes courtes, puis vous relisez tout avant d’envoyer. Un conseiller vous rappelle sous 24 h ouvrées.' : `${stages.length === 5 ? 'Cinq' : stages.length} étapes courtes, puis vous relisez tout avant d’envoyer. Votre conseiller complète le dossier avec vous.`;
-  return `<div class="container">${breadcrumb(crumbs)}</div><section class="form-page"><div class="container form-layout">
-    <aside class="form-intro"><h1>${dot(title)}</h1><p class="lead">${lead}</p>
+  /* Le fil d’Ariane est en tête de la colonne de gauche : sur ordinateur, la carte du formulaire commence juste sous l’en-tête. */
+  return `<section class="form-page"><div class="container form-layout">
+    <aside class="form-intro">${breadcrumb(crumbs)}<h1>${dot(title)}</h1><p class="lead">${lead}</p>
       <figure class="form-photo"><img src="assets/${employer ? 'equipe.jpg' : 'consultation.jpg'}" alt="" width="1100" height="733" loading="lazy"><figcaption>${icon(employer ? 'shield' : 'clock')}<span><strong>${employer ? 'Des profils vérifiés' : 'Un retour sous 48 h'}</strong>${employer ? 'Intérim, vacation, CDI, CDD' : 'Gratuit et sans engagement'}</span></figcaption></figure>
       ${helps}</aside>
     <div class="form-card">${s.success ? success(kind) : step === 'recap' ? review(kind, o) : wizard(kind, stages, step, o)}</div>
@@ -1205,7 +1294,7 @@ function notFound() {
   return `<section class="not-found container"><p class="nf-num" aria-hidden="true">404</p><h1>${dot('Retrouvons votre chemin.')}</h1><p class="lead">Cette page n’existe pas ou plus.</p><div class="actions">${btn('Retour à l’accueil','#/')}${btn('Voir les offres','#/offres','outline')}</div></section>`;
 }
 
-function legal(){return `<section class="page-heading"><div class="container">${breadcrumb([['Informations légales']])}<h1>Des informations en toute transparence<span class="dot">.</span></h1><p class="lead">Mentions légales et protection de vos données.</p></div></section><div class="container legal-layout"><nav class="legal-nav" aria-label="Sommaire des informations légales"><strong>Sur cette page</strong><a href="#/mentions-legales?section=editeur">L’éditeur du site</a><a href="#/mentions-legales?section=confidentialite">Vos données personnelles</a><a href="#/mentions-legales?section=droits">Vos droits</a><a href="#/mentions-legales?section=cookies">Cookies et traceurs</a></nav><article class="legal-copy"><h2 id="editeur">Mentions légales</h2><h3>L’éditeur</h3><dl class="legal-facts"><div><dt>Raison sociale</dt><dd>LASKA CORPORATE, société par actions simplifiée (SAS)</dd></div><div><dt>Capital social</dt><dd>${todo('montant du capital social')}</dd></div><div><dt>Immatriculation</dt><dd>RCS de Paris, SIREN 983 374 398</dd></div><div><dt>TVA intracommunautaire</dt><dd>FR29 983 374 398 <small>(calculé à partir du SIREN, à confirmer)</small></dd></div><div><dt>Siège social</dt><dd>6 rue d’Armaillé, 75017 Paris</dd></div><div><dt>Téléphone</dt><dd><a href="tel:+33184803696">+33 1 84 80 36 96</a></dd></div><div><dt>Email</dt><dd><a href="mailto:contact@laskacorp.com">contact@laskacorp.com</a> · établissements : <a href="mailto:${MAIL_ETAB}">${MAIL_ETAB}</a></dd></div></dl><h3>Directeur de la publication</h3><p>Mohamed Amine Hachicha, Président de LASKA CORPORATE.</p><h3>Hébergement</h3><dl class="legal-facts"><div><dt>Site</dt><dd>Vercel Inc., 440 N Barranca Avenue #4133, Covina, CA 91723, États-Unis <small>(hébergeur du site actuel, à confirmer pour la version publiée)</small></dd></div><div><dt>Données des formulaires</dt><dd>Supabase, région Union européenne (Francfort, Allemagne) <small>(annoncé sur le site actuel, à confirmer)</small></dd></div></dl><h3>Crédits</h3><p>Logo : LASKA CORPORATE. Polices : Manrope et DM Sans (licence SIL Open Font). Photographies d’illustration : Unsplash, elles ne représentent pas l’équipe Laska Corporate.</p><h3>Accessibilité</h3><p>Ce site vise le niveau AA des règles d’accessibilité (RGAA). Une difficulté pour utiliser une page ? Écrivez à <a href="mailto:contact@laskacorp.com">contact@laskacorp.com</a> ou appelez le <a href="tel:+33184803696">01 84 80 36 96</a> : nous vous apportons l’information autrement.</p><h3>Propriété intellectuelle</h3><p>Les textes, graphismes, logo et éléments du site appartiennent à LASKA CORPORATE ou à leurs ayants droit. Les photographies d’illustration de cette maquette proviennent d’Unsplash et ne représentent pas l’équipe Laska Corporate.</p><h2 id="confidentialite">Vos données personnelles</h2><p>Les informations ci-dessous reprennent les principes annoncés sur le site Laska Corporate. Les formulaires de cette maquette fonctionnent uniquement en simulation : aucun envoi, stockage sur serveur ou dépôt de fichier n’est effectué.</p><h3>Qui est responsable ?</h3><p>LASKA CORPORATE, 6 rue d’Armaillé, 75017 Paris. Pour toute question : <a href="mailto:contact@laskacorp.com">contact@laskacorp.com</a>.</p><h3>Le dossier praticien</h3><p>Ces informations servent à étudier votre profil et à vous accompagner. Quand vous postulez à une offre, sa référence est gardée avec votre dossier.</p><p>Le dossier demande :</p><ul class="legal-list"><li>vos coordonnées, avec votre téléphone et l’indicatif de votre pays ;</li><li>votre lieu de vie ;</li><li>vos spécialités et le pays de votre diplôme ;</li><li>votre situation (EVC, autorisation d’exercice, ou diplôme français ou européen) et sa date ;</li><li>vos disponibilités.</li></ul><p>Le reste est facultatif au premier contact : le CV, la copie de l’autorisation ou du diplôme, la preuve de réussite aux EVC, l’attestation RPPS et vos souhaits (régions, contrats, langues). Vous pouvez les envoyer plus tard.</p><p>Base annoncée : mesures précontractuelles prises à votre demande. Durée de conservation annoncée : 2 ans à compter du dernier échange, sauf poursuite active du dossier.</p><h3>La demande d’un établissement</h3><p>Les informations sur l’établissement, son contact et le besoin de recrutement servent à répondre à la demande de renfort. Base annoncée : intérêt légitime. Durée de conservation annoncée : 3 ans à compter du dernier échange.</p><h3>Les avis des praticiens</h3><p>Le formulaire d’avis recueille vos nom et prénom, votre spécialité, votre pays d’exercice, votre note et votre texte. Votre avis n’est publié qu’après relecture par notre équipe, et seulement avec votre prénom, l’initiale de votre nom, votre spécialité et votre pays ; il peut être repris comme témoignage sur la page d’accueil. Base : votre consentement, donné en cochant la case du formulaire. Vous pouvez le retirer à tout moment en écrivant à <a href="mailto:contact@laskacorp.com">contact@laskacorp.com</a> : votre avis est alors retiré du site. Durée de conservation : ${todo('durée de conservation des avis')}</p><h3>Le formulaire de contact</h3><p>Les coordonnées, le sujet et le message servent à traiter la demande. Base annoncée : intérêt légitime. Durée de conservation annoncée : 12 mois, sauf poursuite dans le cadre d’un dossier.</p><h3>Accès et hébergement</h3><p>Le site actuel indique un accès limité aux personnes habilitées chez Laska Corporate et un hébergement des données collectées via Supabase dans l’Union européenne, à Francfort. L’hébergement réel devra être confirmé pour la version publiée.</p><h2 id="droits">Vos droits</h2><p>Vous pouvez demander l’accès, la rectification, l’effacement, la limitation, l’opposition ou la portabilité de vos données en écrivant à <a href="mailto:contact@laskacorp.com">contact@laskacorp.com</a>. Le site annonce une réponse sous un mois. Vous pouvez également adresser une réclamation à la <a href="https://www.cnil.fr/" target="_blank" rel="noopener">CNIL</a>.</p><h2 id="cookies">Cookies et traceurs</h2><p>Cette maquette n’utilise aucun outil d’analyse ni cookie publicitaire. Elle garde seulement dans votre navigateur les offres que vous mettez de côté et, pour la démonstration, les avis saisis et l’Espace candidat. Les informations saisies dans les formulaires sont gardées dans cet onglet du navigateur (stockage de session) pour ne pas être perdues en cas de rechargement ; elles disparaissent quand vous fermez l’onglet. Les fichiers ne sont jamais gardés.</p><p class="small">Contenu proposé pour la maquette, à faire valider avant publication.</p></article></div>`;}
+function legal(){return `<section class="page-heading"><div class="container">${breadcrumb([['Informations légales']])}<h1>Des informations en toute transparence<span class="dot">.</span></h1><p class="lead">Mentions légales et protection de vos données.</p></div></section><div class="container legal-layout"><nav class="legal-nav" aria-label="Sommaire des informations légales"><strong>Sur cette page</strong><a href="#/mentions-legales?section=editeur">L’éditeur du site</a><a href="#/mentions-legales?section=confidentialite">Vos données personnelles</a><a href="#/mentions-legales?section=droits">Vos droits</a><a href="#/mentions-legales?section=cookies">Cookies et traceurs</a></nav><article class="legal-copy"><h2 id="editeur">Mentions légales</h2><h3>L’éditeur</h3><dl class="legal-facts"><div><dt>Raison sociale</dt><dd>LASKA CORPORATE, société par actions simplifiée (SAS)</dd></div><div><dt>Capital social</dt><dd>${todo('montant du capital social')}</dd></div><div><dt>Immatriculation</dt><dd>RCS de Paris, SIREN 983 374 398</dd></div><div><dt>TVA intracommunautaire</dt><dd>FR29 983 374 398 <small>(calculé à partir du SIREN, à confirmer)</small></dd></div><div><dt>Siège social</dt><dd>6 rue d’Armaillé, 75017 Paris</dd></div><div><dt>Téléphone</dt><dd><a href="tel:+33184803696">+33 1 84 80 36 96</a></dd></div><div><dt>Email</dt><dd><a href="mailto:contact@laskacorp.com">contact@laskacorp.com</a> · établissements : <a href="mailto:${MAIL_ETAB}">${MAIL_ETAB}</a></dd></div></dl><h3>Directeur de la publication</h3><p>Mohamed Amine Hachicha, Président de LASKA CORPORATE.</p><h3>Hébergement</h3><dl class="legal-facts"><div><dt>Site</dt><dd>Vercel Inc., 440 N Barranca Avenue #4133, Covina, CA 91723, États-Unis <small>(hébergeur du site actuel, à confirmer pour la version publiée)</small></dd></div><div><dt>Données des formulaires</dt><dd>Supabase, région Union européenne (Francfort, Allemagne) <small>(annoncé sur le site actuel, à confirmer)</small></dd></div></dl><h3>Crédits</h3><p>Logo : LASKA CORPORATE. Polices : Manrope et DM Sans (licence SIL Open Font). Photographies d’illustration : Unsplash, elles ne représentent pas l’équipe Laska Corporate.</p><h3>Accessibilité</h3><p>Ce site vise le niveau AA des règles d’accessibilité (RGAA). Une difficulté pour utiliser une page ? Écrivez à <a href="mailto:contact@laskacorp.com">contact@laskacorp.com</a> ou appelez le <a href="tel:+33184803696">01 84 80 36 96</a> : nous vous apportons l’information autrement.</p><h3>Propriété intellectuelle</h3><p>Les textes, graphismes, logo et éléments du site appartiennent à LASKA CORPORATE ou à leurs ayants droit. Les photographies d’illustration de cette maquette proviennent d’Unsplash et ne représentent pas l’équipe Laska Corporate.</p><h2 id="confidentialite">Vos données personnelles</h2><p>Les informations ci-dessous reprennent les principes annoncés sur le site Laska Corporate. Les formulaires de cette maquette fonctionnent uniquement en simulation : aucun envoi, stockage sur serveur ou dépôt de fichier n’est effectué.</p><h3>Qui est responsable ?</h3><p>LASKA CORPORATE, 6 rue d’Armaillé, 75017 Paris. Pour toute question : <a href="mailto:contact@laskacorp.com">contact@laskacorp.com</a>.</p><h3>Le dossier praticien</h3><p>Ces informations servent à étudier votre profil et à vous accompagner. Quand vous postulez à une offre, sa référence est gardée avec votre dossier.</p><p>Le dossier demande :</p><ul class="legal-list"><li>vos coordonnées et votre date de naissance, avec votre téléphone et l’indicatif de votre pays ;</li><li>votre lieu de vie, et votre pays si vous vivez hors de France ;</li><li>vos spécialités et le pays de votre diplôme ;</li><li>votre situation (EVC, autorisation d’exercice, ou diplôme français ou européen) et sa date ;</li><li>vos disponibilités ;</li><li>votre CV.</li></ul><p>Le reste est facultatif au premier contact : la copie de l’autorisation ou du diplôme, la preuve de réussite aux EVC, l’attestation RPPS et vos souhaits (régions, contrats, langues). Vous pouvez les envoyer plus tard.</p><p>Base annoncée : mesures précontractuelles prises à votre demande. Durée de conservation annoncée : 2 ans à compter du dernier échange, sauf poursuite active du dossier.</p><h3>La demande d’un établissement</h3><p>Les informations sur l’établissement, son contact et le besoin de recrutement servent à répondre à la demande de renfort. Base annoncée : intérêt légitime. Durée de conservation annoncée : 3 ans à compter du dernier échange.</p><h3>Les avis des praticiens</h3><p>Le formulaire d’avis recueille vos nom et prénom, votre spécialité, votre pays d’exercice, votre note et votre texte. Votre avis n’est publié qu’après relecture par notre équipe, et seulement avec votre prénom, l’initiale de votre nom, votre spécialité et votre pays ; il peut être repris comme témoignage sur la page d’accueil. Base : votre consentement, donné en cochant la case du formulaire. Vous pouvez le retirer à tout moment en écrivant à <a href="mailto:contact@laskacorp.com">contact@laskacorp.com</a> : votre avis est alors retiré du site. Durée de conservation : ${todo('durée de conservation des avis')}</p><h3>Le formulaire de contact</h3><p>Les coordonnées, le sujet et le message servent à traiter la demande. Base annoncée : intérêt légitime. Durée de conservation annoncée : 12 mois, sauf poursuite dans le cadre d’un dossier.</p><h3>Accès et hébergement</h3><p>Le site actuel indique un accès limité aux personnes habilitées chez Laska Corporate et un hébergement des données collectées via Supabase dans l’Union européenne, à Francfort. L’hébergement réel devra être confirmé pour la version publiée.</p><h2 id="droits">Vos droits</h2><p>Vous pouvez demander l’accès, la rectification, l’effacement, la limitation, l’opposition ou la portabilité de vos données en écrivant à <a href="mailto:contact@laskacorp.com">contact@laskacorp.com</a>. Le site annonce une réponse sous un mois. Vous pouvez également adresser une réclamation à la <a href="https://www.cnil.fr/" target="_blank" rel="noopener">CNIL</a>.</p><h2 id="cookies">Cookies et traceurs</h2><p>Cette maquette n’utilise aucun outil d’analyse ni cookie publicitaire. Elle garde seulement dans votre navigateur les offres que vous mettez de côté et, pour la démonstration, les avis saisis et l’Espace candidat. Les informations saisies dans les formulaires sont gardées dans cet onglet du navigateur (stockage de session) pour ne pas être perdues en cas de rechargement ; elles disparaissent quand vous fermez l’onglet. Les fichiers ne sont jamais gardés.</p><p class="small">Contenu proposé pour la maquette, à faire valider avant publication.</p></article></div>`;}
 
 /* ───────────── Validation et formulaires ───────────── */
 function normalized(s) { return String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[’']/g, ''); }
@@ -1253,6 +1342,7 @@ function findIssues(form) {
     if (group) { seen.add(el.name); if ((el.required || el.hasAttribute('data-required-group')) && !form.querySelector(`[name="${el.name}"]:checked`)) message = el.dataset.groupMsg || (el.type === 'radio' ? 'Choisissez une réponse.' : el.name === 'slotChoice' ? 'Choisissez au moins un créneau.' : 'Choisissez au moins une spécialité.'); }
     else if (el.type === 'file') { const f = fileState(form, el); if (f.error || el.dataset.invalidFile) message = f.why ? f.why.replace(/<[^>]+>/g, '') : `Choisissez un fichier ${el.dataset.ext.includes('jpg') ? 'PDF, JPG ou PNG' : 'PDF'} de moins de 10 Mo, ou retirez-le.`; else if (el.required && !f.name) message = el.dataset.missing || 'Ajoutez ce document.'; }
     else if (el.type === 'checkbox') { if (el.required && !el.checked) message = el.dataset.missing || 'Cochez cette case pour continuer.'; }
+    else if (el.hasAttribute('data-birth-value')) message = birthProblem(el.value);
     else if (el.required && !el.value.trim()) message = el.type === 'date' ? 'Choisissez une date.' : 'Complétez ce champ.';
     else if (el.type === 'date' && el.value && el.min && el.value < el.min) message = 'Choisissez une date à venir.';
     else if (el.type === 'date' && el.value && el.max && el.value > el.max) message = 'Cette date ne peut pas être dans le futur.';
@@ -1302,6 +1392,7 @@ function clearError(el) {
   if (isGroup(el)) { if (field.classList.contains('has-error') && field.querySelector(`[name="${el.name}"]:checked`)) { field.classList.remove('has-error'); field.removeAttribute('aria-describedby'); field.querySelector('.error-text')?.remove(); } return; }
   if (el.getAttribute('aria-invalid') !== 'true' || !el.value.trim() || !el.checkValidity()) return;
   if (el.name === 'message' && el.value.trim().length < 10) return;
+  if (el.hasAttribute('data-birth-value') && birthProblem(el.value)) return;
   if (el.type === 'tel' && phoneProblem(el.value, phoneCodeOf(el))) return;
   if (el.dataset.min && el.value.trim().length < Number(el.dataset.min)) return;
   el.removeAttribute('aria-invalid'); field.querySelector('.error-text')?.remove();
@@ -1312,14 +1403,14 @@ function clearError(el) {
 function bindFiles(form, s) {
   $$('input[type=file]', form).forEach(file => {
     const id = file.id, field = file.closest('.field'), area = $('.upload-area', field), nameEl = $(`#${id}-name`, field), helpEl = $(`#${id}-help`, field), clear = $(`[data-clear="${id}"]`, field), exts = file.dataset.ext.split(',');
-    const set = (name, error) => { s.values[`${id}Name`] = name; s.values[`${id}Error`] = error; };
+    const set = (name, error, files = []) => { s.values[`${id}Name`] = name; s.values[`${id}Error`] = error; FILE_STORE[fileKey(form.dataset.kind, id)] = files; };
     const clean = () => { file.removeAttribute('aria-invalid'); field.querySelector('.error-text')?.remove(); const help = field.querySelector('small[id]'); if (help) file.setAttribute('aria-describedby', help.id); };
     file.addEventListener('change', () => {
       const list = [...file.files]; if (!list.length) return;
       const problem = list.map(f => fileProblem(f, exts)).find(Boolean) || '', valid = !problem, names = list.map(f => f.name).join(', '), bytes = list.reduce((n, f) => n + f.size, 0), mb = bytes < 102400 ? 'moins de 0,1 Mo' : `${(bytes / 1048576).toLocaleString('fr-FR', {maximumFractionDigits: 1})} Mo`;
-      set(valid ? names : '', !valid); s.values[`${id}ErrorMsg`] = problem;
+      set(valid ? names : '', !valid, valid ? list : []); s.values[`${id}ErrorMsg`] = problem;
       if (!valid) { file.value = ''; file.dataset.invalidFile = 'true'; nameEl.textContent = 'Fichier refusé'; helpEl.innerHTML = problem; }
-      else { delete file.dataset.invalidFile; nameEl.textContent = names; helpEl.textContent = `${list.length > 1 ? `${list.length} fichiers prêts` : 'Fichier prêt'} (${mb}). ${list.length > 1 ? 'Ils ne seront pas envoyés' : 'Il ne sera pas envoyé'} (simulation).`; clean(); }
+      else { delete file.dataset.invalidFile; nameEl.textContent = names; helpEl.textContent = `${list.length > 1 ? `${list.length} fichiers prêts` : 'Fichier prêt'} (${mb}).`; clean(); }
       clear.hidden = false; updateProgress(form);
     });
     ['dragenter', 'dragover'].forEach(t => area.addEventListener(t, e => { e.preventDefault(); area.classList.add('is-drag'); }));
@@ -1381,7 +1472,7 @@ function bindForm(form, kind) {
   const onChange = () => { saveForm(form, kind); if (kind !== 'contact') s.values.wizardReady = false; syncConditionals(form); updateProgress(form); saveDraft(); };
   form.addEventListener('input', onChange); form.addEventListener('change', onChange);
   syncConditionals(form);
-  bindMulti(form); bindFiles(form, s); bindDates(form);
+  bindMulti(form); bindFiles(form, s); bindDates(form); bindBirth(form);
   if (kind === 'employer') bindSlots(form, s);
   /* Les créneaux cochés dans la candidature restent ceux de la fiche d’offre, et inversement. */
   if (kind === 'candidate') form.addEventListener('change', e => { if (e.target.name === 'slotChoice' && s.values.offerId) state.picks[s.values.offerId] = $$('[name="slotChoice"]:checked', form).map(i => i.value); });
@@ -1573,7 +1664,7 @@ function fileProblem(f, exts) {
     if (['jpg','jpeg','png','webp','gif'].includes(ext)) return `« ${name} » est une image. Ici, il faut un PDF.`;
     return `« ${name} » n’est pas dans un format accepté. Choisissez un ${exts.includes('jpg') ? 'PDF ou une photo' : 'PDF'}.`;
   }
-  if (f.size > 10 * 1048576) return `« ${name} » pèse ${mb} Mo, la limite est 10 Mo. Prenez-le plutôt en photo, ou envoyez-le plus tard par WhatsApp.`;
+  if (f.size > 10 * 1048576) return `« ${name} » pèse ${mb} Mo, la limite est 10 Mo. Prenez-le plutôt en photo.`;
   return '';
 }
 /* Saisie gardée dans l’onglet (stockage de session) : un rechargement ou une fausse manœuvre ne fait rien perdre.
@@ -1603,10 +1694,27 @@ function messageSide(text) {
 }
 
 /* ───────────── Rendu et liaisons ───────────── */
-function bindHeader() {
-  const mb = $('#menu-button');
-  mb.addEventListener('click', () => { const open = mb.getAttribute('aria-expanded') !== 'true'; mb.setAttribute('aria-expanded', open); mb.innerHTML = `<span>${open ? 'Fermer' : 'Menu'}</span>${icon(open ? 'close' : 'menu')}`; $('#navigation').classList.toggle('open', open); document.body.classList.toggle('menu-open', open); });
+/* Le menu s’ouvre depuis « Menu » de l’en-tête (tablette) ou depuis l’onglet « Menu » (téléphone). */
+function setMenu(open) {
+  $('#navigation').classList.toggle('open', open); document.body.classList.toggle('menu-open', open);
+  const mb = $('#menu-button'), tab = $('.tab-menu');
+  mb.setAttribute('aria-expanded', open); mb.innerHTML = `<span>${open ? 'Fermer' : 'Menu'}</span>${icon(open ? 'close' : 'menu')}`;
+  if (tab) { tab.setAttribute('aria-expanded', open); tab.innerHTML = `<span class="tab-ico">${icon(open ? 'close' : 'menu')}</span><span class="tab-label">${open ? 'Fermer' : 'Menu'}</span>`; }
 }
+function bindHeader() {
+  $$('#menu-button, .tab-menu').forEach(b => b.addEventListener('click', () => setMenu(b.getAttribute('aria-expanded') !== 'true')));
+  /* Onglet de la page en cours : retour en haut de la page, comme dans une application. */
+  $$('.tabbar a').forEach(a => a.addEventListener('click', e => {
+    setMenu(false);
+    if (a.getAttribute('href') === (location.hash || '#/')) { e.preventDefault(); window.scrollTo({top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'}); }
+  }));
+}
+/* Téléphone : le menu s’ouvre en panneau au bas de l’écran ; un appui sur la page voilée le referme. */
+document.addEventListener('click', e => { if (document.body.classList.contains('menu-open') && (e.target === document.body || e.target === document.documentElement)) setMenu(false); });
+/* Téléphone : pendant la saisie (clavier ouvert), la barre d’onglets se retire. */
+const TYPING = 'input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]):not([type=button]):not([type=submit]), textarea';
+document.addEventListener('focusin', e => document.body.classList.toggle('is-typing', !!e.target.matches?.(TYPING)));
+document.addEventListener('focusout', () => setTimeout(() => { if (!document.activeElement?.matches?.(TYPING)) document.body.classList.remove('is-typing'); }));
 /* Délégation globale : « + N autres » dans les listes de choix. */
 document.addEventListener('click', e => {
   const more = e.target.closest('.pick-toggle'); if (!more) return;
@@ -1702,13 +1810,15 @@ function render(scroll = true) {
   document.body.classList.remove('menu-open');
   $('#help-panel')?.hidePopover?.();
   document.body.dataset.side = pageSide() || 'none';
+  document.body.dataset.depth = PUSH_ROUTES.includes(route) ? 'push' : 'root';
+  document.body.classList.toggle('no-tabbar', NO_TABBAR.includes(route));
   if (route === '/postuler') {
     if ((state.candidate.values.offerId || '') !== offerId) { state.candidate.success = false; state.candidate.values.wizardSeen = state.candidate.values.wizardReady = false; }
     state.candidate.values.offerId = offerId;
     if (offerId && !(state.candidate.values.specialties || []).length) { const linked = offers.find(o => o.id === offerId); if (linked) state.candidate.values.specialties = [linked.specialty]; }
   }
   const pages = {'/':home,'/praticiens':practitioners,'/etablissements':employers,'/engagement':engagement,'/offres':offersPage,'/offre':offerDetail,'/postuler':() => application(false),'/besoin':() => application(true),'/contact':contact,'/mentions-legales':legal,'/eligibilite':eligibility,'/avis':avisPage,'/espace':espacePage,'/admin':() => offerId === 'avis' ? adminAvis() : notFound()};
-  $('#app').innerHTML = header() + `<main id="main" tabindex="-1">${(pages[route] || notFound)()}</main>` + footer();
+  $('#app').innerHTML = header() + `<main id="main" tabindex="-1">${(pages[route] || notFound)()}</main>` + footer() + tabBar();
   bindHeader();
   const hs = $('#home-search');
   if (hs) {
@@ -1739,7 +1849,7 @@ function render(scroll = true) {
 
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
-  if ($('#navigation')?.classList.contains('open')) { $('#menu-button').click(); $('#menu-button').focus(); }
+  if ($('#navigation')?.classList.contains('open')) { setMenu(false); $$('#menu-button, .tab-menu').find(b => b.getClientRects().length)?.focus(); }
 });
 window.addEventListener('hashchange', navigate);
 /* Typographie française : espace insécable avant ? ! ; : et », après «, et entre un nombre et son unité (9 h, 10 Mo).

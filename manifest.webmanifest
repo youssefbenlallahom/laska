@@ -1,0 +1,14 @@
+{
+  "name": "Laska Corporate | Médical",
+  "short_name": "Laska",
+  "description": "Laska Corporate accompagne les professionnels de santé et les établissements de santé, du premier échange à la prise de poste.",
+  "lang": "fr",
+  "start_url": "./#/",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f7f5f0",
+  "theme_color": "#f7f5f0",
+  "icons": [
+    {"src": "assets/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"}
+  ]
+}
