@@ -1,6 +1,44 @@
-# Laska Corporate — maquette HTML (v8.7)
+# Laska Corporate — maquette HTML (v9.2)
 
 Maquette navigable du futur site Laska Corporate, à porter ensuite en React / Next.js. Les versions précédentes sont dans le dépôt Git : branches `v7.2`, `v8` et `v8.1` ; la dernière version est sur `dev`.
+
+## Version 9.2 : les notifications de l’espace praticien
+
+**Sur ordinateur et tablette**, la cloche de la barre du haut ouvre une fenêtre juste en dessous, dont la pointe vise la cloche : les 5 notifications les plus récentes (non lues sur fond menthe, pastille corail), le moment dit simplement (« Il y a 6 jours, à 10h28 »), « Tout marquer comme lu » et un bouton **Voir plus** qui mène à la page complète. La fenêtre se ferme en cliquant ailleurs, avec Échap, en changeant d’écran ou quand la cloche passe sous l’en-tête au défilement. **Notifications** est aussi dans la colonne de gauche, sous les six rubriques, avec le nombre de non lues.
+
+**Sur téléphone**, la cloche de l’en-tête ouvre un panneau qui monte du bas, à portée du pouce : les **Nouvelles** d’abord, puis **Plus tôt**, en grandes rangées (68 px) ; « Tout marquer comme lu » en haut ; **Voir plus** toujours visible en bas ; on le ferme en le tirant vers le bas, en touchant le voile ou avec la croix. Quand tout est lu : « Vous êtes à jour : rien de nouveau. »
+
+Partout, toucher une notification la marque comme lue et ouvre l’écran concerné ; les compteurs (cloche, colonne) se mettent à jour aussitôt. La page complète garde la liste de la référence et gagne, au-dessus, « 3 non lues sur 9 » et « Tout marquer comme lu ».
+
+Vérifié à 360, 390, 820 et 1440 px : aucun débordement, aucune erreur console.
+
+## Version 9.1 : l’espace praticien, copie de la référence
+
+L’espace (ex-« Espace candidat », renommé **Espace praticien** partout dans le site) reproduit l’espace praticien de référence, **laska-espace.vercel.app** : mêmes rubriques, même ordre des blocs, mêmes petits titres, mêmes textes et mêmes données. Seul le design suit le site Laska Corporate.
+
+Le contenu a été relevé écran par écran le 5 novembre 2026, sur le compte de démonstration ouvert dans Chrome par l’utilisateur, en lecture seule (rien n’a été signé, envoyé ni modifié). Ces données sont **fictives**, le contrat porte d’ailleurs la mention « Document de démonstration — données fictives » : Dr Wassim Fabregas (anesthésie-réanimation, Toulouse), contact Wiem, missions au Centre Hospitalier de Vaugelas (à venir) et de Sorgueval (terminée). Les dates restent calées sur aujourd’hui, pour que la démonstration ne vieillisse pas.
+
+| Écran | Contenu, dans l’ordre de la référence |
+|---|---|
+| Accueil | « Bonjour, Wassim » et la date ; Votre prochaine mission (« Dans 11 jours », établissement, dates, format, pièce qui manque) ; Votre dossier ; Mes heures et Vos disponibilités côte à côte ; Mon profil ; Missions passées ; Une question sur votre dossier ? (trois questions toutes faites, Demander) ; Votre contact chez Laska ; mention de confidentialité. |
+| Mes missions | Votre parcours, « 2 missions · 10 h déclarées » ; En cours et à venir ; Missions passées ; contact. |
+| Fiche de mission | Mission à venir : dossier, contrat, jours travaillés, où, où vous dormez, sur place, contact. Mission terminée : votre avis, vos frais, dossier, contrat, jours travaillés, feuille de route (dépliée sur place), où, où vous dormez, sur place, contact, historique. |
+| Contrat | Signé par les trois (Vous, l’établissement, Laska, avec l’heure) et le document complet : en-tête, salarié, entreprise utilisatrice, mission, rémunération masquée, dispositions, 22 articles, mentions, cadres de signature, certificat. Contrat de Vaugelas : signature sur papier. |
+| Mes heures | Mon relevé (Saisi, Envoyé, Validé, Facturé), validé et facturé, « Ce n’est pas ce que j’ai fait : contester… », Mes journées (Voir / Masquer). |
+| Mes disponibilités | Votre agenda ; aucune disponibilité, « Ajouter une disponibilité » ; contact. |
+| Mes documents | Votre dossier (complet, 3 pièces selon votre situation : titre de séjour à présenter, diplôme de spécialiste et carte grise à déposer) ; détail complet des 15 pièces en six catégories ; Mes contrats. Détail d’une pièce : statut et fichier. |
+| Mon profil | Coordonnées (modifiables), contact, situation professionnelle (lecture seule), mot de passe. |
+| Notifications, Messages | Les 9 notifications (3 non lues) ; les 7 messages avec Wiem et Skander, Répondre, pièce jointe, zone d’écriture, envoi annulable 10 secondes. |
+
+**Selon l’écran**, comme la référence : sur ordinateur, une barre en haut (cloche, prénom, Se déconnecter, initiale) et une colonne d’icônes à gauche, l’icône au-dessus du libellé ; sur téléphone, la cloche et l’initiale dans l’en-tête, les six onglets en bas (Accueil, Missions, Heures, Dispos, Documents, Profil), le lien de retour en tête des écrans secondaires. L’initiale déconnecte, comme dans la référence. Connexion : une carte « Connectez-vous à votre espace. », email, mot de passe, à qui écrire en cas d’oubli.
+
+**Design adapté au site** : fond crème, cartes blanches sans filet, titres Manrope avec la pastille corail, petits titres en capitales, mission à venir sur la surface turquoise profond, dossier incomplet sur fond corail clair, numéro de département détouré en filigrane sur la fiche de mission, étapes du relevé reliées par le pointillé du parcours.
+
+**Fichiers** : `espace.js` (données relevées, écrans, interactions), `espace-contrat.js` (le texte du contrat), `espace.css` (styles, classes `pp-`). Pour refermer l’espace : `ESPACE_OUVERT` à `false` en tête de `espace.js`. Ce que l’on fait dans la maquette est gardé dans ce navigateur (clé `laska-portail`).
+
+**Écarts restants** : les libellés des onglets du téléphone sont en 12 px (11 px sous 375 px de large) pour que les six tiennent, sous la règle des 13 px du site ; la référence les met en 10,5 px. Les styles de l’ancien espace candidat (v7, v8) sont encore dans `styles.css`, sans effet.
+
+Vérifié à 360, 390 et 1440 px : aucun débordement horizontal, aucune erreur console ; parcours testés : feuille de route, modifier l’avis, contester le relevé, ajouter une disponibilité, répondre à un message et l’envoyer, se déconnecter, se reconnecter.
 
 ## Passe v8.7 : espace candidat fermé, connexion seule
 
@@ -355,7 +393,7 @@ Les vérifications automatiques ont tourné avec Chrome sans interface, sur ordi
 
 ## Espace candidat (v7)
 
-> Depuis la v8.7, l’espace est fermé : seule la page de connexion est montrée (voir « Passe v8.7 »). Cette partie décrit les écrans gardés dans `espace.js` pour la suite.
+> Historique : ces écrans ont été remplacés en version 9 par la structure de l’espace praticien de référence (voir « Version 9 »). Ils restent dans l’historique Git.
 
 **Espace candidat** en haut à droite, dans la barre de services (horaires, téléphone) au-dessus de l’en-tête, sur ordinateur. La barre s’efface au défilement. Une fois connecté, « Mon espace » (avec les initiales) remplace « Créer mon dossier » comme bouton principal de l’en-tête. Sur téléphone : lien dans le menu, avatar dans l’en-tête une fois connecté. Code : `espace.js` (chargé avant app.js) et la section « v7 : espace candidat » de styles.css.
 
@@ -616,7 +654,9 @@ Il est aussi **déduit de la page** : /praticiens et /postuler fixent « pratici
 - `manifest.webmanifest` — ajout à l’écran d’accueil du téléphone (ouverture comme une application, v8.5).
 - `app.js` — données, routes et rendu. Chaque fonction de rendu (`header`, `doorPro`, `quickBrief`, `franceMap`, `offerRow`, `application`…) correspond à un futur composant.
 - `styles.css` — composants (tokens en tête, puis composants, puis responsive 1100 / 860 / 620 px).
-- `espace.js` — espace candidat : page de connexion (seule ouverte depuis la v8.7, `ESPACE_OUVERT`), et les écrans de l’espace gardés pour la suite : accueil, profil, questions, huit tuiles (chargé avant app.js).
+- `espace.js` — espace praticien (v9.1, copie de la référence) : connexion simulée, données du compte de démonstration, écrans (accueil, missions, contrat, heures, disponibilités, documents, profil, notifications, messages) et interactions (chargé avant app.js ; `ESPACE_OUVERT` pour le refermer).
+- `espace-contrat.js` — le texte du contrat de mission temporaire relevé sur la référence (chargé avant espace.js).
+- `espace.css` — styles de l’espace praticien, classes `pp-` (chargé après styles.css).
 - `crm.js` — référentiels du CRM (spécialités, départements, pays), export simulé pour la maquette (chargé en premier).
 - `services.js` — garder et partager une offre, aide et « Être rappelé », « Suis-je éligible ? », avis des praticiens et modération, emplacements de contenu à fournir (chargé avant app.js).
 - `motion.js` / `motion.css` — couche de mouvement (apparitions, titres, carte, parcours, FLIP, transitions de vue). En Next.js : un hook `useReveal`, un composant `SplitTitle`, et les transitions de vue du routeur.

@@ -1,635 +1,682 @@
-/* Laska Corporate — espace candidat (v7).
-   Les menus reprennent ceux d’un espace intérimaire de référence : onglets « Page d’accueil », « Mon profil »,
-   « Questions fréquentes », « Déconnexion » ; un bloc Messages ; huit tuiles et leurs sous-menus.
-   Maquette : connexion simulée (n’importe quel email, mot de passe de 6 caractères ou plus, jamais gardé),
-   praticienne d’exemple et données FICTIVES. Production : authentification réelle (mot de passe haché côté serveur,
-   session en cookie httpOnly), données lues dans le CRM et le logiciel de paie.
-   Chargé avant app.js ; ne contient que des définitions, appelées au rendu. En Next.js : un segment /espace protégé
-   par un middleware, avec <SpaceBand>, <SpaceTile>, <Planning>, <ContractList>, <ProfileCard>. */
+/* Laska Corporate — espace praticien (v9.1).
+   Copie de l’espace praticien de référence (laska-espace.vercel.app), relevé écran par écran le 5 novembre 2026 sur le
+   compte de démonstration (données fictives : Dr Wassim Fabregas, contact Wiem, missions de Vaugelas et de Sorgueval) :
+   mêmes rubriques, même ordre des blocs, mêmes titres, mêmes textes, mêmes données. Seul le design suit le site
+   Laska Corporate (couleurs, typographie, formes). Les dates restent calées sur aujourd’hui : la démonstration vit.
+   Maquette : connexion simulée (n’importe quel email, mot de passe de 6 caractères ou plus, jamais gardé) ; ce que l’on
+   fait est gardé dans ce navigateur (clé laska-portail). Production : authentification réelle, données du CRM.
+   Chargé après espace-contrat.js et avant app.js ; ne contient que des définitions, appelées au rendu. */
 
 /* ───────────── Session (simulée) ───────────── */
 const SESSION_KEY = 'laska-session';
-/* v8.7 : l’espace n’est pas encore ouvert. Seule la page de connexion est montrée ; une tentative de connexion explique
-   que l’espace arrive bientôt, et personne n’est jamais connecté. Les écrans de l’espace restent dans ce fichier pour la
-   suite : passer ESPACE_OUVERT à true les rend de nouveau accessibles. */
-const ESPACE_OUVERT = false;
+/* false : l’espace se referme, seule la page de connexion reste et une tentative de connexion l’explique (v8.7). */
+const ESPACE_OUVERT = true;
 function espaceUser() {
   if (!ESPACE_OUVERT) return null;
   try { return JSON.parse(localStorage.getItem(SESSION_KEY) || sessionStorage.getItem(SESSION_KEY) || 'null'); } catch { return null; }
 }
-function espaceLogin(email, remember) {
-  const user = {email, firstName: ESPACE_PROFILE.prenom, lastName: ESPACE_PROFILE.nom, since: new Date().toISOString()};
-  try { (remember ? localStorage : sessionStorage).setItem(SESSION_KEY, JSON.stringify(user)); } catch {}
+function espaceLogin(email) {
+  const user = {email, firstName: PRATICIEN.prenom, lastName: PRATICIEN.nom, since: new Date().toISOString()};
+  try { localStorage.setItem(SESSION_KEY, JSON.stringify(user)); } catch {}
   return user;
 }
 function espaceLogout() { try { localStorage.removeItem(SESSION_KEY); sessionStorage.removeItem(SESSION_KEY); } catch {} }
-/* Espace fermé : une session gardée d’une version précédente de la maquette est effacée. */
 if (!ESPACE_OUVERT) espaceLogout();
-const initials = u => `${(u.firstName || '?')[0]}${(u.lastName || '')[0] || ''}`.toUpperCase();
 const store = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key) || 'null') ?? fallback; } catch { return fallback; } };
 const keep = (key, value) => { try { localStorage.setItem(key, JSON.stringify(value)); } catch {} };
 
-/* ───────────── Données d’EXEMPLE (fictives) ───────────── */
-const addDays = (iso, n) => { const d = asDate(iso); d.setDate(d.getDate() + n); return isoOf(d.getFullYear(), d.getMonth(), d.getDate()); };
-const mondayOf = iso => addDays(iso, -((asDate(iso).getDay() + 6) % 7));
-/* Calculées à la première utilisation : les outils de dates viennent d’app.js, chargé après ce fichier. */
+/* ───────────── Dates, aux formats de la référence ───────────── */
 const lazy = build => { let v; return () => v ??= build(); };
-const yearNow = () => year(TODAY);
-const ESPACE_PROFILE = {
-  civilite: 'Madame', nom: 'Mansouri', nomJeuneFille: '', prenom: 'Sarah', tel1: '06 12 34 56 78', tel2: '',
-  naissance: '1989-04-12', lieuNaissance: 'Sfax', depNaissance: '99 – Étranger', paysNaissance: 'Tunisie', nationalite: 'Tunisienne', mobilite: 'Auvergne-Rhône-Alpes, Provence-Alpes-Côte d’Azur',
-  app: '', bat: '', voie: '12 rue des Tilleuls', lieuDit: '', cp: '69003', ville: 'Lyon', pays: 'France',
-  paiement: 'Virement en France ou outre-mer', bic: 'BANKFRPP', iban: 'FR76 0000 0000 0000 0000 0000 123'
+const addDays = (iso, n) => { const d = asDate(iso); d.setDate(d.getDate() + n); return isoOf(d.getFullYear(), d.getMonth(), d.getDate()); };
+const J = n => addDays(TODAY, n);
+const daysFrom = (a, b) => Math.round((asDate(b) - asDate(a)) / 864e5);
+const cap = s => s ? s[0].toUpperCase() + s.slice(1) : s;
+const jourNum = n => n === 1 ? '1er' : String(n);
+const dateLongue = iso => { const d = asDate(iso); return `${jourNum(d.getDate())} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`; };
+/* « Du 16 au 20 novembre 2026 » ; mission en cours : « Depuis le …, jusqu’au … ». */
+function plage(a, b, enCours = false) {
+  if (enCours) return `Depuis le ${dateLongue(a)}, jusqu’au ${dateLongue(b)}`;
+  const x = asDate(a), y = asDate(b);
+  return x.getMonth() === y.getMonth() && x.getFullYear() === y.getFullYear() ? `Du ${jourNum(x.getDate())} au ${jourNum(y.getDate())} ${MONTHS[y.getMonth()]} ${y.getFullYear()}` : `Du ${dateLongue(a)} au ${dateLongue(b)}`;
+}
+const dateDuJour = () => { const s = fmtDate(TODAY, {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'}); return cap(asDate(TODAY).getDate() === 1 ? s.replace(' 1 ', ' 1er ') : s); };
+const jc = iso => fmtDate(iso, {weekday: 'short', day: 'numeric', month: 'short'});
+const jcl = iso => fmtDate(iso, {weekday: 'short', day: 'numeric', month: 'long'});
+const jl = iso => fmtDate(iso, {weekday: 'long', day: 'numeric', month: 'long'});
+const horo = s => `${jc(s.slice(0, 10))} à ${s.slice(11, 16)}`;
+const horoMsg = s => `${jc(s.slice(0, 10))}, ${s.slice(11, 13)} h ${s.slice(14, 16)}`;
+const horoNotif = s => `${dateLongue(s.slice(0, 10))} à ${s.slice(11, 13)}h${s.slice(14, 16)}`;
+const heure = t => { const [h, m] = String(t).split(':'); return `${Number(h)} h${m && m !== '00' ? ` ${m}` : ''}`; };
+const toMin = t => { const [h, m] = String(t).split(':').map(Number); return h * 60 + (m || 0); };
+const duree = (debut, fin) => { let d = toMin(fin) - toMin(debut); if (d <= 0) d += 1440; return d; };
+const hm = min => { const a = Math.abs(min), h = Math.floor(a / 60), m = a % 60; return `${h} h${m ? ` ${String(m).padStart(2, '0')}` : ''}`; };
+const stamp = (n, t) => `${J(n)}T${t}`;
+const nowStamp = () => { const d = new Date(); return `${TODAY}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+const euros = n => n.toLocaleString('fr-FR', {style: 'currency', currency: 'EUR'});
+
+/* ───────────── Données relevées sur le compte de démonstration (fictives) ───────────── */
+const PRATICIEN = {prenom: 'Wassim', nom: 'Fabregas', specialite: 'Anesthésie-réanimation', tel: '06 39 98 10 34', email: 'wassim.fabregas@exemple.test', cp: '31200', ville: 'Toulouse', rpps: '', ordre: '2013-03-15', exercice: 'Libéral'};
+const PP_CONTACT = {prenom: 'Wiem'};
+/* Formats de vacation : [libellé de liste, libellé court, libellé de fiche]. */
+const FORMATS = {j10: ['Journée 10 h (J10)', 'journée 10 h', 'Journée 10 h'], j12: ['Journée 12 h (J12)', 'journée 12 h', 'Journée 12 h'], garde24: ['Garde 24 h', 'garde 24 h', 'Garde 24 h']};
+const HEBERGEMENT = {
+  reserve: 'Hébergement réservé par Laska.',
+  a_reserver: 'Hébergement à réserver de votre côté — remboursé sur justificatifs, à déposer dans votre espace.',
+  pris_en_charge: 'Hébergement pris en charge.',
+  aucun: 'Pas d’hébergement prévu : vous n’en avez pas besoin pour cette mission.'
 };
-const PROFILE_KEY = 'laska-espace-profil';
-const profile = () => { const p = {...ESPACE_PROFILE, ...store(PROFILE_KEY, {})}; p.paiement = {'Vir. International': 'Virement à l’étranger', 'Virement France et DOM-TOM': 'Virement en France ou outre-mer'}[p.paiement] || p.paiement; return p; };
-/* Missions et contrats datés par rapport à la semaine en cours : la démonstration reste vivante quel que soit le jour.
-   [décalage depuis le lundi de cette semaine, type, spécialité, lieu, contrat] */
-const missions = lazy(() => { const base = mondayOf(TODAY); return [
-  [-25, 'Garde 24 h', 'Médecine d’urgence', 'Centre hospitalier · Sarthe (72)', 'CM-0371'],
-  [-10, 'Journée 10 h', 'Médecine générale', 'Centre de santé · Côtes-d’Armor (22)', 'CM-0388'],
-  [-9, 'Journée 10 h', 'Médecine générale', 'Centre de santé · Côtes-d’Armor (22)', 'CM-0388'],
-  [1, 'Journée 12 h', 'Médecine d’urgence', 'Clinique privée · Bouches-du-Rhône (13)', 'CM-0405'],
-  [3, 'Garde 24 h', 'Médecine d’urgence', 'Clinique privée · Bouches-du-Rhône (13)', 'CM-0405'],
-  [5, 'Journée 12 h', 'Médecine d’urgence', 'Clinique privée · Bouches-du-Rhône (13)', 'CM-0405'],
-  [8, 'Garde 24 h', 'Médecine d’urgence', 'Centre hospitalier · Rhône (69)', 'CM-0412'],
-  [12, 'Nuit 12 h', 'Médecine d’urgence', 'Centre hospitalier · Rhône (69)', 'CM-0412'],
-  [19, 'Garde 24 h', 'Médecine d’urgence', 'Centre hospitalier · Rhône (69)', 'CM-0412'],
-  [-40, 'Journée 7 h', 'Formation AFGSU niveau 2', 'Organisme de formation · Lyon (69)', 'CF-0051'],
-  [-39, 'Journée 7 h', 'Formation AFGSU niveau 2', 'Organisme de formation · Lyon (69)', 'CF-0051']
-].map(([off, type, spec, place, ref]) => ({date: addDays(base, off), type, spec, place, ref: `${ref.slice(0, 2)}-${yearNow()}-${ref.slice(3)}`})); });
-/* Contrats : leurs dates viennent de leurs missions ; une fois la dernière passée, un contrat signé devient « Terminé ». */
-const baseContracts = lazy(() => [
-  ['CM-0412', 'mission', 'Médecine d’urgence · gardes et nuit', 'sign'],
-  ['CM-0405', 'mission', 'Médecine d’urgence · journées et garde', 'signed'],
-  ['CM-0388', 'mission', 'Médecine générale · journées 10 h', 'signed'],
-  ['CM-0371', 'mission', 'Médecine d’urgence · garde 24 h', 'signed'],
-  ['CF-0051', 'formation', 'Formation AFGSU niveau 2', 'signed']
-].map(([short, kind, title, status]) => { const ref = `${short.slice(0, 2)}-${yearNow()}-${short.slice(3)}`, days = missions().filter(m => m.ref === ref).map(m => m.date).sort();
-  return {ref, kind, title, place: missions().find(m => m.ref === ref).place, from: days[0], to: days.at(-1), status}; }));
-const SIGNED_KEY = 'laska-espace-signes', READ_KEY = 'laska-espace-lus', ADVANCE_KEY = 'laska-espace-acomptes';
-const spaceContracts = () => { const signed = store(SIGNED_KEY, []); return baseContracts().map(c => { const status = signed.includes(c.ref) ? 'signed' : c.status; return {...c, status: status === 'signed' && c.to < TODAY ? 'done' : status}; }); };
-const toSign = () => spaceContracts().filter(c => c.status === 'sign');
-const messages = lazy(() => [
-  {id: 'm1', when: 0, text: 'Votre contrat de mission au centre hospitalier du Rhône est prêt : signez-le en ligne.', link: '#/espace/contrats?vue=signer', label: 'Signer le contrat'},
-  {id: 'm2', when: -1, text: 'Nouvelle offre compatible avec votre profil : Médecine d’urgence, Rhône (69).', link: '#/offre/MU-69-1', label: 'Voir l’offre'},
-  {id: 'm3', when: -6, text: 'Bienvenue dans votre espace candidat. Je reste joignable du lundi au vendredi, de 9 h à 18 h : n’hésitez pas à m’appeler.', link: '', label: ''}
-].map(m => ({...m, date: addDays(TODAY, m.when)})));
+const journees = (from, n, f = 'j10') => Array.from({length: n}, (_, i) => ({date: J(from + i), format: f, debut: '08:00', fin: '18:00'}));
+const MISSIONS = lazy(() => [
+  {id: 'vaugelas', etablissementNom: 'Centre Hospitalier de Vaugelas', specialiteLibelle: 'Anesthésie-réanimation', format: 'j10', jours: journees(11, 5),
+    adresse: '18 allée des Platanes, 31330 Vaugelas', hebergement: 'aucun', surPlace: {nom: 'Dr Julie Sabatier', tel: '01 99 00 11 68', email: 'julie.sabatier@vaugelas.test'},
+    eu: {tel: '01 99 00 11 75', contact: 'M. Pierre Castex', service: 'Anesthésie', acces: 'Voiture personnelle', motif: 'Vacance temporaire'},
+    contrat: {mode: 'papier', valideLe: J(-16)}, route: null, accepteLe: ''},
+  {id: 'sorgueval', etablissementNom: 'Centre Hospitalier de Sorgueval', specialiteLibelle: 'Anesthésie-réanimation', format: 'j10', jours: journees(-6, 1),
+    adresse: '14 rue des Tilleuls, 69400 Sorgueval', hebergement: 'pris_en_charge', surPlace: {nom: 'Dr Paul Ménard', role: 'chef de service', tel: '01 99 00 10 00', email: 'paul.menard@sorgueval.test'},
+    eu: {tel: '01 99 00 10 21', contact: 'Mme Hélène Ravel', service: 'Urgences', acces: 'Train, puis navette de l’établissement', motif: 'Remplacement d’un praticien absent'},
+    contrat: {mode: 'en_ligne', valideLe: J(-6), envoyeeLe: stamp(-6, '10:06'), signeLe: stamp(-6, '10:09'), etabLe: stamp(-6, '10:12'), laskaLe: stamp(-6, '10:12')},
+    route: {le: J(-6), arrivee: 'à 8 h', bon: 'Bâtiment B, 2e étage, à 8 h : Mme Garnier, cadre de santé, accueille ; badge et accès au logiciel patients préparés par le service.', logement: 'Studio à l’internat de l’hôpital ; clés à l’accueil des urgences, ouvert jour et nuit.', trajet: 'Sur place : Gare de Sorgueval, puis navette de l’hôpital toutes les 30 minutes ; parking du personnel avec le badge.', repas: 'Self de l’hôpital, badge repas remis à l’arrivée.', apporter: ['une pièce d’identité', 'votre attestation d’inscription à l’Ordre des médecins', 'votre carte de professionnel de santé (CPS), si vous en avez une'], standard: '01 99 00 10 00, demander le secrétariat des urgences'},
+    accepteLe: J(-6)}
+].map(m => ({...m, debut: m.jours[0].date, fin: m.jours.at(-1).date})));
+/* Le dossier : [code, catégorie, libellé, état, condition]. « Selon votre situation » : pièces manquantes sous condition. */
+const CATEGORIES = [['id', 'Identité & domicile'], ['exercice', 'Autorisation d’exercice'], ['couverture', 'Couverture & paiement'], ['mobilite', 'Mobilité'], ['engagements', 'Engagements'], ['renouvellements', 'Renouvellements']];
+const PIECES = [
+  ['CNI', 'id', 'Carte d’identité ou passeport', 'fournie'], ['titre_sejour', 'id', 'Titre de séjour', 'manquante', 'hors UE'], ['justificatif_domicile', 'id', 'Justificatif de domicile', 'fournie'],
+  ['autorisation_cng', 'exercice', 'Autorisation d’exercice délivrée par le CNG', 'na'], ['diplome', 'exercice', 'Diplôme de Docteur en Médecine', 'fournie'], ['diplome_specialiste', 'exercice', 'Diplôme de Spécialiste', 'manquante', 'si applicable'],
+  ['attestation_secu', 'couverture', 'Attestation de droits à la sécurité sociale', 'fournie'], ['RCP', 'couverture', 'Assurance responsabilité civile professionnelle', 'attente'], ['RIB', 'couverture', 'RIB', 'fournie'],
+  ['permis', 'mobilite', 'Permis de conduire', 'fournie'], ['carte_grise', 'mobilite', 'Carte grise', 'manquante', 'si véhiculé'],
+  ['engagement_candidat', 'engagements', 'Engagement Candidat Laska Corporate', 'fournie'], ['conditions_contrat', 'engagements', 'Conditions du contrat de travail temporaire', 'fournie'],
+  ['ordre', 'renouvellements', 'Carte d’Ordre', 'fournie'], ['visite_medicale', 'renouvellements', 'Visite médicale du travail', 'fournie']
+].map(([code, cat, lib, etat, condition]) => ({code, cat, lib, etat, condition}));
+/* Pièces à présenter (jamais déposées) et libellés de la liste « Selon votre situation ». */
+const A_PRESENTER = ['titre_sejour'];
+const LIB_SITUATION = {titre_sejour: 'Titre de séjour (hors UE)', diplome_specialiste: 'Diplôme de Spécialiste (si applicable)', carte_grise: 'Carte grise (si véhiculé)'};
+const MESSAGES = lazy(() => { const dm = dayMonth(J(-6), true);
+  return [
+    {id: 'm1', sens: 'recu', de: 'Wiem', quand: stamp(-18, '09:00'), objet: 'Votre contrat est prêt à signer', texte: 'Bonjour Docteur Fabregas,\n\nVotre contrat est prêt : vous pouvez le signer depuis votre espace.\n\nWiem'},
+    {id: 'm2', sens: 'envoye', quand: stamp(-16, '08:40'), texte: 'Bonjour, je vous joins mon attestation de formation aux gestes d’urgence, au cas où le service la demande.', pieces: [['attestation-formation-fabregas.pdf', '1 ko']]},
+    {id: 'm3', sens: 'recu', de: 'Wiem', quand: stamp(-16, '09:30'), objet: 'Réponse de Wiem', texte: 'Merci Docteur Fabregas, je la garde dans vos documents.\n\nWiem'},
+    {id: 'm4', sens: 'recu', de: 'Skander', quand: stamp(-14, '12:54'), objet: 'Réponse de Skander', texte: 'Bonjour Docteur Fabregas,\n\nMerci pour votre message : je vous appelle aujourd’hui pour en parler.\n\nSkander'},
+    {id: 'm5', sens: 'recu', de: 'Wiem', quand: stamp(-6, '09:55'), objet: `Vos dates le ${dm} au Centre Hospitalier de Sorgueval`, texte: `Bonjour Wassim, c’est confirmé de votre côté : le ${dm}, au Centre Hospitalier de Sorgueval. Je vous confirme dès que le service a validé votre dossier.\nWiem, Laska`},
+    {id: 'm6', sens: 'recu', de: 'Wiem', quand: stamp(-6, '09:56'), objet: `C’est confirmé : Centre Hospitalier de Sorgueval le ${dm}`, texte: `Bonjour Wassim, bonne nouvelle : le service a validé votre dossier. Centre Hospitalier de Sorgueval, le ${dm} : c’est confirmé. Le contrat et la feuille de route suivent.\nWiem, Laska`},
+    {id: 'm7', sens: 'recu', de: 'Wiem', quand: stamp(-6, '10:06'), objet: 'Votre contrat est prêt à signer', texte: 'Bonjour Docteur Fabregas,\n\nVotre contrat au Centre Hospitalier de Sorgueval est prêt à signer sur votre espace Laska.\n\nBien à vous,\nWiem, Laska'}
+  ]; });
+const NOTIFS = lazy(() => { const msg = id => MESSAGES().find(x => x.id === id), ecrit = (id, n, lu) => ({id: n, quand: msg(id).quand, titre: `${msg(id).de} vous écrit : ${msg(id).objet}`, texte: msg(id).texte, vers: '#/espace/messages', lu});
+  return [
+    {id: 'n1', quand: stamp(-6, '10:28'), titre: 'Vos heures ont été validées', texte: '', vers: '#/espace/heures', lu: false},
+    ecrit('m7', 'n2', true),
+    {id: 'n3', quand: stamp(-6, '10:05'), titre: 'Votre contrat est disponible', texte: 'Le document est prêt — consultable depuis votre mission.', vers: '#/espace/missions/sorgueval', lu: false},
+    {id: 'n4', quand: stamp(-6, '09:56'), titre: 'Nouvelle proposition de mission', texte: 'Laska vous propose une mission — répondez quand vous voulez.', vers: '#/espace/proposition/sorgueval', lu: false},
+    ecrit('m6', 'n5', true), ecrit('m5', 'n6', true), ecrit('m4', 'n7', true), ecrit('m3', 'n8', true), ecrit('m1', 'n9', true)
+  ]; });
+const AVIS_Q = [['accueil', 'Accueil', 'L’accueil du service', ['Bon', 'Moyen', 'Difficile']], ['charge', 'Charge', 'La charge de travail', ['Légère', 'Normale', 'Soutenue', 'Trop lourde']], ['logement', 'Logement', 'Le logement', ['Bon', 'Correct', 'À revoir', 'Non concerné']], ['revenir', 'Reviendrait', 'Y retourneriez-vous ?', ['Oui', 'Peut-être', 'Non']]];
 
-/* Conseillère d’EXEMPLE (fictive) : en production, le chargé de recrutement du praticien, lu dans le CRM. */
-const ADVISOR = {prenom: 'Inès', nom: 'Martin', role: 'Votre conseillère Laska Corporate'};
+/* ───────────── Ce que l’on fait dans la maquette (gardé dans ce navigateur) ───────────── */
+const PORTAIL_KEY = 'laska-portail';
+const SEED = () => ({
+  jours: {sorgueval: {[J(-6)]: {debut: '08:00', fin: '18:00'}}},
+  releves: {sorgueval: {statut: 'facture', envoyeLe: stamp(-6, '10:20'), valideLe: stamp(-6, '10:28')}},
+  avis: {sorgueval: {accueil: 'Bon', charge: 'Normale', logement: 'Correct', revenir: 'Oui', mot: 'Bon accueil, équipe soudée.', le: J(-6)}},
+  frais: {sorgueval: [{id: 'f1', libelle: 'Billet de train', precision: 'Toulouse → Sorgueval aller-retour', montant: 48.6, deposeLe: J(-6), valideLe: J(-6), fichier: 'billet-train-sorgueval.pdf'}]},
+  dispos: [], docs: {}, coords: {}, messages: [], lus: [], contestations: {}
+});
+let PP = null;
+const pstate = () => { if (!PP) { const s = store(PORTAIL_KEY, {}); PP = s.version === 2 ? s : {...SEED(), version: 2}; } return PP; };
+const ppSave = () => keep(PORTAIL_KEY, PP);
 
-/* Justificatifs du dossier : état (à jour, à renouveler, à fournir, en vérification) et validité. EXEMPLES.
-   Le praticien dépose une pièce : elle passe « en vérification » (gardée dans ce navigateur, le fichier n’est pas envoyé). */
-const DOCS_KEY = 'laska-espace-justificatifs';
-const baseDocs = lazy(() => [
-  ['identite', 'Pièce d’identité ou titre de séjour', 'ok', addDays(TODAY, 1460)],
-  ['diplome', 'Diplôme de docteur en médecine', 'ok', ''],
-  ['autorisation', 'Autorisation d’exercice', 'ok', ''],
-  ['rpps', 'Attestation RPPS ou d’inscription à l’Ordre', 'missing', ''],
-  ['vaccins', 'Certificat de vaccinations', 'expiring', addDays(TODAY, 24)],
-  ['afgsu', 'Attestation de formation aux gestes d’urgence (AFGSU 2)', 'ok', addDays(TODAY, 1180)],
-  ['secu', 'Attestation de sécurité sociale', 'ok', ''],
-  ['rib', 'RIB', 'ok', ''],
-  ['cv', 'CV', 'ok', '']
-].map(([key, label, status, until]) => ({key, label, status, until})));
-const spaceDocs = () => { const sent = store(DOCS_KEY, {}); return baseDocs().map(d => sent[d.key] ? {...d, status: 'review', file: sent[d.key]} : d); };
-const docsToDo = () => spaceDocs().filter(d => d.status === 'missing' || d.status === 'expiring');
-const daysUntil = iso => Math.round((asDate(iso) - asDate(TODAY)) / 864e5);
+/* ───────────── États calculés ───────────── */
+const statutMission = m => m.debut > TODAY ? 'confirmee' : m.fin < TODAY ? 'terminee' : 'en_cours';
+const STATUT = {en_cours: ['En cours', 'dark'], confirmee: ['Confirmée', ''], terminee: ['Terminée', 'sand']};
+const missionById = id => MISSIONS().find(m => m.id === id);
+const etabNom = m => m.etablissementNom || 'Établissement : Laska vous le précise';
+const signatureOf = m => { const c = m.contrat; if (c.mode !== 'en_ligne') return {statut: 'papier'}; return {...c, statut: c.signeLe && c.etabLe && c.laskaLe ? 'complet' : c.signeLe ? 'signe' : 'a_signer'}; };
+function releveOf(m) {
+  const r = pstate().releves[m.id] || {statut: 'saisi'}, jours = pstate().jours[m.id] || {};
+  const prevu = m.jours.reduce((n, j) => n + duree(j.debut, j.fin), 0), declare = Object.values(jours).reduce((n, j) => n + duree(j.debut, j.fin), 0);
+  return {...r, jours, prevu, declare, ecart: declare - prevu};
+}
+const totalDeclare = () => MISSIONS().reduce((n, m) => n + releveOf(m).declare, 0);
+function pieceOf(p) {
+  const up = pstate().docs[p.code];
+  return up ? {...p, etat: 'attente', fichier: up.nom} : p;
+}
+const pieces = () => PIECES.map(pieceOf);
+const pieceStatut = p => ({fournie: 'Fournie', attente: 'En attente de vérification par Laska', na: 'Non applicable', manquante: `Manquante${p.condition ? ` (${p.condition})` : ''}`})[p.etat];
+const selonSituation = () => pieces().filter(p => p.etat === 'manquante' && p.condition);
+/* La phrase du dossier, comme la référence : complet, ou ce qui manque, et ce qui peut être demandé selon la situation. */
+function dossierPhrase() {
+  const ps = pieces(), n = selonSituation().length, r = ps.filter(p => p.etat === 'manquante' && !p.condition);
+  const suite = n > 0 ? `, et ${n} autre${n > 1 ? 's' : ''} peu${n > 1 ? 'vent' : 't'} vous être demandée${n > 1 ? 's' : ''} selon votre situation.` : '.';
+  if (!r.length) return n ? `Votre dossier est complet. ${n > 1 ? `${n} pièces peuvent` : '1 pièce peut'} vous être demandée${n > 1 ? 's' : ''} selon votre situation.` : 'Toutes vos pièces sont à jour.';
+  return r.length === 1 ? `${r[0].lib} manque à votre dossier${suite}` : `${r[0].lib} et ${r.length - 1} autre${r.length > 2 ? 's' : ''} pièce${r.length > 2 ? 's' : ''} manquent à votre dossier${suite}`;
+}
+const dossierAttention = () => pieces().some(p => p.etat === 'manquante' && p.condition !== undefined);
+const notifs = () => NOTIFS().map(n => ({...n, lu: n.lu || pstate().lus.includes(n.id)}));
+const unreadNotifs = () => espaceUser() ? notifs().filter(n => !n.lu).length : 0;
+const allMessages = () => [...MESSAGES(), ...pstate().messages].sort((a, b) => a.quand.localeCompare(b.quand));
+/* Pastille de l’onglet « Espace » du site : les notifications non lues. */
+const todoItems = () => Array.from({length: unreadNotifs()});
 
-/* Disponibilités déclarées par le praticien, jour par jour ('dispo' ou 'off'), sur les 4 semaines à venir. */
-const DISPO_KEY = 'laska-espace-dispos';
-const dispos = () => store(DISPO_KEY, {});
+/* ───────────── Adresses de l’espace ───────────── */
+function espaceRoute() {
+  const [path, q] = location.hash.slice(1).split('?'), parts = path.split('/').filter(Boolean);
+  return {sub: parts[1] || '', id: parts[2] || '', extra: parts[3] || '', q: new URLSearchParams(q || '')};
+}
+/* Comme la référence : le retour est un lien en tête de page, la barre d’onglets reste sur tous les écrans. */
+const espaceChrome = () => ({push: false, noTabbar: false});
+const espaceBack = () => null;
 
-/* Candidatures envoyées depuis les offres : 4 étapes, de l’envoi à la réponse. EXEMPLES. */
-const APP_STEPS = ['Envoyée', 'En étude', 'Présentée à l’établissement', 'Retenue'];
-const applications = lazy(() => [
-  {offer: 'MU-69-1', date: addDays(TODAY, -3), step: 1},
-  {offer: 'AR-13-1', date: addDays(TODAY, -9), step: 2},
-  {offer: 'MG-85-1', date: addDays(TODAY, -21), step: 3}
-].filter(a => offers.some(o => o.id === a.offer)));
-
-/* ───────────── Menus (repris de l’espace de référence) ─────────────
-   v8 : sept entrées au lieu de treize. Les rubriques de référence sont toutes là : celles qui vont ensemble deviennent
-   les onglets d’une même page (Ma paie et mes documents, Mon dossier, Aide et infos). Les adresses ne changent pas :
-   chaque page connaît son entrée de menu (navGroupOf). [clé, libellé, icône, pages de l’entrée] */
-const SPACE_NAV = [
-  ['', 'Accueil', 'home'],
-  ['planning', 'Mon planning', 'calendar'],
-  ['contrats', 'Mes contrats', 'file'],
-  ['offres', 'Mes offres d’emploi', 'briefcase'],
-  ['paie', 'Ma paie et mes documents', 'euro', ['paie', 'documents', 'fiscal']],
-  ['profil', 'Mon dossier', 'user', ['profil', 'justificatifs']],
-  ['faq', 'Aide et infos', 'chat', ['faq', 'securite', 'avantages']]
-];
-const navGroupOf = sub => SPACE_NAV.find(([key, , , pages]) => key === sub || pages?.includes(sub)) || SPACE_NAV[0];
-/* Onglets des entrées qui regroupent plusieurs rubriques. */
-const GROUP_TABS = {
-  paie: [['paie', 'Bulletins et avances'], ['documents', 'Attestations'], ['fiscal', 'Données fiscales']],
-  profil: [['profil', 'Mes informations'], ['justificatifs', 'Mes justificatifs']],
-  faq: [['faq', 'Questions fréquentes'], ['securite', 'Sécurité au travail'], ['avantages', 'Mes avantages']]
-};
-/* En-tête d’une page regroupée : le nom de l’entrée du menu, puis ses onglets. */
-const groupHead = (sub, lead = '') => { const [key, title] = navGroupOf(sub), tabs = GROUP_TABS[key];
-  return spaceHead(key, title, lead) + (tabs ? segTabs(tabs.map(([k, t]) => [k, t, `#/espace/${k}`, k === 'justificatifs' ? docsToDo().length || '' : '']), sub, title) : ''); };
-/* Sous-menus de l’espace de référence (repris en onglets dans chaque page). */
-const TILES = [
-  {key: 'paie', title: 'Ma paie', icon: 'euro', tone: 'teal', note: 'Votre premier bulletin de salaire en version électronique sera accessible ici.'},
-  {key: 'planning', title: 'Mon planning', icon: 'calendar', tone: 'coral', items: [['Semaine', 'planning?vue=semaine'], ['Mois', 'planning?vue=mois'], ['Mes disponibilités', 'planning?vue=dispos']]},
-  {key: 'documents', title: 'Mes attestations', icon: 'print', tone: 'sand', items: [['Certificat de travail', 'documents?doc=certificat'], ['Attestation de salaire', 'documents?doc=attestation']]},
-  {key: 'offres', title: 'Mes offres d’emploi', icon: 'briefcase', tone: 'ink', items: [['Intérim', 'offres?type=interim'], ['CDD, CDI', 'offres?type=cdi'], ['Mes candidatures', 'offres?type=candidatures']]},
-  {key: 'contrats', title: 'Mes contrats', icon: 'file', tone: 'coral', items: [['Historique de mes contrats', 'contrats?vue=historique'], ['Mes contrats de mission', 'contrats?vue=mission'], ['Mes contrats de mission – formation', 'contrats?vue=formation'], ['Signer mes contrats électroniques', 'contrats?vue=signer']]},
-  {key: 'fiscal', title: 'Mes données fiscales', icon: 'receipt', tone: 'ink', note: '', year: true},
-  {key: 'securite', title: 'Sécurité au travail', icon: 'shield', tone: 'teal', items: [['Réalisez votre mission en toute sécurité', 'securite']]},
-  /* Ajout (hors espace de référence) : les pièces du dossier, demandées avant chaque mission. */
-  {key: 'justificatifs', title: 'Mes justificatifs', icon: 'badge', tone: 'teal', items: [['Pièces de mon dossier', 'justificatifs']]},
-  {key: 'avantages', title: 'Mes avantages', icon: 'gift', tone: 'sand', items: [['Mes avantages', 'avantages?doc=avantages'], ['Mes droits en cas d’arrêt de travail (prévoyance) : cadre', 'avantages?doc=prevoyance-cadre'], ['Mes droits en cas d’arrêt de travail (prévoyance) : non cadre', 'avantages?doc=prevoyance-non-cadre'], ['Aides du FASTT : logement, transport, garde d’enfants', 'avantages?doc=fastt'], ['Ma mutuelle santé : cadre', 'avantages?doc=mutuelle-cadre'], ['Ma mutuelle santé : non cadre', 'avantages?doc=mutuelle-non-cadre'], ['Le règlement intérieur', 'avantages?doc=reglement']]}
-];
-const tileOf = key => TILES.find(t => t.key === key);
-
-/* ───────────── Bouton de l’en-tête ───────────── */
+/* ───────────── Cadre : barre du haut, navigation, onglets ───────────── */
 function espaceButton() {
   const u = espaceUser(), on = route === '/espace';
   return u
-    ? `<a class="espace-btn is-in" href="#/espace" ${on ? 'aria-current="page"' : ''} aria-label="Mon espace candidat, ${esc(u.firstName)} ${esc(u.lastName)}"><span class="espace-avatar" aria-hidden="true">${initials(u)}</span><span class="espace-btn-label">Mon espace</span></a>`
-    : `<a class="espace-btn" href="#/espace" ${on ? 'aria-current="page"' : ''}>${icon('user')}<span class="espace-btn-label">Espace candidat</span></a>`;
+    ? `<a class="espace-btn is-in" href="#/espace" ${on ? 'aria-current="page"' : ''} aria-label="Mon espace praticien, ${esc(u.firstName)} ${esc(u.lastName)}"><span class="espace-avatar" aria-hidden="true">${esc(u.firstName[0])}</span><span class="espace-btn-label">Mon espace</span></a>`
+    : `<a class="espace-btn" href="#/espace" ${on ? 'aria-current="page"' : ''}>${icon('user')}<span class="espace-btn-label">Espace praticien</span></a>`;
 }
+const nonLues = n => `${n} non lue${n > 1 ? 's' : ''}`;
+const compteur = (n, cls) => n ? `<span class="${cls}" aria-hidden="true">${n > 9 ? '9+' : n}</span>` : '';
+/* La cloche ouvre la fenêtre des notifications (ordinateur) ou le panneau du bas (téléphone). */
+const bell = () => { const n = unreadNotifs(), here = espaceRoute().sub === 'notifications', open = notifPop?.matches(':popover-open');
+  return `<button type="button" class="pp-bell${here ? ' is-here' : ''}${open ? ' is-open' : ''}" popovertarget="pp-notif-pop" aria-haspopup="dialog" aria-label="Notifications${n ? ` — ${nonLues(n)}` : ''}">${icon('bell')}${compteur(n, 'pp-bell-n')}</button>`; };
+const avatarBtn = u => `<button type="button" class="pp-me" data-logout aria-label="Se déconnecter">${esc(u.firstName[0].toUpperCase())}</button>`;
+/* Téléphone : la cloche et l’initiale (qui déconnecte, comme la référence) dans l’en-tête du site. */
+function espaceTools() {
+  const u = espaceUser(); if (!u || route !== '/espace') return '';
+  return `<div class="pp-tools">${bell()}${avatarBtn(u)}</div>`;
+}
+/* [clé, libellé, libellé court, icône] : les six rubriques de la référence. */
+const SPACE_TABS = [['', 'Accueil', 'Accueil', 'home'], ['missions', 'Mes missions', 'Missions', 'clipboard'], ['heures', 'Mes heures', 'Heures', 'clock'], ['disponibilites', 'Mes disponibilités', 'Dispos', 'calcheck'], ['documents', 'Mes documents', 'Documents', 'file'], ['profil', 'Mon profil', 'Profil', 'user']];
+const sectionOf = sub => ['proposition', 'notifications', 'messages'].includes(sub) ? '-' : sub;
+const tabLink = ([k, label, court, ic], on) => `<a href="#/espace${k ? '/' + k : ''}" ${on ? 'aria-current="page"' : ''}><span class="tab-ico">${icon(ic)}</span><span class="tab-label" aria-hidden="true">${court}</span><span class="sr-only">${label}</span></a>`;
+/* Téléphone : les six onglets en bas, libellés courts. */
+const espaceTabs = () => { const on = sectionOf(espaceRoute().sub); return `<nav class="tabbar is-espace" aria-label="Navigation de l’espace praticien">${SPACE_TABS.map(t => tabLink(t, on === t[0])).join('')}</nav>`; };
+/* Ordinateur et tablette : la colonne d’icônes à gauche, libellé dessous ; Notifications en bas de la colonne, avec le nombre de non lues. */
+const rail = sub => { const section = sectionOf(sub), n = unreadNotifs();
+  return `<nav class="pp-rail" aria-label="Navigation de l’espace praticien">${SPACE_TABS.map(([k, label, , ic]) => `<a href="#/espace${k ? '/' + k : ''}" ${section === k ? 'aria-current="page"' : ''}>${icon(ic)}<span>${label}</span></a>`).join('')}
+    <a class="pp-rail-notif" href="#/espace/notifications" ${sub === 'notifications' ? 'aria-current="page"' : ''}><span class="pp-rail-ico">${icon('bell')}${compteur(n, 'pp-rail-n')}</span><span>Notifications</span>${n ? `<span class="sr-only">, ${nonLues(n)}</span>` : ''}</a></nav>`; };
+const topbar = u => `<div class="pp-topbar">${bell()}<span class="pp-topbar-name">${esc(u.firstName)}</span><button type="button" class="pp-logout" data-logout>${icon('logout')}Se déconnecter</button>${avatarBtn(u)}</div>`;
+
+/* ───────────── Notifications : fenêtre sous la cloche, panneau du bas sur téléphone ─────────────
+   Ordinateur et tablette : une fenêtre accrochée à la cloche, les 5 plus récentes, « Voir plus » mène à la page complète.
+   Téléphone : un panneau qui monte du bas, à portée du pouce — les nouvelles d’abord, puis « Plus tôt », grandes rangées,
+   « Tout marquer comme lu » en haut, « Voir plus » toujours visible en bas ; on le ferme en le tirant vers le bas, en
+   touchant le voile ou avec la croix. Toucher une notification la marque comme lue et ouvre l’écran concerné. */
+const NOTIF_POP = 5, PHONE_MQ = matchMedia('(max-width: 760px)');
+const notifIcon = n => n.titre.includes('vous écrit') ? 'chat' : n.titre.includes('heures') ? 'clock' : n.titre.includes('contrat') ? 'file' : 'clipboard';
+const parDate = list => list.sort((a, b) => b.quand.localeCompare(a.quand));
+/* Le moment, dit simplement : « Aujourd’hui à 10h28 », « Hier à 09h56 », « Il y a 6 jours, à 10h05 », puis la date. */
+function quandCourt(s) {
+  const d = Math.round((asDate(TODAY) - asDate(s.slice(0, 10))) / 864e5), h = `${s.slice(11, 13)}h${s.slice(14, 16)}`;
+  return d <= 0 ? `Aujourd’hui à ${h}` : d === 1 ? `Hier à ${h}` : d < 7 ? `Il y a ${d} jours, à ${h}` : `${fmtDate(s.slice(0, 10), {day: 'numeric', month: 'long'})} à ${h}`;
+}
+const notifRow = n => `<li><a class="pp-pn${n.lu ? '' : ' is-unread'}" href="${n.vers}" data-notif="${n.id}"><span class="pp-notif-ico" aria-hidden="true">${icon(notifIcon(n))}</span><span class="pp-pn-main"><strong>${esc(n.titre)}</strong><time datetime="${n.quand}" title="${horoNotif(n.quand)}">${quandCourt(n.quand)}</time></span>${n.lu ? '' : '<span class="pp-unread"><span class="sr-only">Non lue</span></span>'}</a></li>`;
+function notifPanel(sheet) {
+  const list = parDate(notifs()), nouvelles = list.filter(x => !x.lu), n = nouvelles.length;
+  const rows = items => `<ul class="pp-pop-list">${items.map(notifRow).join('')}</ul>`;
+  let body;
+  if (!list.length) body = `<p class="pp-pop-empty">Rien pour l’instant — vous serez prévenu ici quand quelque chose bouge.</p>`;
+  else if (sheet) {
+    const plusTot = list.filter(x => x.lu).slice(0, Math.max(3, NOTIF_POP + 1 - n));
+    body = `${n ? `<h3 class="pp-pop-group">Nouvelles</h3>${rows(nouvelles)}` : `<p class="pp-pop-empty">${icon('check')}Vous êtes à jour : rien de nouveau.</p>`}${plusTot.length ? `<h3 class="pp-pop-group">Plus tôt</h3>${rows(plusTot)}` : ''}`;
+  } else body = rows(list.slice(0, NOTIF_POP));
+  return `<div class="pp-pop-head">${sheet ? '<span class="pp-grab" aria-hidden="true"></span>' : ''}<div class="pp-pop-title"><h2 id="pp-pop-title">Notifications</h2><p>${n ? nonLues(n) : 'Tout est lu'}</p></div>
+      ${n ? `<button type="button" class="pp-link" data-notif-all>${icon('check')}Tout marquer comme lu</button>` : ''}
+      ${sheet ? `<button type="button" class="pp-x pp-pop-close" popovertarget="pp-notif-pop" popovertargetaction="hide" aria-label="Fermer les notifications">${icon('close')}</button>` : ''}</div>
+    <div class="pp-pop-body">${body}</div>
+    <div class="pp-pop-foot"><a class="btn btn-primary pp-sm" href="#/espace/notifications" data-notif-more>Voir plus${icon('arrow')}</a></div>`;
+}
+const notifPop = (() => { document.body.insertAdjacentHTML('beforeend', '<div class="pp-pop" id="pp-notif-pop" popover role="dialog" aria-labelledby="pp-pop-title" tabindex="-1"></div>'); return document.getElementById('pp-notif-pop'); })();
+const popOpen = () => notifPop.matches(':popover-open');
+const closeNotifPop = () => { if (popOpen()) notifPop.hidePopover(); };
+const visibleBell = () => [...document.querySelectorAll('.pp-bell')].find(b => b.getClientRects().length);
+/* Ordinateur : la fenêtre se centre sous la cloche (sans sortir de l’écran), sa pointe vise la cloche ; elle défile avec la page. */
+function placeNotifPop() {
+  const b = visibleBell(); notifPop.removeAttribute('style');
+  if (PHONE_MQ.matches || !b) { notifPop.dataset.side = 'sheet'; return; }
+  const r = b.getBoundingClientRect(), cw = document.documentElement.clientWidth, w = Math.min(400, cw - 32), cx = r.left + r.width / 2;
+  const left = Math.min(Math.max(16, cx - w / 2), cw - 16 - w);
+  notifPop.dataset.side = 'bottom';
+  Object.assign(notifPop.style, {left: `${left + scrollX}px`, top: `${r.bottom + scrollY + 10}px`, width: `${w}px`, maxHeight: `${Math.max(320, innerHeight - r.bottom - 24)}px`});
+  notifPop.style.setProperty('--caret', `${cx - left}px`);
+}
+const refillNotifPop = () => { notifPop.innerHTML = notifPanel(notifPop.dataset.side === 'sheet'); };
+const markRead = ids => { const P = pstate(); let changed = false; ids.forEach(id => { if (!P.lus.includes(id)) { P.lus.push(id); changed = true; } }); if (changed) ppSave(); };
+notifPop.addEventListener('beforetoggle', e => { if (e.newState === 'open') { placeNotifPop(); refillNotifPop(); } });
+notifPop.addEventListener('toggle', e => {
+  const open = e.newState === 'open';
+  document.querySelectorAll('.pp-bell').forEach(b => b.classList.toggle('is-open', open));
+  if (open) notifPop.focus({preventScroll: true}); else notifPop.style.translate = '';
+});
+/* Toucher une notification : marquée comme lue, la fenêtre se ferme, l’écran concerné s’ouvre. */
+notifPop.addEventListener('click', e => {
+  const a = e.target.closest('[data-notif], [data-notif-more]'); if (!a) return;
+  if (a.dataset.notif) markRead([a.dataset.notif]);
+  closeNotifPop();
+  if (a.getAttribute('href') === location.hash) { e.preventDefault(); rerender(); }
+});
+/* Téléphone : on tire le panneau vers le bas pour le fermer (au-delà de 90 px), sinon il revient en place. */
+let notifDrag = null;
+notifPop.addEventListener('pointerdown', e => {
+  if (notifPop.dataset.side !== 'sheet' || !e.target.closest('.pp-pop-head') || e.target.closest('button, a')) return;
+  notifDrag = {y: e.clientY}; try { notifPop.setPointerCapture(e.pointerId); } catch {} notifPop.classList.add('is-dragging');
+});
+notifPop.addEventListener('pointermove', e => { if (notifDrag) notifPop.style.translate = `0 ${Math.max(0, e.clientY - notifDrag.y)}px`; });
+const endNotifDrag = e => { if (!notifDrag) return; const dy = e.clientY - notifDrag.y; notifDrag = null; notifPop.classList.remove('is-dragging'); if (dy > 90) closeNotifPop(); else notifPop.style.translate = ''; };
+notifPop.addEventListener('pointerup', endNotifDrag);
+notifPop.addEventListener('pointercancel', endNotifDrag);
+/* Tout marquer comme lu : depuis la fenêtre ou la page complète. */
+document.addEventListener('click', e => {
+  if (!e.target.closest('[data-notif-all]')) return;
+  markRead(notifs().map(n => n.id));
+  const open = popOpen();
+  rerender(open ? '' : '.pp-head h1');
+  if (open) { refillNotifPop(); notifPop.focus({preventScroll: true}); }
+  toast('Toutes vos notifications sont marquées comme lues.', {icon: 'check'});
+});
+/* La fenêtre se ferme quand on change d’écran, quand on passe du format ordinateur au téléphone, ou quand la cloche passe sous l’en-tête. */
+addEventListener('hashchange', closeNotifPop);
+PHONE_MQ.addEventListener('change', closeNotifPop);
+addEventListener('scroll', () => {
+  if (!popOpen() || notifPop.dataset.side !== 'bottom') return;
+  const b = visibleBell(), h = document.querySelector('.site-header');
+  if (!b || (h && b.getBoundingClientRect().bottom < h.getBoundingClientRect().bottom)) closeNotifPop();
+}, {passive: true});
+
+/* ───────────── Briques ───────────── */
+const eyebrow = (t, cls = '') => `<p class="pp-eyebrow ${cls}">${t}</p>`;
+const ppChip = (text, tone = '') => `<span class="pp-chip${tone ? ` is-${tone}` : ''}">${text}</span>`;
+const statutChip = m => { const [t, tone] = STATUT[statutMission(m)]; return ppChip(t, tone); };
+const pageHead = (eb, title, lead = '') => `<header class="pp-head">${eyebrow(eb)}<h1 tabindex="-1">${dot(title + '.')}</h1>${lead ? `<p>${lead}</p>` : ''}</header>`;
+const card = (eb, body, {cls = '', id = '', attention = false} = {}) => `<section class="pp-card ${attention ? 'is-attention' : ''} ${cls}" ${id ? `id="${id}"` : ''}>${eb ? eyebrow(eb, attention ? 'is-attention' : '') : ''}${body}</section>`;
+const arrowLink = (href, t, cls = 'pp-link') => `<a class="${cls}" href="${href}">${t}${icon('arrow')}</a>`;
+const ppBack = (href, label) => `<a class="pp-back" href="${href}">${icon('back')}${label}</a>`;
+const privacy = () => `<p class="pp-private">${icon('shield')}<span>Vos documents et vos échanges avec Laska restent privés — personne d’autre n’y a accès.</span></p>`;
+const contactCard = () => card('Votre contact chez Laska', `<div class="pp-contact-who"><span class="pp-avatar" aria-hidden="true">${PP_CONTACT.prenom[0]}</span><p><strong>${PP_CONTACT.prenom}</strong><span>Suit votre parcours chez Laska</span></p></div>${arrowLink('#/espace/messages', 'Envoyer un message', 'btn btn-outline pp-sm')}`, {cls: 'pp-contact'});
+const formatLib = (m, i = 0) => FORMATS[m.format][i];
+const vacationsResume = m => m.jours.length > 1 ? `${m.jours.length} × ${formatLib(m, 1)}` : formatLib(m, 2);
+function compteRebours(m) {
+  const s = statutMission(m);
+  if (s === 'confirmee') { const k = daysFrom(TODAY, m.debut); return k === 1 ? 'Commence demain' : `Commence dans ${k} jours`; }
+  if (s === 'terminee') { const k = daysFrom(m.fin, TODAY); return k === 1 ? 'Terminée depuis hier' : `Terminée depuis ${k} jours`; }
+  const n = daysFrom(m.debut, TODAY) + 1, left = daysFrom(TODAY, m.fin), a = n === 1 ? 'En cours — 1er jour' : `En cours — ${n}e jour`;
+  return left === 0 ? `${a}, dernier jour aujourd’hui` : left === 1 ? `${a}, se termine demain` : `${a}, se termine dans ${left} jours`;
+}
+/* Mise en avant de l’accueil : « Dans 11 jours », « Encore 3 jours »… */
+function bientot(m) {
+  if (statutMission(m) === 'en_cours') { const e = daysFrom(TODAY, m.fin); return e === 0 ? 'Se termine aujourd’hui' : e === 1 ? 'Encore 1 jour' : `Encore ${e} jours`; }
+  const i = daysFrom(TODAY, m.debut); return i <= 0 ? 'Aujourd’hui' : i === 1 ? 'Demain' : `Dans ${i} jours`;
+}
+const missionCard = m => `<li><a class="pp-mcard" href="#/espace/missions/${m.id}"><span class="pp-mcard-top"><span><strong>${esc(etabNom(m))}</strong><span>${m.specialiteLibelle}</span></span>${statutChip(m)}</span><span class="pp-mcard-when">${plage(m.debut, m.fin, statutMission(m) === 'en_cours')}</span><span class="pp-mcard-format">${icon('clock')}${formatLib(m)}</span>${icon('chevron', 'pp-chev')}</a></li>`;
+
+/* ───────────── Écran : Accueil ───────────── */
+function screenAccueil(u) {
+  const ms = MISSIONS(), avenir = ms.filter(m => statutMission(m) !== 'terminee').sort((a, b) => a.debut.localeCompare(b.debut));
+  const focus = avenir[0], autres = avenir.slice(1), passees = ms.filter(m => statutMission(m) === 'terminee').sort((a, b) => b.fin.localeCompare(a.fin));
+  const apres = passees.find(m => daysFrom(m.fin, TODAY) <= 30 && !pstate().avis[m.id]);
+  const urgent = dossierAttention();
+  const hello = `<header class="pp-hello"><h1 tabindex="-1">${dot(`Bonjour, ${esc(u.firstName)}.`)}</h1><p>${dateDuJour()}</p></header>`;
+  const apresCard = apres ? `<section class="pp-card pp-after">${eyebrow('Après votre mission', 'is-coral')}<p class="pp-strong">${esc(etabNom(apres))} — terminée le ${dateLongue(apres.fin)}</p><p class="pp-muted">Votre avis aide les prochains praticiens ; vos frais se déclarent au même endroit.</p>${arrowLink(`#/espace/missions/${apres.id}`, 'Donner mon avis et mes frais', 'btn btn-primary pp-sm')}</section>` : '';
+  const premier = selonSituation()[0];
+  const hero = focus ? `<section class="pp-hero" aria-label="Votre prochaine mission">${eyebrow(statutMission(focus) === 'en_cours' ? 'Votre mission en ce moment' : 'Votre prochaine mission', 'is-light')}
+      <p class="pp-hero-count">${bientot(focus)}</p><h2>${esc(etabNom(focus))}</h2><p class="pp-hero-spec">${focus.specialiteLibelle}</p>
+      <p class="pp-hero-when">${plage(focus.debut, focus.fin, statutMission(focus) === 'en_cours')}</p><span class="pp-hero-format">${formatLib(focus)}</span>
+      <div class="pp-hero-actions">${statutMission(focus) === 'en_cours' ? `${arrowLink('#/espace/heures', 'Déclarer mes heures', 'btn btn-light')}${arrowLink(`#/espace/missions/${focus.id}`, 'Voir la mission', 'pp-link is-light')}` : arrowLink(`#/espace/missions/${focus.id}`, 'Voir la mission', 'btn btn-light')}</div>
+      ${premier ? `<p class="pp-hero-prep">${icon('bolt')}<span>Votre ${LIB_SITUATION[premier.code] || premier.lib} manque encore à votre dossier.</span></p>` : '<p class="pp-hero-prep">Rien à préparer pour cette mission — nous vous recontactons en cas de besoin.</p>'}</section>`
+    : `<section class="pp-card" aria-label="Votre prochaine mission">${eyebrow('Votre prochaine mission')}<p class="pp-big-text">Aucune mission prévue pour le moment.</p><p class="pp-muted">Votre contact chez Laska connaît votre situation et revient vers vous dès qu’une mission correspond.</p>${arrowLink('#/espace/messages', `Écrire à ${PP_CONTACT.prenom}`)}</section>`;
+  const dossier = card('Votre dossier', `<p>${dossierPhrase()}</p>${arrowLink('#/espace/documents', 'Voir mes documents', urgent ? 'btn btn-attention pp-sm' : 'pp-link')}`, {attention: urgent});
+  const heures = ms.some(m => statutMission(m) !== 'confirmee') ? card('Mes heures', `<p>${totalDeclare() ? `${hm(totalDeclare())} déclarées.` : 'Aucun jour saisi — votre relevé vous attend.'}</p>${arrowLink('#/espace/heures', 'Voir mes heures')}`) : '';
+  const d0 = pstate().dispos.filter(d => d.fin >= TODAY).sort((a, b) => a.debut.localeCompare(b.debut))[0];
+  const dispos = card('Vos disponibilités', `<p>${d0 ? (d0.commentaire || `Disponible du ${dateLongue(d0.debut)} au ${dateLongue(d0.fin)}.`) : 'Aucune disponibilité renseignée pour le moment.'}</p>${arrowLink('#/espace/disponibilites', 'Gérer mes disponibilités')}`);
+  const profil = card('Mon profil', `<p>Vos coordonnées et ce que Laska a enregistré à votre sujet.</p>${arrowLink('#/espace/profil', 'Voir mon profil')}`);
+  const prochaines = autres.length ? card('Prochaine mission', `<ul class="pp-lines">${autres.slice(0, 2).map(m => `<li><strong>${esc(etabNom(m))}</strong><span>${plage(m.debut, m.fin)}</span></li>`).join('')}</ul>`) : '';
+  const anciennes = card('Missions passées', `${passees.length ? `<ul class="pp-lines">${passees.slice(0, 2).map(m => `<li><strong>${esc(etabNom(m))}</strong><span>${plage(m.debut, m.fin)}</span></li>`).join('')}</ul>` : '<p class="pp-muted">Aucune mission passée pour le moment.</p>'}${arrowLink('#/espace/missions', 'Voir tout l’historique')}`);
+  return `${hello}${apresCard}${hero}${urgent ? dossier : ''}<div class="pp-grid">${heures}${dispos}${urgent ? '' : dossier}${profil}</div>${prochaines}${anciennes}${askCard()}${contactCard()}${privacy()}`;
+}
+const ASK = ['Quelles pièces me manquent ?', 'Quand commence ma prochaine mission ?', 'Où en sont mes heures ?'];
+const askCard = () => card(`${icon('bolt')}Une question sur votre dossier ?`, `<div class="pp-ask-chips">${ASK.map((q, i) => `<button type="button" class="pp-ask-chip" data-ask="${i}">${q}</button>`).join('')}</div>
+  <form class="pp-ask-form" data-form="ask" novalidate><label for="ask-q" class="sr-only">Votre question</label><input id="ask-q" name="q" maxlength="300" autocomplete="off" placeholder="Ou posez votre question…"><button type="submit" class="btn btn-primary pp-sm" data-ask-submit>${icon('bolt')}Demander</button></form>
+  <div class="pp-ask-answer" id="ask-answer" aria-live="polite"></div>`, {cls: 'pp-ask'});
+function askAnswer(k) {
+  const ms = MISSIONS(), next = ms.filter(m => statutMission(m) !== 'terminee').sort((a, b) => a.debut.localeCompare(b.debut))[0];
+  if (k === 0) { const s = selonSituation(); return `${dossierPhrase()}${s.length ? ` Selon votre situation : ${s.map(p => LIB_SITUATION[p.code] || p.lib).join(', ')}.` : ''}`; }
+  if (k === 1) return next ? `Votre prochaine mission commence le ${jl(next.debut)}, au ${esc(etabNom(next))} : ${formatLib(next).toLowerCase()}, à partir de ${heure(next.jours[0].debut)}.` : 'Aucune mission n’est prévue pour le moment.';
+  return MISSIONS().filter(m => releveOf(m).declare).map(m => { const r = releveOf(m); return `${etabNom(m)} : ${hm(r.declare)} déclarées${r.statut === 'facture' ? ', validées par Laska et facturées à l’établissement' : r.statut === 'valide' ? ', validées par Laska' : ''}.`; }).join(' ') || 'Aucun jour saisi pour le moment.';
+}
+
+/* ───────────── Écran : Mes missions ───────────── */
+function screenMissions() {
+  const ms = MISSIONS(), avenir = ms.filter(m => statutMission(m) !== 'terminee').sort((a, b) => a.debut.localeCompare(b.debut)), passees = ms.filter(m => statutMission(m) === 'terminee').sort((a, b) => b.fin.localeCompare(a.fin));
+  const t = totalDeclare();
+  return `${pageHead('Votre parcours', 'Mes missions', `${ms.length} mission${ms.length > 1 ? 's' : ''}${t ? ` · ${hm(t)} déclarées` : ''}`)}
+    ${card('En cours et à venir', avenir.length ? `<ul class="pp-mlist">${avenir.map(missionCard).join('')}</ul>` : `<p class="pp-muted">Aucune mission prévue pour le moment.</p>${arrowLink('#/espace/disponibilites', 'Indiquer mes disponibilités')}`)}
+    ${card('Missions passées', passees.length ? `<ul class="pp-mlist">${passees.map(missionCard).join('')}</ul>` : '<p class="pp-muted">Aucune mission passée pour le moment.</p>')}
+    ${contactCard()}${privacy()}`;
+}
+
+/* ───────────── Écran : fiche d’une mission ───────────── */
+function screenMission(m) {
+  const s = statutMission(m), sig = signatureOf(m), r = releveOf(m);
+  const head = `<section class="pp-mhead is-${s}" aria-labelledby="mh-t"><span class="pp-mhead-num" aria-hidden="true">${m.adresse.match(/\b(\d{2})\d{3}\b/)?.[1] || ''}</span>
+    <div class="pp-mhead-top"><h1 id="mh-t" tabindex="-1">${esc(etabNom(m))}</h1>${statutChip(m)}</div><p class="pp-mhead-spec">${m.specialiteLibelle}</p>
+    <p class="pp-mhead-when">${icon('calendar')}${plage(m.debut, m.fin, s === 'en_cours')}</p><p class="pp-mhead-count">${compteRebours(m)}</p><p class="pp-mhead-vac">${icon('clock')}${vacationsResume(m)}</p></section>`;
+  const dossier = card('Votre dossier', `<p>${dossierPhrase()}</p>${arrowLink('#/espace/documents', 'Voir mes documents', dossierAttention() ? 'btn btn-attention pp-sm' : 'pp-link')}<p class="pp-muted">Ce suivi vaut pour toutes vos missions chez Laska, pas seulement celle-ci.</p>`, {attention: dossierAttention()});
+  const sigLine = sig.statut === 'papier' ? '' : `<p class="pp-sig-line">${sig.statut === 'complet' ? `${icon('check')}Signé par les trois le ${horo(sig.laskaLe)}.` : sig.statut === 'signe' ? `${icon('pen')}Vous avez signé le ${horo(sig.signeLe)} ; l’établissement doit encore signer.` : `${icon('pen')}À signer en ligne, depuis votre espace.`}</p>${arrowLink(`#/espace/missions/${m.id}/contrat`, sig.statut === 'complet' ? 'Le contrat signé' : sig.statut === 'a_signer' ? 'Lire et signer' : 'Où en est la signature', 'pp-link')}`;
+  const contrat = card('Votre contrat', `<div class="pp-docline">${icon('file')}<span><strong>Contrat de mission temporaire</strong><span>Document disponible</span></span><button type="button" class="btn btn-outline pp-sm" data-download="${m.id}">${icon('upload', 'pp-flip')}Télécharger</button></div>${sigLine}<p class="pp-muted">La rémunération ne figure pas dans ce document : votre contact chez Laska vous la communique directement.</p>`);
+  let jours;
+  if (s === 'confirmee') jours = `<p>Vos journées se déclareront à partir du ${dateLongue(m.debut)}, chaque jour dans « Mes heures ».</p>${arrowLink('#/espace/heures', 'Saisir ou modifier mes jours')}`;
+  else { const liste = Object.entries(r.jours).sort(([a], [b]) => a.localeCompare(b));
+    jours = `<p class="pp-strong">${hm(r.declare)} déclarées</p><p class="pp-muted">Prévu ${hm(r.prevu)} · Déclaré ${hm(r.declare)} · ${r.ecart ? `écart ${r.ecart > 0 ? '+' : '−'}${hm(r.ecart)}` : 'aucun écart'}</p>
+      <ul class="pp-lines">${liste.map(([d, j]) => `<li><strong>${dateLongue(d)}</strong><span>${heure(j.debut)} → ${heure(j.fin)}</span></li>`).join('')}</ul>
+      ${r.valideLe ? `<p class="pp-muted">Validées par Laska le ${dateLongue(r.valideLe.slice(0, 10))} — elles ne se modifient plus.</p>` : ''}${arrowLink('#/espace/heures', r.valideLe ? 'Voir mes heures' : 'Saisir ou modifier mes jours')}`; }
+  const route = m.route ? card('Votre feuille de route', `<p>Arrivée, planning, logement, trajet, ce qu’il faut apporter et qui appeler — envoyée le ${jl(m.route.le)}.</p><button type="button" class="btn btn-outline pp-sm" data-route="${m.id}" aria-expanded="${routeOpen === m.id}">${icon('file')}${routeOpen === m.id ? 'Refermer' : 'Lire ma feuille de route'}</button>${routeOpen === m.id ? feuilleDeRoute(m) : ''}`, {id: 'feuille'}) : '';
+  const ou = card('Où', `<p class="pp-strong">${esc(m.adresse)}</p><div class="pp-row-actions"><a class="btn btn-outline pp-sm" href="https://maps.google.com/?q=${encodeURIComponent(m.adresse)}" target="_blank" rel="noopener">${icon('pin')}Ouvrir dans le GPS</a><button type="button" class="btn btn-outline pp-sm" data-copy-address="${esc(m.adresse)}">${icon('link')}Copier</button></div>`);
+  const dormez = card('Où vous dormez', `<p>${HEBERGEMENT[m.hebergement]}</p>`);
+  const surPlace = card('Sur place', `<p class="pp-strong">${esc(m.surPlace.nom)}</p><p class="pp-contacts"><a href="tel:${m.surPlace.tel.replace(/ /g, '')}">${icon('phone')}${m.surPlace.tel}</a><a href="mailto:${m.surPlace.email}">${icon('mail')}${m.surPlace.email}</a></p>`);
+  const histo = m.accepteLe ? card('L’historique de cette mission', `<p>Vous avez accepté cette mission le ${dateLongue(m.accepteLe)}.</p>`) : '';
+  const blocs = s === 'terminee' ? [avisBlock(m), fraisBlock(m), dossier, contrat, card('Jours travaillés', jours), route, ou, dormez, surPlace, contactCard(), histo] : [dossier, contrat, card('Jours travaillés', jours), route, ou, dormez, surPlace, contactCard(), histo];
+  return `${ppBack('#/espace/missions', 'Mes missions')}${head}${blocs.join('')}`;
+}
+function feuilleDeRoute(m) {
+  const f = m.route, sec = (t, body) => `<section class="pp-route-sec"><h3>${t}</h3>${body}</section>`;
+  return `<div class="pp-route"><h2>Votre feuille de route</h2><p class="pp-muted">envoyée le ${jl(f.le)} ${year(f.le)}</p>
+    <p>Bonjour Dr ${PRATICIEN.nom},</p><p>Voici tout ce qu’il vous faut pour votre mission au ${esc(m.etablissementNom)}, service ${m.eu.service}, le ${jl(m.debut)} ${year(m.debut)}.</p>
+    ${sec('Votre arrivée', `<p>${cap(jl(m.debut))} ${f.arrivee}, ${esc(m.adresse)}. ${esc(m.surPlace.nom)}, ${m.surPlace.role}, vous accueille.</p><p><strong>Bon à savoir :</strong> ${f.bon}</p>`)}
+    ${sec('Votre planning', `<ul class="pp-lines">${m.jours.map(j => `<li><strong>${fmtDate(j.date, {weekday: 'short', day: 'numeric'})}</strong><span>journée ${heure(j.debut)} → ${heure(j.fin)}</span></li>`).join('')}</ul>`)}
+    ${sec('Votre logement', `<p>${f.logement}</p>`)}${sec('Votre trajet', `<p>${f.trajet}</p>`)}${sec('Vos repas', `<p>${f.repas}</p>`)}
+    ${sec('À apporter', `<ul class="pp-bullets">${f.apporter.map(a => `<li>${a}</li>`).join('')}</ul>`)}
+    ${sec('Vos heures et vos frais', '<p>Déclarez vos heures chaque jour dans votre espace praticien ; un écart avec le prévu s’explique en envoyant votre relevé, à la fin de la mission. Gardez vos justificatifs de frais et déposez-les dans votre espace : ils vous sont remboursés.</p>')}
+    ${sec('Chez Laska', `<p>${PP_CONTACT.prenom}, qui suit votre mission</p><p><a class="pp-link" href="${TEL}">${PHONE}</a></p>`)}
+    ${sec('À l’hôpital', `<p>${esc(m.surPlace.nom)}, ${m.surPlace.role}</p><p><a class="pp-link" href="tel:${m.surPlace.tel.replace(/ /g, '')}">${m.surPlace.tel}</a></p><p>Standard : ${f.standard}</p>`)}
+    <p class="pp-muted">Cette feuille de route accompagne votre contrat de mission ; elle ne le remplace pas. En cas d’empêchement, prévenez ${PP_CONTACT.prenom} au plus vite, même le soir.</p></div>`;
+}
+function avisBlock(m) {
+  const a = pstate().avis[m.id];
+  if (a && avisEdit !== m.id) return card('Votre avis sur la mission', `<p class="pp-sent">${ppChip('Envoyé')}<span>Le ${dateLongue(a.le)}</span></p><dl class="pp-pairs">${AVIS_Q.map(([k, court]) => `<div><dt>${court}</dt><dd>${esc(a[k] || '—')}</dd></div>`).join('')}</dl>${a.mot ? `<p class="pp-quote">« ${esc(a.mot)} »</p>` : ''}<p class="pp-muted">Il reste chez Laska : l’établissement ne le voit pas.</p><button type="button" class="pp-link" data-avis-edit="${m.id}">Modifier mon avis</button>`, {id: 'voir-avis'});
+  return card('Votre avis sur la mission', `<form data-form="avis" data-mid="${m.id}" novalidate><div id="form-errors"></div><p class="pp-strong">Comment s’est passée la mission</p>
+    <div class="pp-avis-q">${AVIS_Q.map(([k, , q, opts]) => pills(`avis_${k}`, q, opts, a?.[k] || '')).join('')}</div>
+    <div class="field full"><label for="avis-mot">Un mot pour l’équipe <span class="field-note">(facultatif)</span></label><textarea id="avis-mot" name="mot" maxlength="1000" rows="3" placeholder="Ce qui s’est bien passé, ce qui serait à revoir…">${esc(a?.mot || '')}</textarea></div>
+    <p class="pp-muted">Une réponse par question, puis envoyez. Votre avis reste chez Laska : l’établissement ne le voit pas.</p>
+    <div class="pp-actions"><button type="submit" class="btn btn-primary">Envoyer mon avis</button>${a ? '<button type="button" class="btn btn-outline" data-avis-cancel>Annuler</button>' : ''}</div></form>`, {id: 'voir-avis'});
+}
+function fraisBlock(m) {
+  const list = pstate().frais[m.id] || [], total = list.reduce((n, f) => n + f.montant, 0), valide = list.length && list.every(f => f.valideLe);
+  return card('Vos frais', list.length ? `<p class="pp-total">${euros(total)}</p><ul class="pp-frais">${list.map(f => `<li><span class="pp-frais-main"><strong>${esc(f.libelle)}${f.precision ? ` (${esc(f.precision)})` : ''}</strong><span>Déposé le ${dateLongue(f.deposeLe)}${f.valideLe ? ` · Validé le ${dateLongue(f.valideLe)}` : ' · À valider par Laska'}</span></span><b>${euros(f.montant)}</b>${f.fichier ? `<button type="button" class="pp-link" data-justificatif="${esc(f.fichier)}">Voir le justificatif</button>` : ''}</li>`).join('')}</ul>${valide ? '<p class="pp-muted">Votre note de frais est validée : Laska vous la rembourse par virement. Pour un frais oublié, appelez Laska.</p>' : ''}` : '<p class="pp-muted">Aucun frais pour cette mission.</p>');
+}
+
+/* ───────────── Écran : contrat ───────────── */
+function screenContrat(m) {
+  const s = signatureOf(m), sous = `${m.specialiteLibelle} · du ${jcl(m.debut)} au ${jcl(m.fin)}`;
+  const head = `${ppBack(`#/espace/missions/${m.id}`, 'Votre mission')}<header class="pp-head">${eyebrow('Contrat de mission')}<h1 tabindex="-1">${dot(etabNom(m) + '.')}</h1><p>${sous}</p></header>`;
+  const doc = `<article class="pp-doc" tabindex="0" id="pp-doc" aria-label="Le contrat, à faire défiler">${contratDocHTML(m, signatureOf(m).statut === 'papier' ? {} : s, PRATICIEN)}</article>`;
+  const note = '<p class="pp-muted">Le vrai document : 22 articles, les trois cadres de signature. Votre rémunération y est masquée, comme partout dans votre espace.</p>';
+  if (s.statut === 'papier') return `${head}${card('', `<p class="pp-strong">Ce contrat ne se signe pas en ligne pour l’instant : Laska vous l’envoie pour une signature sur papier.</p>`)}
+    ${card('', `<h2 class="pp-card-title">Le contrat</h2>${doc}${note}<button type="button" class="btn btn-outline pp-sm" data-download="${m.id}">${icon('upload', 'pp-flip')}Télécharger</button>`)}`;
+  const qui = [['Vous', s.signeLe], [`${esc(m.etablissementNom)} · ${esc(m.eu.contact)}`, s.etabLe], ['Laska', s.laskaLe]];
+  return `${head}${card('', `<p class="pp-status-title">${s.statut === 'complet' ? 'Votre contrat est signé par les trois' : s.statut === 'signe' ? 'Vous avez signé' : 'Votre contrat est prêt à signer'}</p><p class="pp-muted">${s.statut === 'complet' ? 'Bonne mission ! Le contrat signé et son certificat sont ci-dessous.' : 'À signer en ligne, depuis votre espace.'}</p>
+      <ol class="pp-signers">${qui.map(([t, at]) => `<li class="${at ? 'is-done' : ''}"><span class="pp-tick" aria-hidden="true">${at ? '✓' : ''}</span><span><strong>${t}</strong>${at ? `signé le ${horo(at)}` : 'à signer'}</span></li>`).join('')}</ol>
+      <button type="button" class="btn btn-primary pp-sm" data-download="${m.id}">${icon('upload', 'pp-flip')}Télécharger le contrat signé et son certificat</button>`)}
+    ${card('', `<h2 class="pp-card-title">${s.statut === 'complet' ? 'Le contrat signé' : 'Le contrat, tel qu’il sera signé'}</h2>${doc}${note}`)}`;
+}
+const screenProposition = () => `${ppBack('#/espace', 'Accueil')}${card('', `<p class="pp-status-title">Cette proposition n’est plus disponible.</p><p class="pp-muted">Elle n’existe plus, ou a déjà évolué. Retournez à votre accueil — votre contact chez Laska reste joignable si vous avez un doute.</p>${arrowLink('#/espace', 'Retour à l’accueil', 'btn btn-primary pp-sm')}`)}`;
+
+/* ───────────── Écran : Mes heures ───────────── */
+const RELEVE_STEPS = [['saisi', 'Saisi'], ['envoye', 'Envoyé'], ['valide', 'Validé'], ['facture', 'Facturé']];
+function screenHeures() {
+  const list = MISSIONS().filter(m => statutMission(m) !== 'confirmee' || Object.keys(releveOf(m).jours).length).sort((a, b) => b.fin.localeCompare(a.fin));
+  return pageHead('D’après vos missions', 'Mes heures', 'Déclarez chaque journée, puis envoyez votre relevé à la fin de la mission : Laska le valide, la paie et la facture partent ensuite.')
+    + (list.length ? list.map(releveCard).join('') : card('', '<p class="pp-muted">Pas encore de mission en cours ou terminée : vos journées apparaîtront ici dès le premier jour de votre mission.</p>'));
+}
+function releveCard(m) {
+  const r = releveOf(m), idx = RELEVE_STEPS.findIndex(([k]) => k === r.statut), c = pstate().contestations[m.id], open = joursOpen.includes(m.id);
+  const steps = `<ol class="pp-steps" aria-label="Où en est votre relevé">${RELEVE_STEPS.map(([k, l], i) => `<li class="${i <= idx ? 'is-done' : ''} ${i === idx ? 'is-now' : ''}" ${i === idx ? 'aria-current="step"' : ''}>${l}</li>`).join('')}</ol>`;
+  let etat = '';
+  if (['valide', 'facture'].includes(r.statut)) etat = `<p class="pp-strong">Validé par Laska le ${jl(r.valideLe.slice(0, 10))} : ${hm(r.declare)}</p>${r.statut === 'facture' ? '<p class="pp-muted">Facturé à l’établissement.</p>' : ''}`
+    + (c ? `<div class="pp-note">${eyebrow(`Contestation envoyée le ${jl(c.le.slice(0, 10))}`)}<p>Laska vous répond ici. Votre relevé reste validé en attendant.</p><p class="pp-quote">Vous avez écrit : « ${esc(c.message)} »</p></div>`
+      : contestOpen === m.id ? contestForm(m) : `<button type="button" class="pp-link" data-contest-open="${m.id}">Ce n’est pas ce que j’ai fait : contester…</button>`);
+  else if (r.statut === 'envoye') etat = '<p class="pp-strong">Envoyé</p><p class="pp-muted">Laska le valide. S’il manque quelque chose, vous le lirez ici.</p>';
+  const jours = Object.entries(r.jours).sort(([a], [b]) => a.localeCompare(b));
+  return `<section class="pp-card pp-releve" id="voir-releve-${m.id}">${eyebrow('Mon relevé')}<h2 class="pp-card-title">${esc(etabNom(m))}</h2><p class="pp-muted">${m.specialiteLibelle} · du ${jc(m.debut)} au ${jc(m.fin)}</p>
+    ${steps}<p class="pp-strong">Prévu ${hm(r.prevu)} · déclaré ${hm(r.declare)}</p>${etat}
+    <div class="pp-subsection">${eyebrow('Mes journées')}<button type="button" class="pp-link" data-jours="${m.id}" aria-expanded="${open}">${open ? 'Masquer mes journées' : 'Voir mes journées'}</button>
+      ${open ? `<ul class="pp-days">${jours.map(([d, j]) => `<li><span class="pp-tick is-done" aria-hidden="true">✓</span><strong>${jc(d)}</strong><span>${heure(j.debut)} → ${heure(j.fin)} · ${hm(duree(j.debut, j.fin))}</span></li>`).join('')}</ul>` : ''}</div></section>`;
+}
+const contestForm = m => `<form class="pp-subform" data-form="contest" data-mid="${m.id}" novalidate><div id="form-errors"></div><h3>Contester mon relevé</h3>
+  <div class="field"><label for="ct-jour">Quel jour <span class="req" aria-hidden="true">*</span></label><select id="ct-jour" name="jour" required><option value="">Choisissez</option>${m.jours.map(j => `<option value="${j.date}">${cap(jl(j.date))}</option>`).join('')}</select></div>
+  <div class="pp-time-row"><div class="field"><label for="ct-d">J’ai commencé à</label><input type="time" id="ct-d" name="debut" step="900"></div><div class="field"><label for="ct-f">J’ai fini à</label><input type="time" id="ct-f" name="fin" step="900"></div></div>
+  <div class="field full"><label for="ct-msg">Votre message à Laska <span class="req" aria-hidden="true">*</span></label><textarea id="ct-msg" name="message" required rows="3" maxlength="600" data-min="10" data-min-msg="Expliquez en quelques mots ce qui ne va pas." placeholder="Ex. la garde du samedi n’apparaît pas : j’ai fait 24 h, pas 12 h."></textarea></div>
+  <p class="pp-muted">Laska vérifie, puis vous répond ici : il rouvre votre relevé, ou vous dit pourquoi la validation tient.</p>
+  <div class="pp-actions"><button type="submit" class="btn btn-primary">Envoyer ma contestation</button><button type="button" class="btn btn-outline" data-contest-cancel>Annuler</button></div></form>`;
+
+/* ───────────── Écran : Mes disponibilités ───────────── */
+function screenDispos() {
+  const list = pstate().dispos.filter(d => d.fin >= TODAY).sort((a, b) => a.debut.localeCompare(b.debut));
+  const row = d => `<li class="pp-dispo"><span><strong>${plage(d.debut, d.fin)}</strong>${d.commentaire ? `<span>${esc(d.commentaire)}</span>` : ''}</span><span class="pp-row-actions"><button type="button" class="pp-link" data-dispo-edit="${d.id}">Modifier</button><button type="button" class="pp-link is-danger" data-dispo-del="${d.id}">Supprimer</button></span>${dispoEdit === d.id ? dispoForm(d) : ''}</li>`;
+  const body = list.length
+    ? `<div class="pp-card-head">${eyebrow('Vos disponibilités')}${dispoEdit === 'new' ? '' : '<button type="button" class="pp-link" data-dispo-add>+ Ajouter</button>'}</div><ul class="pp-dispos">${list.map(row).join('')}</ul>${dispoEdit === 'new' ? dispoForm(null) : ''}`
+    : `${eyebrow('Vos disponibilités')}<p class="pp-strong">Aucune disponibilité enregistrée pour le moment.</p><p class="pp-muted">Ajoutez une première période pour indiquer quand vous pouvez travailler — Laska s’appuie dessus pour vous proposer des missions.</p>${dispoEdit === 'new' ? dispoForm(null) : '<button type="button" class="btn btn-primary pp-sm" data-dispo-add>Ajouter une disponibilité</button>'}`;
+  return `${pageHead('Votre agenda', 'Mes disponibilités', 'Dites à Laska quand vous êtes disponible — c’est ce qui déclenche vos propositions de mission.')}<section class="pp-card">${body}</section>${contactCard()}${privacy()}`;
+}
+const dispoForm = d => `<form class="pp-subform" data-form="dispo" data-id="${d?.id || ''}" novalidate><div id="form-errors"></div><h3>${d ? 'Modifier votre disponibilité' : 'Ajouter une disponibilité'}</h3><p class="pp-muted">${d ? 'Les dates ou le commentaire ont changé ? Mettez à jour cette période.' : 'Indiquez la période où vous pouvez travailler.'}</p>
+  <div class="form-grid">${dateField({id: 'dispo-debut', name: 'debut', label: 'Début', value: d?.debut || '', required: true, mark: true, attrs: `min="${TODAY}"`})}${dateField({id: 'dispo-fin', name: 'fin', label: 'Fin', value: d?.fin || '', required: true, mark: true, attrs: `min="${TODAY}" data-after="dispo-debut-value"`})}
+  <div class="field full"><label for="dispo-com">Commentaire <span class="field-note">(facultatif)</span></label><textarea id="dispo-com" name="commentaire" rows="2" maxlength="300">${esc(d?.commentaire || '')}</textarea></div></div>
+  <div class="pp-actions"><button type="submit" class="btn btn-primary">${d ? 'Enregistrer' : 'Ajouter'}</button><button type="button" class="btn btn-outline" data-dispo-cancel>Annuler</button></div></form>`;
+
+/* ───────────── Écran : Mes documents ───────────── */
+const uploadBtn = code => `<label class="btn btn-outline pp-sm pp-upload">${icon('upload')}Déposer un fichier<span class="sr-only"> : ${esc(PIECES.find(p => p.code === code).lib)}</span><input type="file" class="sr-only" accept="application/pdf,image/jpeg,image/png,image/webp" data-upload="${code}"></label>`;
+function screenDocuments() {
+  const ps = pieces(), sit = selonSituation(), urgent = dossierAttention();
+  const situation = sit.length ? `<div class="pp-subsection">${eyebrow('Selon votre situation')}<ul class="pp-plist">${sit.map(p => `<li class="pp-need"><strong>${LIB_SITUATION[p.code] || p.lib}</strong>${A_PRESENTER.includes(p.code) ? '<p class="pp-muted">À présenter à votre contact Laska, en rendez-vous ou en visio : nous notons seulement sa date de fin de validité, jamais l’image. Rien à déposer ici.</p>' : uploadBtn(p.code)}</li>`).join('')}</ul></div>` : '';
+  const detail = `<details class="pp-fold" ${docsOpen ? 'open' : ''} data-docs-fold><summary>${icon('plus')}Voir le détail complet (${ps.length} pièces)</summary>${CATEGORIES.map(([k, t]) => `<div class="pp-cat">${eyebrow(t)}<ul class="pp-plist">${ps.filter(p => p.cat === k).map(p => `<li><a class="pp-prow" href="#/espace/documents/${p.code}"><strong>${p.lib}</strong><span class="pp-prow-state is-${p.etat}">${pieceStatut(p)}</span>${icon('chevron', 'pp-chev')}</a></li>`).join('')}</ul></div>`).join('')}</details>`;
+  const contrats = MISSIONS().slice().sort((a, b) => b.contrat.valideLe.localeCompare(a.contrat.valideLe)).map(m => { const s = signatureOf(m);
+    return `<li><a class="pp-prow" href="#/espace/missions/${m.id}/contrat"><strong>${esc(etabNom(m))}</strong><span class="pp-prow-state">${s.statut === 'complet' ? 'Signé' : `Validé le ${asDate(m.contrat.valideLe).toLocaleDateString('fr-FR')}, à signer`}</span>${icon('chevron', 'pp-chev')}</a></li>`; }).join('');
+  return `${pageHead('Votre dossier', 'Mes documents')}
+    <section class="pp-card ${urgent ? 'is-attention' : ''}">${eyebrow('Votre dossier', urgent ? 'is-attention' : '')}<p>${dossierPhrase()}</p><p class="pp-muted">Photo ou scan — PDF, JPEG, PNG ou WEBP, 10 Mo maximum.</p>${situation}
+      <p class="pp-muted">Votre contact chez Laska peut vous aider à mettre votre dossier à jour.</p>${arrowLink('#/espace/messages', `Écrire à ${PP_CONTACT.prenom}`)}${detail}</section>
+    ${card('Mes contrats', `<p class="pp-muted">Tous vos contrats, missions confondues, du plus récent au plus ancien.</p><ul class="pp-plist">${contrats}</ul>`)}${privacy()}`;
+}
+function screenPiece(p) {
+  const cat = CATEGORIES.find(([k]) => k === p.cat)[1];
+  return `${ppBack('#/espace/documents', 'Mes documents')}${pageHead(cat, p.lib)}
+    ${card('Statut', `<p class="pp-strong pp-prow-state is-${p.etat}">${pieceStatut(p)}</p>`)}
+    ${card('Fichier', p.etat === 'attente' ? `<button type="button" class="btn btn-outline pp-sm" data-justificatif="${esc(p.fichier || 'attestation-rcp.pdf')}">${icon('eye')}Voir mon fichier</button>` : '<p class="pp-muted">Aucun fichier n’est joint à cette pièce.</p>')}`;
+}
+
+/* ───────────── Écran : Mon profil ───────────── */
+function screenProfil(u) {
+  const c = {tel: PRATICIEN.tel, email: PRATICIEN.email, cp: PRATICIEN.cp, ville: PRATICIEN.ville, ...pstate().coords};
+  const coords = coordsEdit ? `<form data-form="coords" novalidate><div id="form-errors"></div><div class="form-grid">
+      <div class="field"><label for="co-tel">Téléphone</label><input id="co-tel" name="tel" inputmode="tel" autocomplete="tel" value="${esc(c.tel)}"></div>
+      <div class="field"><label for="co-email">Email de contact</label><input id="co-email" name="email" type="email" autocomplete="email" spellcheck="false" autocapitalize="off" value="${esc(c.email)}"><small id="co-email-help">C’est l’adresse où Laska vous joint. Votre email de connexion ne change pas.</small></div>
+      <div class="field"><label for="co-cp">Code postal</label><input id="co-cp" name="cp" inputmode="numeric" autocomplete="postal-code" maxlength="5" required value="${esc(c.cp)}"></div>
+      <div class="field"><label for="co-ville">Ville</label><input id="co-ville" name="ville" autocomplete="address-level2" value="${esc(c.ville)}"></div></div>
+      <div class="pp-actions"><button type="submit" class="btn btn-primary">Enregistrer</button><button type="button" class="btn btn-outline" data-coords-cancel>Annuler</button></div></form>`
+    : `<dl class="pp-pairs is-stack"><div><dt>Téléphone</dt><dd>${esc(c.tel)}</dd></div><div><dt>Email</dt><dd>${esc(c.email)}</dd></div><div><dt>Code postal et ville</dt><dd>${esc(c.cp)} ${esc(c.ville)}</dd></div></dl><button type="button" class="btn btn-outline pp-sm" data-coords-edit>${icon('pen')}Modifier mes coordonnées</button>`;
+  return `<header class="pp-head">${eyebrow('Votre profil')}<h1 tabindex="-1">${dot(`Dr ${esc(u.firstName)} ${esc(u.lastName)}.`)}</h1><p class="pp-head-sub">${PRATICIEN.specialite}</p><p>Ce que Laska a enregistré à votre sujet — vos coordonnées et votre mot de passe se modifient ici.</p></header>
+    ${card('Vos coordonnées', coords)}${contactCard()}
+    ${card('Votre situation professionnelle', `<dl class="pp-pairs is-stack"><div><dt>Numéro RPPS</dt><dd>${PRATICIEN.rpps || 'Aucun numéro RPPS enregistré chez Laska.'}</dd></div><div><dt>Inscription à l’Ordre</dt><dd>Depuis le ${dateLongue(PRATICIEN.ordre)}</dd></div><div><dt>Mode d’exercice</dt><dd>${PRATICIEN.exercice}</dd></div></dl><p class="pp-muted">Ces informations conditionnent votre éligibilité aux missions : elles sont vérifiées et gérées par Laska, vous ne pouvez pas les modifier vous-même.</p><p class="pp-muted">Une information à corriger ? ${arrowLink('#/espace/messages', `Écrire à ${PP_CONTACT.prenom}`)}</p>`)}
+    ${card('Mot de passe', `<form data-form="pw" novalidate><div id="form-errors"></div><div class="form-grid">${passwordField('pwOld', 'Mot de passe actuel')}${passwordField('pwNew', 'Nouveau mot de passe', {autocomplete: 'new-password', min: 8})}${passwordField('pwNew2', 'Confirmer le nouveau mot de passe', {autocomplete: 'new-password', min: 8})}</div><div class="pp-actions"><button type="submit" class="btn btn-primary">Changer mon mot de passe</button></div></form>`)}
+    ${privacy()}`;
+}
+
+/* ───────────── Écrans : Notifications et Messages ───────────── */
+function screenNotifs() {
+  const list = parDate(notifs()), n = list.filter(x => !x.lu).length;
+  return `${pageHead('Ce qui a bougé', 'Notifications', 'Cliquez une entrée pour ouvrir l’écran concerné.')}
+    ${n ? `<div class="pp-notifs-bar"><p>${nonLues(n)} sur ${list.length}</p><button type="button" class="pp-link" data-notif-all>${icon('check')}Tout marquer comme lu</button></div>` : ''}
+    ${list.length ? `<ul class="pp-notifs">${list.map(n => `<li><a class="pp-notif ${n.lu ? '' : 'is-unread'}" href="${n.vers}" data-notif="${n.id}"><span class="pp-notif-ico" aria-hidden="true">${icon(notifIcon(n))}</span><span class="pp-notif-main"><span class="pp-notif-top"><strong>${esc(n.titre)}</strong><time datetime="${n.quand}">${horoNotif(n.quand)}</time></span>${n.texte ? `<span class="pp-notif-text">${esc(n.texte)}</span>` : ''}</span>${n.lu ? '' : '<span class="pp-unread"><span class="sr-only">Non lue</span></span>'}</a></li>`).join('')}</ul>`
+      : card('', '<p class="pp-muted">Rien pour l’instant — vous serez prévenu ici quand quelque chose bouge : proposition, heures, contrat, dossier.</p>')}`;
+}
+function screenMessages() {
+  const reply = replyTo && allMessages().find(x => x.id === replyTo);
+  const items = allMessages().map(x => `<li class="pp-msg ${x.sens === 'envoye' ? 'is-me' : ''}" id="msg-${x.id}"><p class="pp-msg-meta">${x.sens === 'envoye' ? 'Vous' : `${esc(x.de)}, Laska`} · ${horoMsg(x.quand)}</p>${x.objet ? `<p class="pp-msg-objet">${esc(x.objet)}</p>` : ''}${x.reponseA ? `<p class="pp-muted">En réponse à « ${esc(x.reponseA)} »</p>` : ''}<p class="pp-msg-body">${esc(x.texte)}</p>
+    ${x.pieces?.length ? `<ul class="pp-attach">${x.pieces.map(([n, t]) => `<li>${icon('file')}<span><strong>${esc(n)}</strong>${esc(t)}</span></li>`).join('')}</ul>` : ''}${x.sens === 'recu' ? `<button type="button" class="pp-link" data-reply="${x.id}">Répondre</button>` : ''}</li>`).join('');
+  const pending = msgPending ? `<li class="pp-msg is-me is-pending" aria-live="polite"><p class="pp-msg-meta">Vous · maintenant</p><p class="pp-msg-body">${esc(msgPending.texte)}</p><p class="pp-pending">Votre message part dans <b data-countdown>${Math.max(0, Math.ceil((msgPending.until - Date.now()) / 1000))}</b> s. <button type="button" class="pp-link" data-msg-cancel>Annuler</button></p></li>` : '';
+  return `${pageHead('Vos échanges avec Laska', 'Messages', 'Ce que votre contact vous écrit, et ce que vous lui répondez. Joignez un fichier si besoin : Laska le reçoit directement.')}
+    <ol class="pp-thread" aria-label="Le fil">${items}${pending}</ol>
+    <form class="pp-card pp-compose" data-form="msg" novalidate><div id="form-errors"></div><h2 class="pp-card-title">Écrire à ${PP_CONTACT.prenom}</h2>
+      ${reply ? `<p class="pp-replying">En réponse à « ${esc(reply.objet || '')} » <button type="button" class="pp-x" data-reply-clear aria-label="Ne plus répondre à ce message">${icon('close')}</button></p>` : ''}
+      <div class="field full"><label for="msg-text">Votre message</label><textarea id="msg-text" name="texte" rows="4" maxlength="2000" required data-min="2" data-min-msg="Écrivez votre message." placeholder="Une question, une précision sur vos dates, un document à transmettre…">${esc(msgDraft)}</textarea></div>
+      ${msgFiles.length ? `<ul class="pp-attach is-draft" aria-label="Pièces jointes">${msgFiles.map((f, i) => `<li>${icon('file')}<span>${esc(f)}</span><button type="button" class="pp-x" data-file-remove="${i}" aria-label="Retirer ${esc(f)}">${icon('close')}</button></li>`).join('')}</ul>` : ''}
+      <div class="pp-actions"><label class="btn btn-outline pp-sm pp-upload">${icon('clip')}Joindre un fichier<input type="file" class="sr-only" multiple accept="application/pdf,image/jpeg,image/png,image/webp" data-msg-files></label><button type="submit" class="btn btn-primary pp-sm" ${msgPending ? 'disabled' : ''}>${icon('send')}Envoyer</button></div>
+      <p class="pp-muted">PDF ou photo (JPEG, PNG, WEBP), 10 Mo par fichier, cinq au plus. Votre message part 10 secondes après le clic, le temps de l’annuler.</p>
+      <p class="pp-muted">Pour un document de votre dossier (diplôme, RIB…), vous pouvez aussi le déposer à sa place dans <a class="pp-link" href="#/espace/documents">Mes documents</a>.</p></form>`;
+}
+const screenLost = () => `${card('', `<p class="pp-status-title">Cette page n’existe pas dans votre espace Laska.</p><p class="pp-muted">Vérifiez l’adresse, ou retournez à votre accueil.</p>${arrowLink('#/espace', 'Retour à l’accueil', 'btn btn-primary pp-sm')}`)}`;
 
 /* ───────────── Page : connexion ou espace ───────────── */
+/* États d’écran (formulaires ouverts, brouillons) : remis à zéro quand on change d’écran. */
+let routeOpen = '', avisEdit = '', contestOpen = '', dispoEdit = '', coordsEdit = false, docsOpen = false, joursOpen = [], replyTo = '';
+let msgDraft = '', msgFiles = [], msgPending = null, countdown = 0, lastScreen = '';
 function espacePage() {
   const u = espaceUser(); if (!u) return espaceLoginPage();
-  const sub = offerId, p = new URLSearchParams(query);
-  const views = {'': espaceHome, profil: espaceProfil, faq: espaceFaq, paie: espacePaie, planning: () => espacePlanning(['mois', 'dispos'].includes(p.get('vue')) ? p.get('vue') : 'semaine'), documents: () => espaceDocuments(p.get('doc') === 'attestation' ? 'attestation' : 'certificat'),
-    offres: () => espaceOffres(['cdi', 'candidatures'].includes(p.get('type')) ? p.get('type') : 'interim'), justificatifs: espaceJustificatifs, contrats: () => espaceContrats(['historique', 'mission', 'formation', 'signer'].includes(p.get('vue')) ? p.get('vue') : toSign().length ? 'signer' : 'historique'), fiscal: espaceFiscal, securite: espaceSecurite, avantages: () => espaceAvantages(p.get('doc') || '')};
-  return spaceShell(u, views[sub] ? sub : '', (views[sub] || espaceHome)(u));
+  const r = espaceRoute(), here = `${r.sub}/${r.id}/${r.extra}`;
+  if (here !== lastScreen) { routeOpen = avisEdit = contestOpen = dispoEdit = ''; coordsEdit = docsOpen = false; joursOpen = []; lastScreen = here; }
+  const v = resolveScreen(u, r);
+  document.title = `${v.title} — Espace praticien Laska`;
+  return `<div class="container pp-shell">${topbar(u)}${rail(r.sub)}<div class="pp-main" data-screen="${r.sub || 'accueil'}">${v.html}</div></div>`;
 }
-
-/* Connexion : les liens et aides de l’espace de référence, au style du site. */
-let loginView = 'login';
+function resolveScreen(u, r) {
+  const m = missionById(r.id), p = PIECES.find(x => x.code === r.id);
+  switch (r.sub) {
+    case '': return {html: screenAccueil(u), title: 'Accueil'};
+    case 'missions': return !r.id ? {html: screenMissions(), title: 'Mes missions'} : m ? {html: r.extra === 'contrat' ? screenContrat(m) : screenMission(m), title: 'Détail de la mission'} : {html: screenLost(), title: 'Page introuvable'};
+    case 'proposition': return {html: screenProposition(), title: 'Répondre à la proposition'};
+    case 'heures': return {html: screenHeures(), title: 'Mes heures'};
+    case 'disponibilites': return {html: screenDispos(), title: 'Mes disponibilités'};
+    case 'documents': return !r.id ? {html: screenDocuments(), title: 'Mes documents'} : p ? {html: screenPiece(pieceOf(p)), title: 'Détail du document'} : {html: screenLost(), title: 'Page introuvable'};
+    case 'profil': return {html: screenProfil(u), title: 'Mon profil'};
+    case 'notifications': return {html: screenNotifs(), title: 'Notifications'};
+    case 'messages': return {html: screenMessages(), title: 'Messages'};
+    default: return {html: screenLost(), title: 'Page introuvable'};
+  }
+}
+/* Connexion, comme la référence : une carte, l’email, le mot de passe, et à qui écrire en cas d’oubli. */
 function espaceLoginPage() {
-  const intro = [['euro', 'Vos bulletins de paie et vos avances sur paie'], ['calendar', 'Votre planning, à la semaine ou au mois'], ['pen', 'Vos contrats, signés en ligne'], ['print', 'Vos attestations, prêtes à imprimer']];
-  return `<div class="container">${breadcrumb([['Espace candidat']])}</div><section class="espace-login"><div class="container espace-login-grid">
-    <div class="espace-login-intro"><h1>${dot('Votre espace candidat.')}</h1><p class="lead">Bienvenue sur votre espace Laska Corporate : tout ce qui concerne vos missions, au même endroit.</p>
-      <ul class="espace-login-list">${intro.map(([i, t]) => `<li>${icon(i)}<span>${t}</span></li>`).join('')}</ul>
-      <div class="espace-login-links"><p>${icon('phone')}<span>Pour toute question, votre conseiller reste à votre disposition&nbsp;: <a class="text-link" href="${TEL}">${PHONE}</a></span></p><a class="text-link" href="#/mentions-legales">Mentions légales</a><a class="text-link" href="#/mentions-legales?section=editeur">Accessibilité</a></div></div>
-    <div class="form-card espace-login-card" id="login-card">${loginCard()}</div></div></section>`;
+  return `<section class="pp-login"><div class="container"><div class="form-card pp-login-card" id="login-card">${loginCard()}</div></div></section>`;
 }
 function passwordField(name, label, {autocomplete = 'current-password', help = '', min = 6} = {}) {
-  return `<div class="field full password-field"><label for="${name}">${label} <span class="req" aria-hidden="true">*</span></label><div class="password-row"><input id="${name}" name="${name}" type="password" required autocomplete="${autocomplete}" data-min="${min}" data-min-msg="Le mot de passe compte au moins ${min} caractères." ${help ? `aria-describedby="${name}-help"` : ''}><button type="button" class="password-toggle" data-reveal-password="${name}" aria-pressed="false" aria-label="Afficher le mot de passe">${icon('eye')}</button></div><p class="caps-hint" hidden>${icon('bolt')}Les majuscules sont activées.</p>${help ? `<small id="${name}-help">${help}</small>` : ''}</div>`;
+  return `<div class="field full password-field"><label for="${name}">${label}</label><div class="password-row"><input id="${name}" name="${name}" type="password" required autocomplete="${autocomplete}" data-min="${min}" data-min-msg="Le mot de passe compte au moins ${min} caractères." ${help ? `aria-describedby="${name}-help"` : ''}><button type="button" class="password-toggle" data-reveal-password="${name}" aria-pressed="false" aria-label="Afficher le mot de passe">${icon('eye')}</button></div><p class="caps-hint" hidden>${icon('bolt')}Les majuscules sont activées.</p>${help ? `<small id="${name}-help">${help}</small>` : ''}</div>`;
 }
 function loginCard() {
-  const back = `<button type="button" class="reset-link" data-login-view="login">${icon('back')}Retour à la connexion</button>`;
-  const head = (t, s) => `<div class="form-head"><div><h2 id="login-title" tabindex="-1">${t}</h2>${s ? `<p class="muted small">${s}</p>` : ''}</div></div>`;
-  const form = (id, body, submit) => `<form id="${id}" class="login-form" novalidate aria-labelledby="login-title"><div id="form-errors"></div><div class="form-grid">${body}</div><div class="form-actions"><button type="submit" class="btn btn-primary btn-full">${submit}${icon('arrow')}</button></div></form>`;
-  if (loginView === 'forgot') return head('Mot de passe oublié', 'Indiquez votre adresse : nous vous envoyons un lien pour en choisir un nouveau.') + form('forgot-form', field('forgotEmail', 'Identifiant (votre adresse email)', {type: 'email', autocomplete: 'username', full: true}), 'Recevoir le lien') + back;
-  if (loginView === 'password') return head('Changer mon mot de passe', '') + form('password-form', field('pwEmail', 'Identifiant (votre adresse email)', {type: 'email', autocomplete: 'username', full: true}) + passwordField('pwOld', 'Mot de passe actuel') + passwordField('pwNew', 'Nouveau mot de passe', {autocomplete: 'new-password', min: 8, help: '8 caractères minimum, avec au moins un chiffre.'}), 'Changer le mot de passe') + back;
-  if (loginView === 'email') return head('Changer mon adresse email', '') + form('email-form', field('emOld', 'Adresse email actuelle', {type: 'email', autocomplete: 'username', full: true}) + field('emNew', 'Nouvelle adresse email', {type: 'email', autocomplete: 'email', full: true}) + passwordField('emPassword', 'Mot de passe'), 'Changer mon adresse') + back;
-  return head('Connexion', '<span class="req">*</span> Champs obligatoires')
-    + form('login-form', field('loginEmail', 'Identifiant (votre adresse email)', {type: 'email', autocomplete: 'username', full: true, placeholder: 'nom@exemple.com'}) + passwordField('loginPassword', 'Mot de passe')
-      + `<div class="field full login-options"><label class="choice-inline"><input type="checkbox" name="remember" checked><span>Rester connecté sur cet appareil</span></label><button type="button" class="text-link" data-login-view="forgot">J’ai oublié mon mot de passe</button></div>`, 'Connexion')
-    + `<details class="login-more"><summary>${icon('plus')}Autres options</summary><div><button type="button" class="text-link" data-login-view="password">Je souhaite changer mon mot de passe</button><button type="button" class="text-link" data-login-view="email">Je souhaite changer mon adresse email</button></div></details>
-    <p class="login-new">${icon('file')}<span>Pas encore de dossier chez Laska Corporate ? <a class="text-link" href="#/postuler">Créer mon dossier</a></span></p>
-    ${MAQUETTE ? sampleNote(ESPACE_OUVERT ? 'Maquette : saisissez n’importe quelle adresse email et un mot de passe de 6 caractères ou plus. Rien n’est envoyé ni gardé.' : 'Maquette : l’espace candidat n’est pas encore ouvert. Rien n’est envoyé ni gardé.') : ''}`;
+  return `<div class="pp-login-head">${wolfMark('pp-login-wolf')}<p class="pp-login-brand">Laska</p><h1 id="login-title" tabindex="-1">Connectez-vous à votre espace.</h1></div>
+    <form id="login-form" class="login-form" novalidate aria-labelledby="login-title"><div id="form-errors"></div><div class="form-grid"><div class="field full"><label for="loginEmail">Email</label><input id="loginEmail" name="loginEmail" type="email" required autocomplete="username" spellcheck="false" autocapitalize="off"></div>${passwordField('loginPassword', 'Mot de passe')}</div>
+      <p class="pp-muted">Mot de passe oublié ? Écrivez à <a class="pp-link" href="mailto:${MAIL}">${MAIL}</a> — l’équipe Laska peut régénérer votre accès.</p>
+      <div class="form-actions"><button type="submit" class="btn btn-primary btn-full">${icon('logout', 'pp-flip')}Se connecter</button></div></form>
+    ${MAQUETTE ? sampleNote(ESPACE_OUVERT ? 'Maquette : saisissez n’importe quelle adresse email et un mot de passe de 6 caractères ou plus. Rien n’est envoyé ni gardé.' : 'Maquette : l’espace praticien n’est pas encore ouvert. Rien n’est envoyé ni gardé.') : ''}`;
 }
-/* Tentative de connexion tant que l’espace n’est pas ouvert : on le dit simplement, avec le conseiller en recours. */
+/* Tentative de connexion tant que l’espace n’est pas ouvert (ESPACE_OUVERT à false). */
 const loginSoon = () => `<div class="success-state login-soon"><span class="soon-symbol" aria-hidden="true">${icon('clock')}</span><h2 tabindex="-1">${dot('Votre espace arrive bientôt.')}</h2>
-  <p class="space-lead">La connexion à l’espace candidat n’est pas encore ouverte. Vous pourrez vous connecter ici dès son lancement.</p>
+  <p class="space-lead">La connexion à l’espace praticien n’est pas encore ouverte. Vous pourrez vous connecter ici dès son lancement.</p>
   <p class="space-lead">En attendant, votre conseiller répond à vos questions.</p>
-  <div class="actions"><a class="btn btn-primary" href="${TEL}">${icon('phone')}${PHONE}</a><button type="button" class="reset-link" data-login-view="login">${icon('back')}Retour à la connexion</button></div></div>`;
-
-/* ───────────── Cadre de l’espace : menu latéral (ordinateur) ou menu déroulant (mobile) ───────────── */
-/* Pastilles du menu : seulement ce qui attend une action (contrats à signer, pièces à fournir). */
-/* Les pastilles du menu viennent de la liste « À faire » : leur total est toujours celui du bouton mobile. */
-const navBadge = ([key, , , pages = [key]]) => { const n = key ? todoItems().filter(t => pages.some(p => t.href.startsWith(`#/espace/${p}`))).length : 0; return n ? `<span class="seg-badge" aria-label="${n} à traiter">${n}</span>` : ''; };
-const sideNav = sub => { const on = navGroupOf(sub)[0];
-  return `<nav class="side-nav" aria-label="Menu de mon espace"><ul>${SPACE_NAV.map(entry => { const [key, label, ic] = entry; return `<li><a href="#/espace${key ? '/' + key : ''}" ${key === on ? 'aria-current="page"' : ''}>${icon(ic)}<span>${label}</span>${navBadge(entry)}</a></li>`; }).join('')}</ul></nav>`; };
-const spaceLabel = sub => navGroupOf(sub)[1];
-const advisorCard = () => `<div class="agent-who"><span class="space-avatar" aria-hidden="true">${ADVISOR.prenom[0]}${ADVISOR.nom[0]}</span><p class="agent-name">${ADVISOR.prenom} ${ADVISOR.nom}<small>Votre conseillère</small></p></div>
-  <a class="btn btn-primary" href="${TEL}">${icon('phone')}${PHONE}</a><button type="button" class="btn btn-outline" data-callback>Être rappelé</button>`;
-function spaceShell(u, sub, content) {
-  const todo = todoItems().length;
-  return `<div class="container space-shell">
-    <aside class="space-side" aria-label="Mon espace candidat">
-      <div class="side-who"><span class="space-avatar" aria-hidden="true">${initials(u)}</span><p><strong>Dr ${esc(u.firstName)} ${esc(u.lastName)}</strong><small>Espace candidat</small></p></div>
-      ${sideNav(sub)}
-      <button type="button" class="side-logout" data-logout>${icon('logout')}Déconnexion</button>
-    </aside>
-    <div class="space-main">
-      <details class="space-switch"><summary><span class="space-avatar" aria-hidden="true">${initials(u)}</span><span><small>Mon espace · Dr ${esc(u.lastName)}</small><strong>${spaceLabel(sub)}</strong></span>${todo ? `<span class="seg-badge" aria-label="${todo} à traiter">${todo}</span>` : ''}${icon('down', 'switch-caret')}</summary>
-        ${sideNav(sub)}<button type="button" class="side-logout" data-logout>${icon('logout')}Déconnexion</button></details>
-      ${content}
-    </div>
-  </div>`;
-}
-/* Titre d’une page de l’espace : le menu situe déjà la page, pas de retour ni d’icône en plus. */
-const spaceHead = (key, title, lead = '') => `<header class="space-head"><h1>${title}</h1>${lead ? `<p>${lead}</p>` : ''}</header>`;
-/* Pastille : corail quand elle attend une action (contrat à signer), menthe quand elle compte (offres, candidatures). */
-const segTabs = (items, current, label) => `<nav class="space-seg" aria-label="${label}">${items.map(([key, text, href, badge, quiet]) => `<a href="${href}" ${key === current ? 'aria-current="page"' : ''}>${text}${badge ? `<span class="seg-badge ${quiet ? 'is-quiet' : ''}">${badge}</span>` : ''}</a>`).join('')}</nav>`;
-const statusPill = s => ({sign: '<span class="space-pill is-sign">À signer</span>', signed: '<span class="space-pill is-signed">Signé</span>', done: '<span class="space-pill is-done">Terminé</span>'})[s];
-const period = (a, b) => a === b ? `Le ${dateLabel(a).toLowerCase()}` : `Du ${dayMonth(a, true)} au ${dayMonth(b, true)} ${year(b)}`;
-
-/* ───────────── Page d’accueil ───────────── */
-/* À faire : une ligne par action, un seul bouton par ligne. Ce qui n’attend rien n’y figure pas. */
-function todoItems() {
-  const d = dispos(), horizon = addDays(mondayOf(TODAY), 27), declared = Object.keys(d).some(k => k >= TODAY && k <= horizon);
-  return [
-    ...toSign().map(c => ({ico: 'pen', text: 'Signer votre contrat', sub: `${c.title} · ${period(c.from, c.to).toLowerCase()}`, href: '#/espace/contrats?vue=signer', label: 'Signer'})),
-    ...docsToDo().map(x => ({ico: 'badge', text: `${x.status === 'missing' ? 'Ajouter' : 'Renouveler'} : ${x.label}`, sub: x.status === 'missing' ? 'À fournir avant votre prochaine mission' : `Expire le ${dateLabel(x.until).toLowerCase()}`, href: '#/espace/justificatifs', label: x.status === 'missing' ? 'Ajouter' : 'Mettre à jour'})),
-    ...(declared ? [] : [{ico: 'clock', text: 'Indiquer vos disponibilités', sub: 'Pour recevoir des missions à vos dates', href: '#/espace/planning?vue=dispos', label: 'Indiquer'}])
-  ];
-}
-/* Accueil : bonjour, ce qu’il y a à faire, les prochaines missions, les messages. Tout le reste est dans le menu. */
-function espaceHome(u) {
-  const read = store(READ_KEY, []), unread = messages().filter(m => !read.includes(m.id)).length, todo = todoItems();
-  const next = missions().filter(m => m.date >= TODAY).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 3);
-  const when = iso => { const n = daysUntil(iso); return n === 0 ? 'Aujourd’hui' : n === 1 ? 'Demain' : (t => t[0].toUpperCase() + t.slice(1))(fmtDate(iso, {weekday: 'long'})); };
-  return `<div class="space-home">
-    <header class="space-hello"><h1>${dot(`Bonjour ${esc(u.firstName)}.`)}</h1><p>${todo.length ? `Vous avez ${todo.length} chose${todo.length > 1 ? 's' : ''} à faire.` : 'Tout est à jour.'}</p></header>
-    <section class="space-card home-todo" aria-labelledby="todo-title"><h2 id="todo-title">À faire</h2>
-      ${todo.length ? `<ul class="todo-list">${todo.map(t => `<li class="todo-row"><span class="space-ico tone-coral">${icon(t.ico)}</span><div><strong>${t.text}</strong><small>${esc(t.sub)}</small></div><a class="btn btn-primary" href="${t.href}">${t.label}${icon('arrow')}</a></li>`).join('')}</ul>` : `<p class="todo-done">${icon('check')}<span>Rien à faire : vos contrats sont signés, votre dossier et vos disponibilités sont à jour.</span></p>`}</section>
-    <div class="space-duo">
-      <section class="space-card home-next" aria-labelledby="next-title"><h2 id="next-title">Mes prochaines missions</h2>
-        ${next.length ? `<ul class="next-list">${next.map(m => `<li class="next-row"><span class="next-date" aria-hidden="true"><small>${fmtDate(m.date, {month: 'short'})}</small><b>${asDate(m.date).getDate()}</b></span><div><strong>${when(m.date)} · ${m.type}</strong><small><span class="sr-only">${dateLabel(m.date)}, </span>${esc(m.spec)} · ${esc(m.place)}</small></div></li>`).join('')}</ul>` : '<p class="space-lead">Aucune mission prévue pour l’instant.</p>'}
-        <a class="text-link" href="#/espace/planning?vue=semaine">Voir mon planning${icon('arrow')}</a></section>
-      <section class="space-card space-messages" aria-labelledby="msg-title"><div class="space-card-head"><h2 id="msg-title">Messages</h2>${unread ? `<span class="seg-badge">${unread} nouveau${unread > 1 ? 'x' : ''}</span>` : ''}</div>
-        <ul class="msg-list">${messages().map(m => `<li class="msg ${read.includes(m.id) ? '' : 'is-unread'}" data-msg="${m.id}"><span class="msg-dot" aria-hidden="true"></span><div><p>${m.text}</p><small>${m.when === 0 ? 'Aujourd’hui' : m.when === -1 ? 'Hier' : dateLabel(m.date)} · ${ADVISOR.prenom} ${ADVISOR.nom}</small></div>${m.link ? `<a class="btn btn-outline msg-action" href="${m.link}" data-msg-read="${m.id}">${m.label}</a>` : `<button type="button" class="reset-link" data-msg-read="${m.id}">${read.includes(m.id) ? 'Lu' : 'Marquer comme lu'}</button>`}</li>`).join('')}</ul></section>
-    </div>
-    <section class="space-card home-agent" aria-labelledby="agent-title"><h2 id="agent-title">Ma conseillère</h2><div class="side-help">${advisorCard()}</div></section>
-    ${sampleNote('Maquette : praticienne, missions, contrats et messages d’exemple, fictifs.')}
-  </div>`;
-}
-
-/* ───────────── Mon profil ───────────── */
-let profileEdit = '';
-function espaceProfil(u) {
-  const p = profile(), row = (k, v) => `<div><dt>${k}</dt><dd>${v ? esc(v) : '<span class="muted">—</span>'}</dd></div>`;
-  const ibanMasked = p.iban.replace(/\s/g, '').replace(/^(.{4}).*(.{3})$/, '$1 •••• •••• •••• •••• •••• $2');
-  const card = (key, title, view, edit) => `<section class="space-card profile-card" id="profil-${key}"><div class="space-card-head"><h2>${title}</h2>${profileEdit === key ? '' : `<button type="button" class="review-edit" data-profile-edit="${key}">${icon('pen')}Modifier</button>`}</div>${profileEdit === key ? edit : view}</section>`;
-  const f = (n, l, o = {}) => field(`pf-${n}`, l, {required: false, value: p[n] || '', ...o});
-  const identityView = `<div class="profile-cols"><dl class="profile-dl">${row('Civilité', p.civilite)}${row('Nom', p.nom)}${row('Nom de jeune fille', p.nomJeuneFille)}${row('Prénom', p.prenom)}${row('Téléphone 1', p.tel1)}${row('Téléphone 2', p.tel2)}${row('Email', u.email)}${row('Né(e) le', p.naissance ? dateLabel(p.naissance) : '')}${row('Département de naissance', p.depNaissance)}${row('Mobilité', p.mobilite)}</dl>
-    <dl class="profile-dl">${row('Appartement, étage', p.app)}${row('Bâtiment, résidence', p.bat)}${row('N° et voie', p.voie)}${row('Lieu-dit, boîte postale', p.lieuDit)}${row('Code postal et ville', `${p.cp} ${p.ville}`.trim())}${row('Pays', p.pays)}${row('Nationalité', p.nationalite)}${row('Né(e) à', p.lieuNaissance)}${row('Pays de naissance', p.paysNaissance)}</dl></div>`;
-  const identityEdit = `<form class="profile-form" data-profile-form="identite" novalidate><div id="form-errors"></div><div class="form-grid">${f('civilite', 'Civilité', {options: ['Madame', 'Monsieur']})}${f('nomJeuneFille', 'Nom de jeune fille')}${f('tel1', 'Téléphone 1', {type: 'tel'})}${f('tel2', 'Téléphone 2', {type: 'tel'})}${f('app', 'Appartement, étage')}${f('bat', 'Bâtiment, résidence')}${f('voie', 'N° et voie', {full: true})}${f('lieuDit', 'Lieu-dit, boîte postale')}${f('cp', 'Code postal', {attrs: 'inputmode="numeric" maxlength="5"'})}${f('ville', 'Ville')}${f('pays', 'Pays', {options: countries.filter(c => c !== 'Autre pays')})}${f('mobilite', 'Mobilité', {full: true, placeholder: 'Régions où vous acceptez des missions'})}</div>
-    <p class="muted small">Nom, prénom, date et lieu de naissance : pour les modifier, contactez votre conseillère (justificatif demandé).</p><div class="profile-actions"><button type="submit" class="btn btn-primary">Enregistrer</button><button type="button" class="reset-link" data-profile-cancel>Annuler</button></div></form>`;
-  const payView = `<div class="pay-choice" role="list">${['Chèque', 'Virement en France ou outre-mer', 'Virement à l’étranger'].map(m => `<span role="listitem" class="pay-opt ${p.paiement === m ? 'is-on' : ''}">${p.paiement === m ? icon('check') : ''}${m}</span>`).join('')}</div><dl class="profile-dl is-inline">${row('BIC', p.bic)}${row('IBAN', ibanMasked)}</dl>`;
-  const payEdit = `<form class="profile-form" data-profile-form="paiement" novalidate><div id="form-errors"></div><div class="form-grid">${pills('pf-paiement', 'Moyen de paiement', ['Chèque', 'Virement en France ou outre-mer', 'Virement à l’étranger'], p.paiement)}${f('bic', 'BIC', {attrs: 'maxlength="11" autocapitalize="characters"'})}${f('iban', 'IBAN', {full: true, value: '', placeholder: 'FR76 …', help: 'Pour votre sécurité, l’IBAN actuel n’est pas réaffiché : saisissez le nouveau en entier.'})}</div><div class="profile-actions"><button type="submit" class="btn btn-primary">Enregistrer</button><button type="button" class="reset-link" data-profile-cancel>Annuler</button></div></form>`;
-  return `<div class="space-page">${groupHead('profil', 'Vos informations personnelles et votre moyen de paiement.')}
-    ${card('identite', 'Identité', identityView, identityEdit)}
-    ${card('paiement', 'Mon moyen de paiement', payView, payEdit)}
-    <p class="proof-line">${icon('check')}Signature en ligne acceptée (convention de preuve)</p>
-    ${sampleNote('Maquette : informations d’exemple, fictives.')}</div>`;
-}
-
-/* ───────────── Questions fréquentes ───────────── */
-const spaceFaq = lazy(() => [
-  ['Comment lire votre bulletin de paie', 'En haut : vos heures et le salaire de chaque mission. Au milieu : les indemnités de fin de mission et de congés payés, puis les cotisations sociales. En bas : le net à payer, le montant versé et la date du virement. Une ligne vous semble fausse ? Votre conseillère la vérifie avec vous.'],
-  ['Vous n’avez pas encaissé un chèque depuis plus de 1 an', 'Un chèque n’est plus encaissable au-delà d’un an et huit jours après sa date d’émission. Contactez votre conseillère : un nouveau paiement est émis, de préférence par virement.'],
-  ['Vous avez perdu votre chèque', 'Prévenez votre conseillère au plus vite : le chèque est bloqué, puis un nouveau paiement vous est envoyé. Pensez à passer au virement dans « Mon profil ».'],
-  ['Vous n’arrivez pas à ouvrir vos documents en ligne', 'Vos bulletins et contrats y sont déposés avec l’adresse email de votre espace. Vérifiez cette adresse dans « Mon profil », utilisez « J’ai oublié mon mot de passe », puis appelez votre conseillère si le problème continue.'],
-  ['Questions courantes', `Démarches d’exercice, disponibilités, offres : retrouvez les réponses dans les <a class="text-link" href="#/praticiens?faq=1">questions fréquentes des praticiens</a>, ou appelez le ${PHONE}.`]
-]);
-function espaceFaq() {
-  return `<div class="space-page">${groupHead('faq', 'Paie, paiements, accès : les réponses aux questions les plus posées.')}${faq(spaceFaq())}${sampleNote('Maquette : réponses proposées, à faire valider.')}</div>`;
-}
-
-/* ───────────── Ma paie ───────────── */
-function espacePaie() {
-  const asked = store(ADVANCE_KEY, []), done = spaceContracts().filter(c => c.status !== 'sign');
-  return `<div class="space-page">${groupHead('paie', 'Vos bulletins de salaire et vos demandes d’avance sur paie.')}
-    <div class="space-split">
-      <section class="space-card"><h2>Mes bulletins de salaire</h2>${payslips().length ? `<ul class="pay-list">${payslips().map(b => `<li class="pay-row"><span class="space-ico tone-${b.ready ? 'teal' : 'sand'}">${icon(b.ready ? 'euro' : 'clock')}</span><div><strong>Bulletin ${b.label}</strong><small>${b.what}</small><small>${b.ready ? `Net versé : <b>${euros(b.net)}</b>, le ${dayMonth(b.paid, true)} par virement` : `Disponible le ${dayMonth(b.paid, true)} : vous recevez un email`}</small></div>${b.ready ? `<button type="button" class="btn btn-outline" data-payslip="${b.label}">${icon('file')}Voir le bulletin</button>` : '<span class="space-pill is-progress">En préparation</span>'}</li>`).join('')}</ul>${sampleNote('Maquette : bulletins d’exemple, fictifs.')}` : `<div class="space-empty">${icon('euro')}<p><strong>Votre premier bulletin de salaire en version électronique sera accessible ici.</strong>Il arrive au début du mois qui suit votre première mission, et vous recevez un email à chaque nouveau bulletin.</p></div>`}</section>
-      <section class="space-card"><h2>Demander une avance sur ma paie <small>(acompte)</small></h2>
-        <form id="advance-form" novalidate><div id="form-errors"></div><div class="form-grid">
-          ${field('advMission', 'Mission concernée', {options: done.map(c => `${c.title} (${c.ref})`), full: true})}
-          ${field('advAmount', 'Montant souhaité, en euros', {full: true, attrs: 'inputmode="decimal" data-amount', help: 'Jusqu’à la moitié de ce que vous avez déjà gagné sur cette mission.', placeholder: 'Ex. 300'})}
-        </div><p class="muted small">${icon('shield')}Versé par virement sur votre compte ${esc(profile().iban.slice(0, 4))} •••• ${esc(profile().iban.replace(/\s/g, '').slice(-3))}, sous 48 h ouvrées.</p>
-        <div class="form-actions"><button type="submit" class="btn btn-primary btn-full">Envoyer ma demande${icon('arrow')}</button></div></form>
-        ${asked.length ? `<h3 class="space-sub">Mes demandes</h3><ul class="space-rows">${asked.map(a => `<li><span><strong>${esc(a.amount)} €</strong>${esc(a.mission)}</span><span class="space-pill is-signed">Envoyée le ${dayMonth(a.date)}</span></li>`).join('')}</ul>` : ''}
-      </section>
-    </div></div>`;
-}
-
-/* Bulletins de salaire : un par mois travaillé, les deux derniers. EXEMPLES calculés sur les tarifs d’exemple (RATE),
-   net ≈ 78 % du brut, versé le 5 du mois suivant. En production : les bulletins du logiciel de paie. */
-const payslips = () => {
-  const byMonth = {};
-  missions().filter(m => m.date < TODAY).forEach(m => (byMonth[m.date.slice(0, 7)] ||= []).push(m));
-  return Object.keys(byMonth).sort().reverse().slice(0, 2).map(ym => {
-    const ms = byMonth[ym], [y, mo] = ym.split('-').map(Number), gross = ms.reduce((n, m) => n + (RATE[m.type] || 0), 0);
-    const paid = isoOf(mo === 12 ? y + 1 : y, mo % 12, 5), counts = {};
-    ms.forEach(m => counts[m.type] = (counts[m.type] || 0) + 1);
-    return {label: `${/^[aeiou]/.test(MONTHS[mo - 1]) ? 'd’' : 'de '}${MONTHS[mo - 1]} ${y}`, what: Object.entries(counts).map(([t, n]) => `${n} × ${t}`).join(' · '), net: Math.round(gross * 78) / 100, paid, ready: TODAY >= paid};
-  });
-};
-
-/* ───────────── Mon planning ───────────── */
-let planWeek = 0, planMonth = 0;
-const missionsOn = iso => missions().filter(m => m.date === iso);
-const missionChip = (m, short = false) => `<span class="plan-chip ${m.ref.startsWith('CF') ? 'is-training' : ''}"><strong>${m.type}</strong>${short ? '' : `<small>${esc(m.spec)}<br>${esc(m.place)}</small>`}</span>`;
-function planView(vue) {
-  if (vue === 'semaine') {
-    const start = addDays(mondayOf(TODAY), planWeek * 7), days = Array.from({length: 7}, (_, i) => addDays(start, i));
-    return `<div class="plan-nav"><button type="button" class="plan-step" data-plan-step="-1" aria-label="Semaine précédente">${icon('back')}</button><h2 aria-live="polite">Semaine du ${dayMonth(start, true)} au ${dayMonth(days[6], true)} ${year(days[6])}</h2><button type="button" class="plan-step" data-plan-step="1" aria-label="Semaine suivante">${icon('arrow')}</button>${planWeek ? '<button type="button" class="reset-link" data-plan-today>Cette semaine</button>' : ''}</div>
-      <ol class="plan-week">${days.map((d, i) => { const ms = missionsOn(d); return `<li class="plan-day ${d === TODAY ? 'is-today' : ''} ${ms.length ? 'has-mission' : ''}"><span class="plan-date"><abbr title="${WEEKDAYS[i][1]}">${WEEKDAYS[i][0]}</abbr><b>${asDate(d).getDate()}</b></span>${ms.length ? ms.map(m => missionChip(m)).join('') : '<span class="plan-free">Libre</span>'}</li>`; }).join('')}</ol>`;
-  }
-  const ref = asDate(TODAY); ref.setDate(1); ref.setMonth(ref.getMonth() + planMonth);
-  const y = ref.getFullYear(), mo = ref.getMonth(), first = (new Date(y, mo, 1).getDay() + 6) % 7, n = new Date(y, mo + 1, 0).getDate();
-  let cells = ''; for (let i = 0; i < first; i++) cells += '<li class="plan-cell is-blank" aria-hidden="true"></li>';
-  for (let d = 1; d <= n; d++) { const iso = isoOf(y, mo, d), ms = missionsOn(iso); cells += `<li class="plan-cell ${iso === TODAY ? 'is-today' : ''} ${ms.length ? 'has-mission' : ''}"><b>${d}</b>${ms.map(m => missionChip(m, true)).join('')}${ms.length ? `<span class="sr-only">${ms.map(m => `${m.type}, ${m.place}`).join(' ; ')}</span>` : ''}</li>`; }
-  const count = missions().filter(m => m.date.startsWith(isoOf(y, mo, 1).slice(0, 7))).length;
-  return `<div class="plan-nav"><button type="button" class="plan-step" data-plan-step="-1" aria-label="Mois précédent">${icon('back')}</button><h2 aria-live="polite">${MONTHS[mo][0].toUpperCase() + MONTHS[mo].slice(1)} ${y} <small>${count ? `${count} jour${count > 1 ? 's' : ''} de mission` : 'Aucune mission'}</small></h2><button type="button" class="plan-step" data-plan-step="1" aria-label="Mois suivant">${icon('arrow')}</button>${planMonth ? '<button type="button" class="reset-link" data-plan-today>Ce mois-ci</button>' : ''}</div>
-    <div class="plan-month"><div class="plan-head" aria-hidden="true">${WEEKDAYS.map(([s]) => `<span>${s}</span>`).join('')}</div><ol class="plan-grid">${cells}</ol></div>`;
-}
-function espacePlanning(vue) {
-  const tabs = segTabs([['semaine', 'Semaine', '#/espace/planning?vue=semaine'], ['mois', 'Mois', '#/espace/planning?vue=mois'], ['dispos', 'Mes disponibilités', '#/espace/planning?vue=dispos']], vue, 'Affichage du planning');
-  if (vue === 'dispos') return `<div class="space-page">${spaceHead('planning', 'Mon planning', 'Appuyez sur un jour pour dire si vous êtes disponible : votre conseillère vous propose des missions à ces dates.')}${tabs}
-    <section class="space-card" id="dispo-view">${dispoView()}</section></div>`;
-  return `<div class="space-page">${spaceHead('planning', 'Mon planning')}${tabs}
-    <section class="space-card plan-card" id="plan-view" data-vue="${vue}">${planView(vue)}</section>
-    <p class="plan-legend"><span class="plan-chip"><strong>Mission</strong></span><span class="plan-chip is-training"><strong>Formation</strong></span><span>Une mission vous semble manquer ? Appelez le <a class="text-link" href="${TEL}">${PHONE}</a>.</span></p></div>`;
-}
-/* Disponibilités : 4 semaines à partir de ce lundi. Un appui fait passer le jour de « non renseigné » à « disponible »,
-   puis « indisponible », puis de nouveau « non renseigné ». Jours passés et jours de mission : non modifiables. */
-const DISPO_LABEL = {'': 'Non renseigné', dispo: 'Disponible', off: 'Indisponible'};
-function dispoView() {
-  const d = dispos(), start = mondayOf(TODAY), days = Array.from({length: 28}, (_, i) => addDays(start, i));
-  const free = days.filter(x => x >= TODAY && !missionsOn(x).length), count = k => free.filter(x => (d[x] || '') === k).length;
-  const cell = iso => {
-    const i = (asDate(iso).getDay() + 6) % 7, num = asDate(iso).getDate(), head = `<span class="dispo-date"><b>${num}</b>${num === 1 || iso === days[0] ? `<span>${fmtDate(iso, {month: 'short'})}</span>` : ''}</span>`;
-    if (iso < TODAY) return `<li class="dispo-day is-past" aria-hidden="true">${head}</li>`;
-    const m = missionsOn(iso)[0];
-    if (m) return `<li class="dispo-day is-mission">${head}<span class="dispo-state">${icon('calendar')}Mission</span><span class="sr-only">${dateLabel(iso)} : mission, ${m.type}</span></li>`;
-    const st = d[iso] || '';
-    return `<li><button type="button" class="dispo-day is-${st || 'unset'} ${iso === TODAY ? 'is-today' : ''}" data-dispo="${iso}" aria-label="${dateLabel(iso)} : ${DISPO_LABEL[st].toLowerCase()}. Appuyez pour changer.">${head}<span class="dispo-state" aria-hidden="true">${st === 'dispo' ? icon('check') : st === 'off' ? icon('close') : ''}${st ? DISPO_LABEL[st] : 'À indiquer'}</span></button></li>`;
-  };
-  return `<div class="dispo-head"><p class="dispo-count" aria-live="polite"><strong>${count('dispo')}</strong> jour${count('dispo') > 1 ? 's' : ''} disponible${count('dispo') > 1 ? 's' : ''} · <strong>${count('off')}</strong> indisponible${count('off') > 1 ? 's' : ''} · <strong>${count('')}</strong> à indiquer</p>
-      <div class="dispo-quick"><button type="button" class="btn btn-outline" data-dispo-all="dispo">${icon('check')}Disponible tous les jours libres</button><button type="button" class="btn btn-outline" data-dispo-all="weekend">${icon('calendar')}Seulement les week-ends</button>${Object.keys(d).length ? `<button type="button" class="reset-link" data-dispo-all="clear">${icon('close')}Tout effacer</button>` : ''}</div></div>
-    <p class="dispo-how">${icon('help')}<span><strong>Appuyez sur un jour :</strong> 1 fois, disponible · 2 fois, indisponible · 3 fois, effacé.</span></p>
-    <div class="dispo-weekdays" aria-hidden="true">${WEEKDAYS.map(([s]) => `<span>${s}</span>`).join('')}</div>
-    <ol class="dispo-grid" aria-label="Mes disponibilités, du ${dayMonth(start, true)} au ${dayMonth(days.at(-1), true)}">${days.map(cell).join('')}</ol>
-    <p class="plan-legend"><span class="dispo-key is-dispo">${icon('check')}Disponible</span><span class="dispo-key is-off">${icon('close')}Indisponible</span><span class="dispo-key is-mission">${icon('calendar')}Mission prévue</span><span>Vos réponses sont envoyées à votre conseillère à chaque changement.</span></p>`;
-}
-
-/* ───────────── Mes attestations ───────────── */
-function espaceDocuments(doc) {
-  const ended = spaceContracts().filter(c => c.status === 'done');
-  const what = doc === 'certificat' ? ['Certificat de travail', 'Il atteste des missions réalisées : dates, établissement, fonction. Utile pour un nouvel employeur ou l’Ordre.'] : ['Attestation de salaire', 'Elle récapitule les salaires d’une période : utile pour un arrêt de travail, un congé maternité ou une demande de prêt.'];
-  return `<div class="space-page">${groupHead('documents', 'Des documents prêts à imprimer, établis à partir de vos missions.')}
-    <section class="space-card"><p class="doc-switch-label">Quel document ?</p><nav class="doc-switch" aria-label="Type de document">${[['certificat', 'Certificat de travail'], ['attestation', 'Attestation de salaire']].map(([k, t]) => `<a href="#/espace/documents?doc=${k}" ${k === doc ? 'aria-current="page"' : ''}>${t}</a>`).join('')}</nav><h2>${what[0]}</h2><p class="space-lead">${what[1]}</p>
-      <form id="doc-form" data-doc="${what[0]}" novalidate><div id="form-errors"></div><div class="form-grid">
-        ${doc === 'certificat' ? field('docMission', 'Mission', {options: ended.map(c => `${c.title}, ${period(c.from, c.to).toLowerCase()}`), full: true}) : field('docPeriod', 'Période', {options: [`Mois dernier`, `3 derniers mois`, `12 derniers mois`, `Année ${yearNow()}`], full: true})}
-      </div><div class="form-actions"><button type="submit" class="btn btn-primary">${icon('print')}Préparer le document</button></div></form>
-      <div id="doc-result" aria-live="polite"></div></section></div>`;
-}
-
-/* ───────────── Mes offres d’emploi ───────────── */
-function espaceOffres(type) {
-  const list = offers.filter(o => type === 'cdi' ? o.contract !== 'Intérim' : o.contract === 'Intérim');
-  const tabs = segTabs([['interim', 'Intérim', '#/espace/offres?type=interim', offers.filter(o => o.contract === 'Intérim').length, true], ['cdi', 'CDD, CDI', '#/espace/offres?type=cdi', offers.filter(o => o.contract !== 'Intérim').length, true], ['candidatures', 'Mes candidatures', '#/espace/offres?type=candidatures', applications().length, true]], type, 'Mes offres d’emploi');
-  if (type === 'candidatures') return `<div class="space-page">${spaceHead('offres', 'Mes offres d’emploi', 'Où en sont vos candidatures : votre conseillère vous appelle à chaque étape importante.')}${tabs}
-    <section class="space-card">${applications().length ? `<ul class="app-list">${applications().map(appRow).join('')}</ul>` : `<div class="space-empty">${icon('briefcase')}<p><strong>Aucune candidature pour l’instant.</strong>Postulez depuis une offre : elle apparaîtra ici avec son avancement.</p></div>`}</section>
-    <p class="space-more"><a class="text-link" href="#/offres?gardees=1">${icon('heart')}Mes offres gardées (${favList().length})</a><a class="text-link" href="#/offres">Rechercher parmi toutes les offres${icon('arrow')}</a></p></div>`;
-  return `<div class="space-page">${spaceHead('offres', 'Mes offres d’emploi', 'Les offres ouvertes, selon le contrat recherché.')}${tabs}
-    ${list.length ? `<div class="offer-grid space-offers">${list.map(offerCard).join('')}</div>` : `<div class="space-empty">${icon('briefcase')}<p><strong>Aucune offre pour l’instant.</strong>Votre conseillère vous prévient dès qu’une offre correspond à votre profil.</p></div>`}
-    <p class="space-more"><a class="text-link" href="#/offres">Rechercher parmi toutes les offres${icon('arrow')}</a></p></div>`;
-}
-/* Une candidature : l’offre, la date d’envoi et un suivi en 4 étapes (l’étape en cours est nommée en toutes lettres). */
-function appRow(a) {
-  const o = offers.find(x => x.id === a.offer), last = a.step === APP_STEPS.length - 1;
-  return `<li class="app-row"><div class="app-main"><span class="row-num" aria-hidden="true">${o.num}</span><div><strong>${esc(o.specialty)}</strong><small>${esc(o.place)} · ${slotRange(o)} · réf. ${o.ref}</small><small>Envoyée le ${dateLabel(a.date).toLowerCase()}</small></div><span class="space-pill ${last ? 'is-signed' : 'is-progress'}">${APP_STEPS[a.step]}</span><a class="btn btn-outline" href="#/offre/${o.id}">Voir l’offre</a></div>
-    <ol class="app-steps" aria-label="Avancement : étape ${a.step + 1} sur ${APP_STEPS.length}, ${APP_STEPS[a.step].toLowerCase()}">${APP_STEPS.map((s, i) => `<li class="${i < a.step ? 'is-done' : i === a.step ? 'is-now' : ''}"><span aria-hidden="true">${i < a.step ? icon('check') : i + 1}</span>${s}</li>`).join('')}</ol></li>`;
-}
-
-/* ───────────── Mes justificatifs ───────────── */
-const DOC_STATE = {ok: ['À jour', 'is-signed'], expiring: ['À renouveler', 'is-warn'], missing: ['À fournir', 'is-sign'], review: ['En vérification', 'is-done']};
-function espaceJustificatifs() {
-  const docs = spaceDocs(), ok = docs.filter(d => d.status === 'ok').length, todo = docsToDo();
-  const sub = d => d.status === 'review' ? `Reçu : ${esc(d.file)}. Votre conseillère le vérifie sous 48 h.` : d.status === 'missing' ? 'À fournir avant votre prochaine mission.' : d.until ? (d.status === 'expiring' ? `Expire dans ${daysUntil(d.until)} jours, le ${dateLabel(d.until).toLowerCase()}.` : `Valable jusqu’au ${dateLabel(d.until).toLowerCase()}.`) : 'Vérifié par votre conseillère.';
-  const row = d => `<li class="doc-row is-${d.status}"><span class="space-ico tone-${d.status === 'ok' ? 'teal' : d.status === 'review' ? 'ink' : d.status === 'missing' ? 'coral' : 'sand'}">${icon(d.status === 'ok' ? 'check' : d.status === 'review' ? 'clock' : 'file')}</span>
-    <div><strong>${d.label}</strong><small>${sub(d)}</small>${d.key === 'rpps' || d.key === 'afgsu' ? explain(d.key, 'is-compact') : ''}</div><span class="space-pill ${DOC_STATE[d.status][1]}">${DOC_STATE[d.status][0]}</span>
-    <label class="btn ${d.status === 'missing' || d.status === 'expiring' ? 'btn-primary' : 'btn-outline'} doc-upload">${icon('file')}${d.status === 'missing' ? 'Ajouter' : d.status === 'expiring' ? 'Mettre à jour' : 'Remplacer'}<span class="sr-only"> : ${d.label}</span><input type="file" class="sr-only" data-doc-up="${d.key}" accept="application/pdf,.pdf,image/*"></label></li>`;
-  return `<div class="space-page">${groupHead('justificatifs', 'Les pièces de votre dossier, demandées avant chaque mission. Gardez-les à jour, nous vous prévenons avant leur expiration.')}
-    <section class="space-card docs-summary"><div><strong>${ok} pièce${ok > 1 ? 's' : ''} à jour sur ${docs.length}</strong><span>${todo.length ? `${todo.length} à mettre à jour : ${todo.map(t => t.label.split(' ou ')[0]).join(', ')}.` : 'Votre dossier est complet.'}</span></div><span class="docs-bar" role="img" aria-label="Pièces à jour : ${ok} sur ${docs.length}"><span style="--p:${Math.round(ok / docs.length * 100)}%"></span></span></section>
-    <section class="space-card"><ul class="doc-list">${[...todo, ...docs.filter(d => !todo.includes(d))].map(row).join('')}</ul>
-      <p class="muted small">${icon('shield')}PDF ou photo, 10 Mo maximum. Une photo nette du document suffit.</p></section>
-    ${sampleNote('Maquette : pièces et dates d’exemple. Les fichiers déposés ne sont pas envoyés.')}</div>`;
-}
-
-/* ───────────── Mes contrats ───────────── */
-/* Horaires et tarifs des créneaux : EXEMPLES pour la maquette (en production, ceux du contrat, lus dans le logiciel de paie). */
-const SHIFT = {'Garde 24 h': '24 heures de suite, de 8 h à 8 h le lendemain', 'Journée 12 h': '12 heures, de 8 h à 20 h', 'Journée 10 h': '10 heures, de 8 h à 18 h', 'Nuit 12 h': '12 heures de nuit, de 20 h à 8 h', 'Journée 7 h': '7 heures de formation, de 9 h à 17 h'};
-const RATE = {'Garde 24 h': 1300, 'Journée 12 h': 780, 'Journée 10 h': 650, 'Nuit 12 h': 780, 'Journée 7 h': 105};
-const euros = n => n.toLocaleString('fr-FR', {style: 'currency', currency: 'EUR', maximumFractionDigits: n % 1 ? 2 : 0});
-/* Signer en confiance : le contrat en mots simples (où, quand, horaires, combien, un exemple), le contrat complet,
-   et la conseillère à un appel. */
-function signPanel(c) {
-  const ms = missions().filter(m => m.ref === c.ref), types = [...new Set(ms.map(m => m.type))], total = ms.reduce((n, m) => n + (RATE[m.type] || 0), 0), first = ms[0];
-  return `<form class="sign-panel" data-sign="${c.ref}" novalidate><div id="form-errors"></div>
-    <h3 class="sign-title">Votre contrat en bref</h3>
-    <dl class="sign-sum">
-      <div><dt>${icon('pin')}Où</dt><dd>${esc(c.place)}</dd></div>
-      <div><dt>${icon('calendar')}Quand</dt><dd>${period(c.from, c.to)}<ul>${ms.map(m => `<li>${longDate(m.date)} · ${m.type}</li>`).join('')}</ul></dd></div>
-      <div><dt>${icon('clock')}Horaires</dt><dd><ul>${types.map(t => `<li>${t} : ${SHIFT[t] || 'horaires précisés dans le contrat'}</li>`).join('')}</ul></dd></div>
-      <div><dt>${icon('euro')}Rémunération</dt><dd><ul>${types.map(t => `<li>${euros(RATE[t])} brut par ${t.toLowerCase().startsWith('garde') ? 'garde' : t.toLowerCase().startsWith('nuit') ? 'nuit' : 'journée'} (${t})</li>`).join('')}</ul><strong>Soit ${euros(total)} brut pour ${ms.length} créneau${ms.length > 1 ? 'x' : ''}.</strong></dd></div>
-    </dl>
-    ${first ? `<p class="sign-example">${icon('help')}<span><strong>Exemple :</strong> pour ${first.type.toLowerCase().startsWith('garde') ? 'la garde' : 'le créneau'} du ${longDate(first.date)}, vous recevez ${euros(RATE[first.type])} brut, soit environ ${euros(Math.round(RATE[first.type] * .78))} net.</span></p>` : ''}
-    <div class="sign-links"><button type="button" class="text-link" data-contract-pdf="${c.ref}">${icon('file')}Lire le contrat complet (PDF, 3 pages)</button><a class="text-link" href="${TEL}">${icon('phone')}Appeler ma conseillère avant de signer</a></div>
-    <div class="field full"><label class="choice-inline"><input type="checkbox" name="signRead" required data-error-label="Lecture du contrat" data-missing="Cochez cette case pour signer : elle confirme que vous avez lu le contrat."><span>J’ai lu le contrat et j’en accepte les conditions.</span></label></div>
-    <div class="profile-actions"><button type="submit" class="btn btn-primary">${icon('pen')}Signer en ligne</button><button type="button" class="reset-link" data-sign-open="${c.ref}">Plus tard</button></div>
-    ${sampleNote('Maquette : horaires et montants d’exemple, à remplacer par ceux du contrat.')}</form>`;
-}
-function contractRow(c, open) {
-  return `<li class="contract-row ${open ? 'is-open' : ''}" data-contract="${c.ref}"><div class="contract-main"><span class="space-ico tone-${c.kind === 'formation' ? 'sand' : 'coral'}">${icon(c.kind === 'formation' ? 'diploma' : 'file')}</span>
-    <div><strong>${esc(c.title)}</strong><small>${esc(c.place)} · ${period(c.from, c.to)}</small><small class="contract-ref">Réf. ${c.ref} · ${c.kind === 'formation' ? 'Contrat de formation' : 'Contrat de mission'}</small></div>${statusPill(c.status)}
-    ${c.status === 'sign' ? `<button type="button" class="btn btn-coral" data-sign-open="${c.ref}" aria-expanded="${open}">${icon('pen')}Lire et signer</button>` : `<button type="button" class="btn btn-outline" data-download="${c.ref}">${icon('file')}PDF</button>`}</div>
-    ${c.status === 'sign' && open ? signPanel(c) : ''}</li>`;
-}
-let openSign = '', justSigned = null;
-/* Après la signature : un écran de confirmation (date et heure, où trouver la copie), montré une fois. */
-function signedScreen({ref, at}) {
-  const c = spaceContracts().find(x => x.ref === ref), u = espaceUser();
-  const when = `${fmtDate(at.toISOString().slice(0, 10), {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'})} à ${at.getHours()} h ${String(at.getMinutes()).padStart(2, '0')}`;
-  return `<div class="success-state sign-done"><div class="success-symbol"><svg viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="24"/><path d="m15 27 7 7 15-16"/></svg></div>
-    <h2 tabindex="-1">${dot('Votre contrat est signé.')}</h2><p class="success-lead"><strong>${esc(c?.title || ref)}</strong>, ${esc(c?.place || '')}.</p>
-    <dl class="sign-proof"><div><dt>Signé le</dt><dd>${when}</dd></div><div><dt>Référence</dt><dd>${ref}</dd></div></dl>
-    <p>Une copie est dans « Tous mes contrats » et vous la recevez par email${u?.email ? ` à <strong>${esc(u.email)}</strong>` : ''}. Vous n’avez rien d’autre à faire.</p>
-    <div class="actions"><a class="btn btn-primary" href="#/espace/contrats?vue=historique">Voir tous mes contrats${icon('arrow')}</a><a class="btn btn-outline" href="#/espace">Retour à l’accueil</a></div></div>`;
-}
-function espaceContrats(vue) {
-  const all = spaceContracts().sort((a, b) => b.from.localeCompare(a.from)), done = justSigned; justSigned = null;
-  const list = {historique: all, mission: all.filter(c => c.kind === 'mission'), formation: all.filter(c => c.kind === 'formation'), signer: all.filter(c => c.status === 'sign')}[vue];
-  const n = toSign().length;
-  return `<div class="space-page">${spaceHead('contrats', 'Mes contrats')}
-    ${segTabs([['signer', 'À signer', '#/espace/contrats?vue=signer', n || ''], ['historique', 'Tous mes contrats', '#/espace/contrats?vue=historique'], ['mission', 'Missions', '#/espace/contrats?vue=mission'], ['formation', 'Formations', '#/espace/contrats?vue=formation']], vue, 'Mes contrats')}
-    <section class="space-card" id="contract-list">${done ? signedScreen(done) : list.length ? `<ul class="contract-list">${list.map(c => contractRow(c, openSign === c.ref)).join('')}</ul>` : `<div class="space-empty">${icon('check')}<p><strong>${vue === 'signer' ? 'Aucun contrat à signer.' : 'Aucun contrat ici pour l’instant.'}</strong>${vue === 'signer' ? 'Vous recevez un message dès qu’un nouveau contrat est prêt.' : 'Vos contrats apparaissent ici dès votre première mission.'}</p></div>`}</section></div>`;
-}
-
-/* ───────────── Données fiscales, sécurité, avantages ───────────── */
-function espaceFiscal() {
-  return `<div class="space-page">${groupHead('fiscal', 'Le récapitulatif de vos revenus imposables, pour votre déclaration.')}
-    <section class="space-card"><div class="space-empty">${icon('receipt')}<p><strong>Aucune donnée pour l’année ${yearNow()}.</strong>Le récapitulatif de vos revenus imposables apparaît ici après votre première paie : vous pourrez le comparer avec votre déclaration de revenus.</p></div></section></div>`;
-}
-function espaceSecurite() {
-  const blocks = [['Avant la mission', ['Lisez la fiche de poste et le lieu de rendez-vous envoyés par votre conseillère.', 'Vérifiez que vos vaccinations obligatoires sont à jour.', 'Demandez l’accueil sécurité du service dès votre arrivée.']],
-    ['Pendant la mission', ['Portez les équipements de protection fournis par l’établissement.', 'Repérez les issues de secours et les numéros d’urgence internes.', 'Signalez toute situation à risque au cadre de santé.']],
-    ['En cas d’accident', ['Prévenez immédiatement le cadre du service.', 'Appelez votre conseillère dans les 24 heures : nous déclarons l’accident avec vous.', `Numéro direct : ${PHONE}.`]]];
-  return `<div class="space-page">${groupHead('securite', 'Réalisez votre mission en toute sécurité.')}
-    <div class="space-safety">${blocks.map(([t, list], i) => `<section class="space-card"><span class="safety-n" aria-hidden="true">${i + 1}</span><h2>${t}</h2>${checkList(list)}</section>`).join('')}</div>
-    ${sampleNote('Maquette : consignes proposées, à faire valider par Laska Corporate.')}</div>`;
-}
-function espaceAvantages(doc) {
-  const items = tileOf('avantages').items, current = items.find(([, h]) => h.endsWith(`doc=${doc}`)) || items[0];
-  const row = ([label, href]) => { const key = href.split('doc=')[1], ext = key === 'fastt';
-    return `<li class="${current[1] === href ? 'is-current' : ''}">${ext ? `<a href="https://www.fastt.org" target="_blank" rel="noopener">${icon('link')}<span>${label}<small>Site externe, nouvel onglet</small></span>${icon('arrow')}</a>` : `<a href="#/espace/${href}" ${current[1] === href ? 'aria-current="page"' : ''}>${icon('file')}<span>${label}<small>${key === 'avantages' ? 'Vos avantages Laska Corporate' : 'Document PDF'}</small></span>${icon('chevron')}</a>`}</li>`; };
-  const key = current[1].split('doc=')[1];
-  return `<div class="space-page">${groupHead('avantages', 'Vos avantages et les documents de votre protection sociale.')}
-    <div class="space-split is-nav"><nav aria-label="Mes avantages"><ul class="space-docs">${items.map(row).join('')}</ul></nav>
-      <section class="space-card doc-view"><h2>${current[0]}</h2>${key === 'avantages' ? checkList(['Accompagnement gratuit dans vos démarches d’exercice', 'Logement et transport proposés selon les missions', 'Un conseiller dédié, joignable par téléphone et WhatsApp']) + todo('liste complète des avantages', 'À fournir par Laska Corporate.') : todo(`document « ${current[0]} »`, 'PDF à fournir par Laska Corporate ; il s’ouvrira ici et pourra être téléchargé.')}</section></div></div>`;
-}
+  <div class="actions"><a class="btn btn-primary" href="${TEL}">${icon('phone')}${PHONE}</a></div></div>`;
 
 /* ───────────── Interactions ───────────── */
-function bindEspace(root = document) {
-  /* Connexion et formulaires d’aide (mot de passe oublié, changements). */
-  const card = $('#login-card', root);
-  if (card) {
-    const wire = () => {
-      const form = $('form', card); if (!form) return;
-      form.addEventListener('input', e => clearError(e.target)); form.addEventListener('change', e => clearError(e.target));
-      form.addEventListener('change', e => { if (e.target.type === 'email') { const better = emailSuggestion(e.target.value); fieldHint(e.target, better ? `Vouliez-vous dire <strong>${esc(better)}</strong> ?` : '', better ? {label: 'Oui, corriger', run: () => { e.target.value = better; clearError(e.target); }} : null); } });
-      form.addEventListener('keyup', e => { if (e.target.type === 'password' || e.target.dataset.revealed) { const hint = e.target.closest('.field').querySelector('.caps-hint'); if (hint && e.getModifierState) hint.hidden = !e.getModifierState('CapsLock'); } });
-      form.addEventListener('submit', e => {
-        e.preventDefault(); if (!validate(form)) return;
-        const submit = $('[type=submit]', form);
-        if (form.id === 'login-form') {
-          submit.disabled = true; submit.classList.add('is-loading'); submit.innerHTML = `<span class="btn-spinner" aria-hidden="true"></span>Connexion…`;
-          setTimeout(() => {
-            if (!ESPACE_OUVERT) { card.innerHTML = loginSoon(); $('h2', card).focus(); return; }
-            const u = espaceLogin($('#loginEmail', form).value.trim(), form.remember.checked);
-            render(false); $('#main')?.focus({preventScroll: true});
-            toast(`Bonjour ${u.firstName}, bienvenue dans votre espace.`, {icon: 'user'});
-          }, 650);
-          return;
-        }
-        const done = {'forgot-form': ['Lien envoyé', 'Si un espace existe avec cette adresse, vous recevez un email pour choisir un nouveau mot de passe. Pensez à regarder vos courriers indésirables.'], 'password-form': ['Mot de passe changé', 'Votre nouveau mot de passe est actif. Utilisez-le à votre prochaine connexion.'], 'email-form': ['Adresse à confirmer', 'Un email de confirmation part à votre nouvelle adresse : cliquez sur le lien qu’il contient pour terminer.']}[form.id];
-        card.innerHTML = `<div class="success-state"><div class="success-symbol"><svg viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="24"/><path d="m15 27 7 7 15-16"/></svg></div><h2 tabindex="-1">${dot(done[0] + '.')}</h2><p class="space-lead">${done[1]}</p><div class="notice">${icon('shield')}<p><strong>Simulation.</strong> Aucun email n’est envoyé.</p></div><div class="actions"><button type="button" class="btn btn-primary" data-login-view="login">Retour à la connexion</button></div></div>`;
-        $('h2', card).focus();
-      });
-    };
-    card.addEventListener('click', e => {
-      const v = e.target.closest('[data-login-view]');
-      if (v) { loginView = v.dataset.loginView; card.innerHTML = loginCard(); wire(); $('#login-title', card)?.focus(); return; }
-      const t = e.target.closest('[data-reveal-password]');
-      if (t) { const input = $(`#${t.dataset.revealPassword}`, card), show = input.type === 'password'; input.type = show ? 'text' : 'password'; input.dataset.revealed = show ? '1' : ''; t.setAttribute('aria-pressed', show); t.setAttribute('aria-label', show ? 'Masquer le mot de passe' : 'Afficher le mot de passe'); t.innerHTML = icon(show ? 'eyeOff' : 'eye'); input.focus(); }
-    });
-    wire();
-  }
-  const page = $('.space-page, .space-home', root);
-  /* Déconnexion : depuis n’importe quel écran de l’espace. */
-  $$('[data-logout]', root).forEach(b => b.addEventListener('click', () => {
-    espaceLogout(); loginView = 'login'; profileEdit = ''; openSign = '';
-    if (location.hash === '#/espace') render(); else location.hash = '/espace';
-    toast('Vous êtes déconnecté. À bientôt !', {icon: 'logout'});
-  }));
-  if (page) bindSpacePage(page);
+/* Après une action : la page se redessine sur place (sans remonter), puis le focus va où l’action mène. */
+function rerender(focus = '') {
+  render(false);
+  if (focus) requestAnimationFrame(() => { const el = document.querySelector(focus); if (el) { el.focus({preventScroll: true}); el.scrollIntoView({block: 'nearest'}); } });
 }
-/* Écran de l’espace (relié à nouveau après chaque mise à jour sur place, sans toucher au bandeau). */
-function bindSpacePage(page) {
-  const again = () => bindSpacePage($('.space-page, .space-home'));
-  /* Messages : lus au clic. */
-  page.addEventListener('click', e => {
-    const m = e.target.closest('[data-msg-read]'); if (!m) return;
-    const read = store(READ_KEY, []); if (!read.includes(m.dataset.msgRead)) keep(READ_KEY, [...read, m.dataset.msgRead]);
-    if (m.tagName === 'BUTTON') { const li = m.closest('.msg'); li.classList.remove('is-unread'); m.textContent = 'Lu'; m.disabled = true; const badge = $('.space-messages .seg-badge', page), n = $$('.msg.is-unread', page).length; if (badge) n ? badge.textContent = `${n} nouveau${n > 1 ? 'x' : ''}` : badge.remove(); }
+const fileOk = f => /\.(pdf|jpe?g|png|webp|heic|heif)$/i.test(f.name) && f.size <= 10 * 1048576;
+function downloadContrat(m) {
+  const doc = `<!doctype html><html lang="fr"><meta charset="utf-8"><title>Contrat — ${esc(etabNom(m))}</title><body style="font-family:system-ui,sans-serif;max-width:760px;margin:40px auto;line-height:1.6">${contratDocHTML(m, signatureOf(m).statut === 'papier' ? {} : signatureOf(m), PRATICIEN)}</body></html>`;
+  const a = document.createElement('a'), url = URL.createObjectURL(new Blob([doc], {type: 'text/html;charset=utf-8'}));
+  a.href = url; a.download = `contrat-${PRATICIEN.nom.toLowerCase()}-${m.id}.html`; document.body.append(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+}
+function sendMessage() {
+  const {texte, pieces: pj, reponseA} = msgPending; msgPending = null;
+  pstate().messages.push({id: `x${Date.now()}`, sens: 'envoye', quand: nowStamp(), texte, reponseA, pieces: pj.map(n => [n, 'pièce jointe'])}); ppSave();
+  if (espaceRoute().sub === 'messages' && route === '/espace') rerender('#msg-text');
+}
+/* Déconnexion : depuis l’initiale (en-tête) ou « Se déconnecter », comme la référence. */
+document.addEventListener('click', e => {
+  if (!e.target.closest('[data-logout]')) return;
+  const was = location.hash; espaceLogout(); location.hash = '/espace'; if (was === '#/espace') render();
+  toast('Vous êtes déconnecté. À bientôt !', {icon: 'logout'});
+});
+function bindEspace(root = document) {
+  const card = $('#login-card', root);
+  if (card) bindLogin(card);
+  const main = $('.pp-main', root); if (!main) return;
+  bindDates(main);
+  const r = espaceRoute(), voir = r.q.get('voir');
+  if (voir) requestAnimationFrame(() => document.getElementById(`voir-${voir}`)?.scrollIntoView({block: 'start'}));
+  clearInterval(countdown);
+  if (msgPending) countdown = setInterval(() => { const b = $('[data-countdown]'); if (!msgPending || !b) return clearInterval(countdown); b.textContent = Math.max(0, Math.ceil((msgPending.until - Date.now()) / 1000)); }, 250);
+  const P = pstate();
+  main.addEventListener('input', e => { clearError(e.target); if (e.target.id === 'msg-text') msgDraft = e.target.value; });
+  main.addEventListener('toggle', e => { if (e.target.matches?.('[data-docs-fold]')) docsOpen = e.target.open; }, true);
+  main.addEventListener('change', e => {
+    clearError(e.target);
+    const up = e.target.closest('[data-upload]');
+    if (up) { const file = up.files[0]; if (!file) return; if (!fileOk(file)) { toast('Ce fichier ne passe pas : choisissez un PDF ou une photo de moins de 10 Mo.', {icon: 'close'}); up.value = ''; return; }
+      P.docs[up.dataset.upload] = {nom: file.name, le: TODAY}; ppSave(); rerender('.pp-head h1'); toast('Fichier déposé : Laska le vérifie.', {icon: 'file'}); return; }
+    if (e.target.matches('[data-msg-files]')) { const files = [...e.target.files], bad = files.filter(f => !fileOk(f));
+      if (bad.length) toast(`${bad.length > 1 ? 'Ces fichiers ne passent pas' : 'Ce fichier ne passe pas'} : PDF ou photo de moins de 10 Mo.`, {icon: 'close'});
+      msgFiles = [...msgFiles, ...files.filter(fileOk).map(f => f.name)].slice(0, 5); rerender('#msg-text'); }
   });
-  /* Planning : semaines et mois précédents ou suivants, sur place. */
-  const plan = $('#plan-view', page);
-  plan?.addEventListener('click', e => {
-    const step = e.target.closest('[data-plan-step]'), today = e.target.closest('[data-plan-today]'); if (!step && !today) return;
-    const vue = plan.dataset.vue; if (vue === 'semaine') planWeek = today ? 0 : planWeek + Number(step.dataset.planStep); else planMonth = today ? 0 : planMonth + Number(step.dataset.planStep);
-    plan.innerHTML = planView(vue); $(step ? `[data-plan-step="${step.dataset.planStep}"]` : '[data-plan-step="1"]', plan)?.focus();
+  main.addEventListener('click', e => {
+    const t = e.target.closest('button, a'); if (!t) return;
+    const d = t.dataset;
+    if (d.ask !== undefined) { $('#ask-answer', main).innerHTML = `<p class="pp-ask-q">${esc(ASK[d.ask])}</p><p>${askAnswer(Number(d.ask))}</p><p class="pp-muted">Réponse automatique — votre recruteuse reste votre interlocutrice.</p>`; return; }
+    if (d.route) { routeOpen = routeOpen === d.route ? '' : d.route; rerender('[data-route]'); return; }
+    if (d.download) { downloadContrat(missionById(d.download)); toast('Contrat téléchargé.', {icon: 'file'}); return; }
+    if (d.copyAddress) { (navigator.clipboard?.writeText(d.copyAddress) || Promise.reject()).then(() => toast('Adresse copiée.', {icon: 'pin'}), () => toast(d.copyAddress, {icon: 'pin'})); return; }
+    if (d.justificatif) { toast(`${d.justificatif} — maquette : l’aperçu du fichier n’est pas disponible.`, {icon: 'file'}); return; }
+    if (d.avisEdit) { avisEdit = d.avisEdit; rerender('#voir-avis input'); return; }
+    if ('avisCancel' in d) { avisEdit = ''; rerender('#voir-avis'); return; }
+    if (d.contestOpen) { contestOpen = d.contestOpen; rerender('#ct-jour'); return; }
+    if ('contestCancel' in d) { contestOpen = ''; rerender('[data-contest-open]'); return; }
+    if (d.jours) { joursOpen = joursOpen.includes(d.jours) ? joursOpen.filter(x => x !== d.jours) : [...joursOpen, d.jours]; rerender(`[data-jours="${d.jours}"]`); return; }
+    if ('dispoAdd' in d) { dispoEdit = 'new'; rerender('#dispo-debut'); return; }
+    if (d.dispoEdit) { dispoEdit = d.dispoEdit; rerender('#dispo-debut'); return; }
+    if ('dispoCancel' in d) { dispoEdit = ''; rerender('[data-dispo-add]'); return; }
+    if (d.dispoDel) { const x = P.dispos.find(y => y.id === d.dispoDel);
+      askChoice({title: 'Supprimer cette disponibilité ?', text: `${plage(x.debut, x.fin)} — cette disponibilité sera définitivement supprimée.`, choices: [{label: 'Supprimer', run: () => { P.dispos = P.dispos.filter(y => y.id !== x.id); ppSave(); rerender('.pp-head h1'); }}, {label: 'Annuler', run: () => {}}]}); return; }
+    if ('coordsEdit' in d) { coordsEdit = true; rerender('#co-tel'); return; }
+    if ('coordsCancel' in d) { coordsEdit = false; rerender('[data-coords-edit]'); return; }
+    if (d.revealPassword) { const input = $(`#${d.revealPassword}`, main), show = input.type === 'password'; input.type = show ? 'text' : 'password'; t.setAttribute('aria-pressed', show); t.setAttribute('aria-label', show ? 'Masquer le mot de passe' : 'Afficher le mot de passe'); t.innerHTML = icon(show ? 'eyeOff' : 'eye'); input.focus(); return; }
+    if (d.notif) { if (!P.lus.includes(d.notif)) { P.lus.push(d.notif); ppSave(); } return; }
+    if (d.reply) { replyTo = d.reply; rerender('#msg-text'); return; }
+    if ('replyClear' in d) { replyTo = ''; rerender('#msg-text'); return; }
+    if ('msgCancel' in d) { clearTimeout(msgPending.timer); msgDraft = msgPending.texte; msgFiles = msgPending.pieces; msgPending = null; rerender('#msg-text'); toast('Envoi annulé : votre message n’est pas parti.', {icon: 'close'}); return; }
+    if (d.fileRemove !== undefined) { msgFiles.splice(Number(d.fileRemove), 1); rerender('#msg-text'); return; }
   });
-  /* Contrats : ouvrir le panneau de signature, signer, télécharger. */
-  const list = $('#contract-list', page);
-  const paintContracts = () => { const vue = new URLSearchParams(query).get('vue') || $('.space-seg [aria-current]', page)?.getAttribute('href').split('vue=')[1] || 'historique'; page.outerHTML = espaceContrats(vue); again(); };
-  list?.addEventListener('click', e => {
-    const o = e.target.closest('[data-sign-open]');
-    if (o) { openSign = openSign === o.dataset.signOpen ? '' : o.dataset.signOpen; paintContracts(); $(`[data-contract="${o.dataset.signOpen}"] ${openSign ? '.sign-panel input' : '[data-sign-open]'}`)?.focus(); return; }
-    const d = e.target.closest('[data-download]'); if (d) toast(`Contrat ${d.dataset.download} : téléchargement simulé, aucun fichier n’est créé.`, {icon: 'file'});
-    const pdf = e.target.closest('[data-contract-pdf]'); if (pdf) toast(`Contrat ${pdf.dataset.contractPdf} : ouverture simulée du contrat complet (PDF de 3 pages).`, {icon: 'file'});
+  main.addEventListener('submit', e => {
+    const f = e.target.closest('form[data-form]'); if (!f) return;
+    e.preventDefault();
+    const kind = f.dataset.form, val = n => (f.elements[n]?.value || '').trim();
+    if (kind === 'ask') { const q = val('q'); if (!q) return;
+      $('#ask-answer', main).innerHTML = `<p class="pp-ask-q">${esc(q)}</p><p>Je transmets votre question à ${PP_CONTACT.prenom}, votre contact chez Laska : elle vous répond dans Messages.</p><p class="pp-muted">Réponse automatique — votre recruteuse reste votre interlocutrice.</p>`; f.reset(); return; }
+    if (!validate(f)) return;
+    if (kind === 'contest') { const mid = f.dataset.mid; P.contestations[mid] = {jour: val('jour'), debut: val('debut'), fin: val('fin'), message: val('message'), le: nowStamp()}; contestOpen = ''; ppSave(); rerender(`#voir-releve-${mid}`); toast('Contestation envoyée à Laska.', {icon: 'send'}); return; }
+    if (kind === 'avis') { const mid = f.dataset.mid, a = {mot: val('mot'), le: TODAY}; AVIS_Q.forEach(([k]) => { a[k] = f.querySelector(`[name="avis_${k}"]:checked`)?.value || ''; }); P.avis[mid] = a; avisEdit = ''; ppSave(); rerender('#voir-avis'); toast('Merci : votre avis est arrivé chez Laska.'); return; }
+    if (kind === 'dispo') { const id = f.dataset.id, debut = val('debut'), fin = val('fin');
+      if (P.dispos.some(x => x.id !== id && x.debut === debut && x.fin === fin)) { toast('Une période est déjà enregistrée sur exactement ces dates.', {icon: 'close'}); return; }
+      if (id) Object.assign(P.dispos.find(x => x.id === id), {debut, fin, commentaire: val('commentaire')}); else P.dispos.push({id: `d${Date.now()}`, debut, fin, commentaire: val('commentaire')});
+      dispoEdit = ''; ppSave(); rerender('.pp-head h1'); return; }
+    if (kind === 'coords') { if (!/^\d{5}$/.test(val('cp'))) { toast('Le code postal compte 5 chiffres.', {icon: 'close'}); f.elements.cp.focus(); return; }
+      P.coords = {tel: val('tel'), email: val('email'), cp: val('cp'), ville: val('ville')}; coordsEdit = false; ppSave(); rerender('[data-coords-edit]'); toast('Coordonnées mises à jour — Laska les voit immédiatement.'); return; }
+    if (kind === 'pw') { if (val('pwNew') !== val('pwNew2')) { toast('Les deux nouveaux mots de passe ne sont pas identiques.', {icon: 'close'}); f.elements.pwNew2.focus(); return; }
+      f.reset(); toast('Mot de passe modifié.', {icon: 'shield'}); return; }
+    if (kind === 'msg') { const reply = replyTo && allMessages().find(x => x.id === replyTo);
+      msgPending = {texte: val('texte'), pieces: [...msgFiles], reponseA: reply?.objet || '', until: Date.now() + 10000, timer: setTimeout(sendMessage, 10000)}; msgDraft = ''; msgFiles = []; replyTo = ''; rerender('[data-msg-cancel]'); }
   });
-  list?.addEventListener('submit', e => {
-    const form = e.target.closest('[data-sign]'); if (!form) return; e.preventDefault(); if (!validate(form)) return;
-    const ref = form.dataset.sign; keep(SIGNED_KEY, [...new Set([...store(SIGNED_KEY, []), ref])]); openSign = '';
-    /* Tout est redessiné (menu et onglets compris) : les pastilles « à signer » disparaissent avec le contrat signé. */
-    justSigned = {ref, at: new Date()}; render(false); $('.sign-done h2')?.focus();
+}
+function bindLogin(card) {
+  const form = $('#login-form', card); if (!form) return;
+  form.addEventListener('input', e => clearError(e.target));
+  card.addEventListener('click', e => {
+    const t = e.target.closest('[data-reveal-password]'); if (!t) return;
+    const input = $(`#${t.dataset.revealPassword}`, card), show = input.type === 'password'; input.type = show ? 'text' : 'password'; t.setAttribute('aria-pressed', show); t.setAttribute('aria-label', show ? 'Masquer le mot de passe' : 'Afficher le mot de passe'); t.innerHTML = icon(show ? 'eyeOff' : 'eye'); input.focus();
   });
-  list?.addEventListener('change', e => clearError(e.target));
-  /* Avance sur paie (acompte). */
-  const adv = $('#advance-form', page);
-  adv?.addEventListener('input', e => clearError(e.target));
-  adv?.addEventListener('submit', e => {
-    e.preventDefault(); const amount = $('#advAmount', adv);
-    const value = Number(amount.value.replace(',', '.').replace(/[^\d.]/g, ''));
-    if (!validate(adv)) return;
-    if (!value || value < 20 || value > 2000) { amount.setAttribute('aria-invalid', 'true'); fieldHint(amount, value > 2000 ? 'Au-delà de 2 000 €, appelez votre conseillère : elle étudie la demande avec vous.' : 'Indiquez un montant entre 20 € et 2 000 €.'); amount.focus(); return; }
-    keep(ADVANCE_KEY, [{amount: value.toLocaleString('fr-FR'), mission: $('#advMission', adv).value, date: TODAY}, ...store(ADVANCE_KEY, [])]);
-    page.outerHTML = espacePaie(); again();
-    toast(`Demande d’avance de ${value.toLocaleString('fr-FR')} € envoyée (simulation).`);
-  });
-  /* Documents. */
-  const docForm = $('#doc-form', page);
-  docForm?.addEventListener('submit', e => {
-    e.preventDefault(); if (!validate(docForm)) return;
-    const choice = $('select', docForm).value, name = docForm.dataset.doc;
-    $('#doc-result', page).innerHTML = `<div class="doc-ready">${icon('file')}<div><strong>${name} prêt</strong><small>${esc(choice)} · PDF</small></div><button type="button" class="btn btn-outline" data-print-doc>${icon('print')}Imprimer</button><button type="button" class="btn btn-primary" data-download="${esc(name)}">Télécharger</button></div>`;
-    $('#doc-result [data-print-doc]', page).focus();
-  });
-  page.addEventListener('click', e => {
-    const slip = e.target.closest('[data-payslip]'); if (slip) toast(`Bulletin ${slip.dataset.payslip} : ouverture simulée (PDF).`, {icon: 'file'});
-    if (e.target.closest('[data-print-doc]')) toast('Impression simulée : le vrai document sera généré par le logiciel de paie.', {icon: 'print'});
-    const d = e.target.closest('#doc-result [data-download]'); if (d) toast(`${d.dataset.download} : téléchargement simulé, aucun fichier n’est créé.`, {icon: 'file'});
-  });
-  /* Profil : modifier une carte sur place. */
-  page.addEventListener('click', e => {
-    const ed = e.target.closest('[data-profile-edit]'), cancel = e.target.closest('[data-profile-cancel]');
-    if (!ed && !cancel) return;
-    profileEdit = ed ? ed.dataset.profileEdit : ''; const key = ed ? ed.dataset.profileEdit : cancel.closest('[data-profile-form]').dataset.profileForm;
-    page.outerHTML = espaceProfil(espaceUser()); again();
-    (ed ? $(`#profil-${key} input:not([type=hidden]), #profil-${key} select`) : $(`#profil-${key} [data-profile-edit]`))?.focus();
-  });
-  page.addEventListener('submit', e => {
-    const form = e.target.closest('[data-profile-form]'); if (!form) return; e.preventDefault();
-    const iban = $('#pf-iban', form);
-    if (iban && iban.value.trim() && !/^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/.test(iban.value.replace(/\s/g, '').toUpperCase())) { iban.setAttribute('aria-invalid', 'true'); fieldHint(iban, 'Cet IBAN semble incomplet : il commence par deux lettres (FR pour la France) puis compte 27 caractères en France.'); iban.focus(); return; }
-    if (!validate(form)) return;
-    const next = {...store(PROFILE_KEY, {})};
-    for (const el of form.elements) if (el.name?.startsWith('pf-') && (el.type !== 'radio' || el.checked)) { const k = el.name.slice(3); if (k === 'iban' && !el.value.trim()) continue; next[k] = k === 'iban' ? el.value.toUpperCase().replace(/\s/g, '').replace(/(.{4})/g, '$1 ').trim() : el.value; }
-    if (form.dataset.profileForm === 'paiement' && next.paiement === undefined) next.paiement = profile().paiement;
-    keep(PROFILE_KEY, next); profileEdit = '';
-    page.outerHTML = espaceProfil(espaceUser()); again();
-    toast('Modifications enregistrées. Votre conseillère en est informée.');
-  });
-  page.querySelectorAll('.profile-form').forEach(f => { f.addEventListener('input', e => clearError(e.target)); bindMulti(f); });
-  /* Disponibilités : un appui par jour ; actions groupées avec « Annuler ». */
-  const dv = $('#dispo-view', page);
-  dv?.addEventListener('click', e => {
-    const day = e.target.closest('[data-dispo]'), all = e.target.closest('[data-dispo-all]'); if (!day && !all) return;
-    const d = dispos(), before = {...d};
-    if (day) { const iso = day.dataset.dispo, next = {'': 'dispo', dispo: 'off', off: ''}[d[iso] || '']; if (next) d[iso] = next; else delete d[iso]; }
-    else if (all.dataset.dispoAll === 'clear') Object.keys(d).forEach(k => delete d[k]);
-    else Array.from({length: 28}, (_, i) => addDays(mondayOf(TODAY), i)).filter(x => x >= TODAY && !missionsOn(x).length)
-      .forEach(x => { d[x] = all.dataset.dispoAll === 'dispo' || [0, 6].includes(asDate(x).getDay()) ? 'dispo' : 'off'; });
-    keep(DISPO_KEY, d); dv.innerHTML = dispoView();
-    (day ? $(`[data-dispo="${day.dataset.dispo}"]`, dv) : $(`[data-dispo-all="${all.dataset.dispoAll}"]`, dv) || $('[data-dispo-all]', dv))?.focus();
-    if (all) toast(all.dataset.dispoAll === 'clear' ? 'Disponibilités effacées.' : 'Disponibilités enregistrées : votre conseillère les voit tout de suite.', {action: {label: 'Annuler', run: () => { keep(DISPO_KEY, before); const v = $('#dispo-view'); if (v) v.innerHTML = dispoView(); }}});
-  });
-  /* Justificatifs : dépôt d’une pièce (contrôle du format et du poids), puis « en vérification ». */
-  page.addEventListener('change', e => {
-    const up = e.target.closest('[data-doc-up]'); if (!up) return;
-    const f = up.files[0], key = up.dataset.docUp; if (!f) return;
-    const problem = fileProblem(f, DOC_FILES.ext.split(','));
-    if (problem) { up.value = ''; toast(problem, {icon: 'close'}); return; }
-    const sent = store(DOCS_KEY, {}), prev = sent[key]; sent[key] = f.name; keep(DOCS_KEY, sent);
-    page.outerHTML = espaceJustificatifs(); again(); $(`[data-doc-up="${key}"]`)?.focus();
-    toast(`« ${esc(f.name)} » reçu. Votre conseillère le vérifie sous 48 h.`, {icon: 'file', action: {label: 'Annuler', run: () => { const s = store(DOCS_KEY, {}); prev ? s[key] = prev : delete s[key]; keep(DOCS_KEY, s); const pg = $('.space-page'); if (pg && location.hash.includes('justificatifs')) { pg.outerHTML = espaceJustificatifs(); bindSpacePage($('.space-page')); } }}});
+  form.addEventListener('submit', e => {
+    e.preventDefault(); if (!validate(form)) return;
+    const submit = $('[type=submit]', form);
+    submit.disabled = true; submit.classList.add('is-loading'); submit.innerHTML = '<span class="btn-spinner" aria-hidden="true"></span>Connexion en cours…';
+    setTimeout(() => {
+      if (!ESPACE_OUVERT) { card.innerHTML = loginSoon(); $('h2', card).focus(); return; }
+      espaceLogin($('#loginEmail', form).value.trim());
+      render(false); $('.pp-main h1')?.focus({preventScroll: true});
+    }, 650);
   });
 }
